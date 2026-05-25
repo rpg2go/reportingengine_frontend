@@ -42,3 +42,11 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Python (ADK Validation Agents cache)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.adk/

@@ -1,0 +1,19 @@
+skills:
+  enabled: true
+  auto_discover: true
+  path: .agents/skills
+
+default_skills:
+  - angular-developer
+  - angular-component
+  - ui-ux-pro-max
+
+skill_settings:
+  angular-developer:
+    priority: high
+
+  angular-component:
+    priority: high
+
+  ui-ux-pro-max:
+    priority: high
