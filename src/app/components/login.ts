@@ -1,8 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, DestroyRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-login',
@@ -279,6 +280,21 @@ import { CommonModule } from '@angular/common';
     .animate-fade-in {
       animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+
+    @media (max-width: 767px) {
+      .login-container {
+        padding: 16px;
+        align-items: flex-start;
+        padding-top: 60px;
+      }
+      .glass-card {
+        padding: 28px 20px;
+        border-radius: 16px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+    }
   `]
 })
 export class LoginComponent {
@@ -287,7 +303,11 @@ export class LoginComponent {
   loading = signal(false);
   errorMessage = signal<string | null>(null);
 
-  constructor(private authService: AuthService, private router: Router) {
+  private destroyRef = inject(DestroyRef);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  constructor() {
     if (this.authService.isAuthenticated()) {
       this.router.navigate(['/dashboard']);
     }
@@ -299,7 +319,9 @@ export class LoginComponent {
     this.loading.set(true);
     this.errorMessage.set(null);
 
-    this.authService.login(this.username, this.password).subscribe({
+    this.authService.login(this.username, this.password).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigate(['/dashboard']);

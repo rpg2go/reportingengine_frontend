@@ -7,7 +7,7 @@ import { Observable, tap } from 'rxjs';
 })
 export class AuthService {
   private apiUrl = '/api/auth';
-  isAuthenticated = signal<boolean>(localStorage.getItem('token') !== null);
+  isAuthenticated = signal<boolean>(sessionStorage.getItem('token') !== null);
 
   constructor(private http: HttpClient) {}
 
@@ -19,27 +19,31 @@ export class AuthService {
 
     return this.http.get(`${this.apiUrl}/login`, { headers }).pipe(
       tap(() => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('username', username);
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('username', username);
         this.isAuthenticated.set(true);
       })
     );
   }
 
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('username');
     this.isAuthenticated.set(false);
   }
 
+  getToken(): string | null {
+    return sessionStorage.getItem('token');
+  }
+
   getAuthHeader(): HttpHeaders {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
     return new HttpHeaders({
       'Authorization': token ? `Basic ${token}` : ''
     });
   }
 
   getUsername(): string {
-    return localStorage.getItem('username') || '';
+    return sessionStorage.getItem('username') || '';
   }
 }

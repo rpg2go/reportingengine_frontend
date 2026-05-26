@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,70 +8,51 @@ import { AuthService } from './auth.service';
 export class ReportService {
   private apiUrl = '/api/reports';
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient) {}
 
   getReports(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<any[]>(this.apiUrl);
   }
 
   getReportConfig(id: string, date: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${id}?date=${date}`, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<any>(`${this.apiUrl}/${id}?date=${date}`);
   }
 
   importTemplate(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
 
-    return this.http.post(`${this.apiUrl}/import`, formData, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.post(`${this.apiUrl}/import`, formData);
   }
 
   runReport(id: string, date: string): Observable<Blob> {
     return this.http.post(`${this.apiUrl}/${id}/run?date=${date}`, null, {
-      headers: this.authService.getAuthHeader(),
       responseType: 'blob'
     });
   }
 
   getSemanticModel(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/semantic-model`, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<any>(`${this.apiUrl}/semantic-model`);
   }
 
   saveReport(id: string, config: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}`, config, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.put(`${this.apiUrl}/${id}`, config);
   }
 
   createReport(config: any): Observable<any> {
-    return this.http.post(this.apiUrl, config, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.post(this.apiUrl, config);
   }
 
   getTables(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/tables`, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<string[]>(`${this.apiUrl}/tables`);
   }
 
   getTableColumns(table: string): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/table-columns?table=${table}`, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<string[]>(`${this.apiUrl}/table-columns?table=${table}`);
   }
 
   getDistinctValues(table: string, column: string): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/dimensions/values?table=${table}&column=${column}`, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<string[]>(`${this.apiUrl}/dimensions/values?table=${table}&column=${column}`);
   }
 
   /**
@@ -81,9 +61,7 @@ export class ReportService {
    * Returns: [{ dimView: string, joinType: string, joinSql: string, ... }]
    */
   getDimensionJoins(factTable: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/dimension-joins?factTable=${factTable}`, {
-      headers: this.authService.getAuthHeader()
-    });
+    return this.http.get<any[]>(`${this.apiUrl}/dimension-joins?factTable=${factTable}`);
   }
 
   /**
@@ -94,4 +72,3 @@ export class ReportService {
     return this.getDistinctValues('dim_date', 'reporting_date');
   }
 }
-

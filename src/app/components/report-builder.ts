@@ -1,10 +1,19 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  parseMeasure,
+  serializeMeasure,
+  parseRowFilterExpr,
+  serializeRowFilters,
+  formatDateForInput,
+  dateOffsetString
+} from '../utils/report-parser';
 
 /** Base quick/general filter condition (used on the report header scope). */
 interface FilterCondition {
@@ -28,8 +37,20 @@ interface RowFilterCondition {
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="builder-container">
-      <!-- ══════════════════════════════════════════ SIDEBAR -->
-      <aside class="sidebar">
+      <!-- Mobile topbar -->
+      <div class="mobile-topbar">
+        <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle navigation">
+          <span class="ham-line"></span>
+          <span class="ham-line"></span>
+          <span class="ham-line"></span>
+        </button>
+        <span class="topbar-brand">Report Builder</span>
+      </div>
+      <!-- Sidebar overlay backdrop -->
+      <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="closeSidebar()"></div>
+      <!-- ════════════════════════════════════════════ SIDEBAR -->
+      <aside class="sidebar" [class.open]="sidebarOpen()">
+        <button class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close navigation">✕</button>
         <div class="sidebar-brand">
           <span class="brand-icon">🛠️</span>
           <span class="brand-text">Report Builder</span>
@@ -1550,6 +1571,141 @@ interface RowFilterCondition {
     .animate-fade-in {
       animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+
+    /* ═══════════════ MOBILE RESPONSIVE ═══════════════ */
+
+    .mobile-topbar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      height: 60px;
+      background: rgba(15, 23, 42, 0.97);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      align-items: center;
+      padding: 0 16px;
+      gap: 14px;
+    }
+
+    .topbar-brand {
+      font-size: 17px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hamburger-btn {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
+    .ham-line {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #f8fafc;
+      border-radius: 2px;
+    }
+
+    .sidebar-close-btn {
+      display: none;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 14px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+    .sidebar-close-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 149;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .sidebar-overlay.visible { display: block; }
+
+    @media (max-width: 1023px) {
+      .mobile-topbar { display: flex; }
+      .sidebar-close-btn { display: flex; }
+
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100%;
+        width: 280px;
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 32px rgba(0, 0, 0, 0.5);
+      }
+
+      .main-content {
+        padding: 80px 20px 32px 20px;
+        max-width: 100vw;
+      }
+
+      .detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .action-buttons {
+        flex-wrap: wrap;
+        gap: 10px;
+        width: 100%;
+      }
+      .preview-btn, .save-btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 130px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .main-content {
+        padding: 76px 12px 24px 12px;
+        max-width: 100vw;
+      }
+      .card {
+        padding: 20px 16px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+    }
   `]
 })
 export class ReportBuilderComponent implements OnInit {
@@ -1558,6 +1714,7 @@ export class ReportBuilderComponent implements OnInit {
   showPreview   = signal(false);
   successMessage = signal<string | null>(null);
   errorMessage   = signal<string | null>(null);
+  sidebarOpen    = signal(false);
 
   // ── DB Metadata ─────────────────────────────────────────────────────────
   dbTables: string[]     = [];
@@ -1597,12 +1754,13 @@ export class ReportBuilderComponent implements OnInit {
   rows: any[]    = [];
   columns: any[] = [];
 
-  constructor(
-    private route: ActivatedRoute,
-    private reportService: ReportService,
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  private destroyRef = inject(DestroyRef);
+  private route = inject(ActivatedRoute);
+  private reportService = inject(ReportService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  constructor() {}
 
   // ═══════════════════════════════════════════════════════════════════════════
   // COMPUTED PROPERTIES
@@ -1624,7 +1782,9 @@ export class ReportBuilderComponent implements OnInit {
   ngOnInit(): void {
     this.loadReportingDates();
 
-    this.route.params.subscribe((params) => {
+    this.route.params.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((params) => {
       const id = params['id'];
       if (id && id !== 'new') {
         this.isNewReport = false;
@@ -1633,7 +1793,9 @@ export class ReportBuilderComponent implements OnInit {
         forkJoin({
           tables: this.reportService.getTables(),
           config: this.reportService.getReportConfig(id, '2025-12-31')
-        }).subscribe({
+        }).pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
           next: ({ tables, config }) => {
             this.dbTables = tables;
             this.applyReportConfig(config);
@@ -1642,7 +1804,9 @@ export class ReportBuilderComponent implements OnInit {
         });
       } else {
         this.isNewReport = true;
-        this.reportService.getTables().subscribe({
+        this.reportService.getTables().pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
           next: (tbls) => { this.dbTables = tbls; }
         });
         this.initializeDefaultCatalog();
@@ -1801,7 +1965,9 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   loadTableMetadata(table: string): void {
-    this.reportService.getTableColumns(table).subscribe({
+    this.reportService.getTableColumns(table).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (cols) => { this.tableColumns = cols; }
     });
   }
@@ -1809,7 +1975,9 @@ export class ReportBuilderComponent implements OnInit {
   loadDimensionJoins(factTable: string): void {
     this.loadingDimJoins = true;
     this.dimensionJoins  = [];
-    this.reportService.getDimensionJoins(factTable).subscribe({
+    this.reportService.getDimensionJoins(factTable).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (joins) => {
         this.dimensionJoins = joins || [];
         this.loadingDimJoins = false;
@@ -1823,7 +1991,9 @@ export class ReportBuilderComponent implements OnInit {
 
   loadDimensionColumns(dimView: string): void {
     if (this.dimensionColumnsCache[dimView]) return; // already cached
-    this.reportService.getTableColumns(dimView).subscribe({
+    this.reportService.getTableColumns(dimView).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (cols) => { this.dimensionColumnsCache = { ...this.dimensionColumnsCache, [dimView]: cols }; }
     });
   }
@@ -1863,9 +2033,7 @@ export class ReportBuilderComponent implements OnInit {
 
   private todayString(): string      { return this.dateOffsetString(0); }
   private dateOffsetString(n: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() + n);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return dateOffsetString(n);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1873,7 +2041,9 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   loadReportingDates(): void {
-    this.reportService.getReportingDates().subscribe({
+    this.reportService.getReportingDates().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (dates) => { this.availableReportingDates = dates || []; },
       error: () => { /* fail silently — user can still type a date */ }
     });
@@ -1912,7 +2082,9 @@ export class ReportBuilderComponent implements OnInit {
     if (!table || !filter.attribute) return;
     const key = `${table}.${filter.attribute}`;
     if (this.distinctValues[key]) return;
-    this.reportService.getDistinctValues(table, filter.attribute).subscribe({
+    this.reportService.getDistinctValues(table, filter.attribute).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (vals) => { this.distinctValues = { ...this.distinctValues, [key]: vals }; }
     });
   }
@@ -1965,7 +2137,9 @@ export class ReportBuilderComponent implements OnInit {
       this.pendingRowFilterValues = this.distinctValues[key];
       return;
     }
-    this.reportService.getDistinctValues(table, attr).subscribe({
+    this.reportService.getDistinctValues(table, attr).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (vals) => {
         this.distinctValues = { ...this.distinctValues, [key]: vals };
         this.pendingRowFilterValues = vals;
@@ -2004,31 +2178,19 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   private parseMeasure(source: string): { aggFunction: string; measureCol: string; customSqlMode: boolean } {
-    if (!source) return { aggFunction: 'SUM', measureCol: '', customSqlMode: false };
-    const m = source.match(/^(SUM|COUNT|COUNT_DISTINCT|AVG|MIN|MAX)\((.+)\)$/i);
-    if (m) return { aggFunction: m[1].toUpperCase(), measureCol: m[2], customSqlMode: false };
-    return { aggFunction: 'SUM', measureCol: '', customSqlMode: true };
+    return parseMeasure(source);
   }
 
   private parseRowFilterExpr(filterExpr: string): { rowFilters: RowFilterCondition[]; legacyFilterExpr: string } {
-    if (!filterExpr) return { rowFilters: [], legacyFilterExpr: '' };
-    try {
-      const parsed = JSON.parse(filterExpr);
-      if (Array.isArray(parsed)) return { rowFilters: parsed, legacyFilterExpr: '' };
-    } catch { /* not JSON */ }
-    return { rowFilters: [], legacyFilterExpr: filterExpr };
+    return parseRowFilterExpr(filterExpr);
   }
 
   private serializeMeasure(row: any): string {
-    if (row.rowType !== 'data') return row.source || '';
-    if (row.customSqlMode || !row.measureAgg || !row.measureCol) return row.source || '';
-    return `${row.measureAgg}(${row.measureCol})`;
+    return serializeMeasure(row);
   }
 
   private serializeRowFilters(row: any): string {
-    if (row.rowType !== 'data') return '';
-    if (row.rowFilters && row.rowFilters.length > 0) return JSON.stringify(row.rowFilters);
-    return row.legacyFilterExpr || '';
+    return serializeRowFilters(row);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2208,7 +2370,9 @@ export class ReportBuilderComponent implements OnInit {
       ? this.reportService.createReport(payload)
       : this.reportService.saveReport(this.reportId, payload);
 
-    req$.subscribe({
+    req$.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.saving.set(false);
         this.successMessage.set('Report definition successfully saved!');
@@ -2221,6 +2385,9 @@ export class ReportBuilderComponent implements OnInit {
     });
   }
 
+  toggleSidebar(): void { this.sidebarOpen.update(v => !v); }
+  closeSidebar(): void { this.sidebarOpen.set(false); }
+
   goBack(): void {
     if (confirm('Discard changes and exit?')) {
       this.router.navigate(this.isNewReport ? ['/dashboard'] : ['/reports', this.reportId]);
@@ -2232,19 +2399,6 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   formatDateForInput(dateStr: string): string {
-    if (!dateStr) return '';
-    const t = dateStr.trim().toLowerCase();
-    if (t === 'today' || t === 'sysdate') return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      const [m, d, y] = parts;
-      return `${y.length === 2 ? '20' + y : y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-    }
-    const dt = new Date(dateStr);
-    if (!isNaN(dt.getTime())) return this.dateOffsetString(0).slice(0, 4) === String(dt.getFullYear())
-      ? `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
-      : '';
-    return '';
+    return formatDateForInput(dateStr, () => this.dateOffsetString(0));
   }
 }

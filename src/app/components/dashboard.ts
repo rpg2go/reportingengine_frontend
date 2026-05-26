@@ -1,9 +1,10 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-dashboard',
@@ -11,8 +12,20 @@ import { AuthService } from '../services/auth.service';
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="dashboard-container">
+      <!-- Mobile topbar -->
+      <div class="mobile-topbar">
+        <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle navigation">
+          <span class="ham-line"></span>
+          <span class="ham-line"></span>
+          <span class="ham-line"></span>
+        </button>
+        <span class="topbar-brand">Reporting Engine</span>
+      </div>
+      <!-- Sidebar overlay backdrop -->
+      <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="closeSidebar()"></div>
       <!-- Sidebar / Header -->
-      <aside class="sidebar">
+      <aside class="sidebar" [class.open]="sidebarOpen()">
+        <button class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close navigation">✕</button>
         <div class="sidebar-brand">
           <span class="brand-icon">📊</span>
           <span class="brand-text">Reporting Engine</span>
@@ -746,6 +759,152 @@ import { AuthService } from '../services/auth.service';
     .animate-fade-in {
       animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+
+    /* ═══════════════ MOBILE RESPONSIVE ═══════════════ */
+
+    .mobile-topbar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      height: 60px;
+      background: rgba(15, 23, 42, 0.97);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      align-items: center;
+      padding: 0 16px;
+      gap: 14px;
+    }
+
+    .topbar-brand {
+      font-size: 17px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hamburger-btn {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
+    .ham-line {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #f8fafc;
+      border-radius: 2px;
+    }
+
+    .sidebar-close-btn {
+      display: none;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 14px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+    .sidebar-close-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 149;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .sidebar-overlay.visible { display: block; }
+
+    @media (max-width: 1023px) {
+      .mobile-topbar { display: flex; }
+      .sidebar-close-btn { display: flex; }
+
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100%;
+        width: 280px;
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 32px rgba(0, 0, 0, 0.5);
+      }
+
+      .main-content {
+        padding: 80px 20px 32px 20px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .header-actions {
+        width: 100%;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .create-btn, .upload-label {
+        flex: 1;
+        min-width: 140px;
+        justify-content: center;
+      }
+      .search-input-wrapper {
+        width: 100%;
+      }
+      .search-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 14px 16px;
+      }
+      .filter-chips {
+        justify-content: flex-start;
+      }
+      .reports-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      .main-content {
+        padding: 76px 16px 24px 16px;
+      }
+    }
   `]
 })
 export class DashboardComponent implements OnInit {
@@ -759,8 +918,14 @@ export class DashboardComponent implements OnInit {
   // Search & Filter signals
   searchQuery = signal('');
   filterStatus = signal('all'); // 'all', 'draft', 'published'
+  sidebarOpen = signal(false);
 
-  constructor(private reportService: ReportService, private authService: AuthService, private router: Router) {
+  private destroyRef = inject(DestroyRef);
+  private reportService = inject(ReportService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  constructor() {
     this.username = this.authService.getUsername();
   }
 
@@ -770,7 +935,9 @@ export class DashboardComponent implements OnInit {
 
   loadCatalog(): void {
     this.loading.set(true);
-    this.reportService.getReports().subscribe({
+    this.reportService.getReports().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (data) => {
         this.reports.set(data);
         this.loading.set(false);
@@ -790,7 +957,9 @@ export class DashboardComponent implements OnInit {
     this.successMessage.set(null);
     this.errorMessage.set(null);
 
-    this.reportService.importTemplate(file).subscribe({
+    this.reportService.importTemplate(file).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (res) => {
         this.uploading.set(false);
         this.successMessage.set('Template Excel configurations imported successfully!');
@@ -842,6 +1011,9 @@ export class DashboardComponent implements OnInit {
     this.searchQuery.set('');
     this.filterStatus.set('all');
   }
+
+  toggleSidebar(): void { this.sidebarOpen.update(v => !v); }
+  closeSidebar(): void { this.sidebarOpen.set(false); }
 
   logout(): void {
     this.authService.logout();

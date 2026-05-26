@@ -50,3 +50,39 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .adk/
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env*.local
+
+# Antigravity & local agents cache
+.antigravitycli/
+.agents/
+
+# Lockfiles & Log Files
+*.log
+pnpm-debug.log*
+yarn-debug.log*
+
+# TypeScript Incremental Build Cache
+*.tsbuildinfo
+
+# Linting & Formatting caches
+.eslintcache
+.prettiercache
+.vscode/project.eslintcache
+.vscode/.eslintcache
+
+# Editor / OS specifics
+*.bak
+*.swp
+desktop.ini
+
+# Testing & Coverage outputs (Vitest / Playwright / Cypress)
+.vitest/
+/playwright-report/
+/cypress/screenshots/
+/cypress/videos/
