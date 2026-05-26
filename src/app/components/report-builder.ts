@@ -23,6 +23,15 @@ interface FilterCondition {
   dimTable?: string;    // empty → fact table; set → dimension view name
 }
 
+/** A runtime-exposed filter condition (shown to users at report run time). */
+interface QuickFilterCondition {
+  dimTable:    string;           // '' = fact table; otherwise dim view name
+  attribute:   string;           // column name within that table
+  operator:    string;
+  value:       string;
+  conjunction: 'AND' | 'OR';    // how this condition joins the NEXT one (ignored for last)
+}
+
 /** Structured condition attached to a single row's measure definition. */
 interface RowFilterCondition {
   dimTable: string;     // '' = fact table; otherwise the dim view name (e.g. 'dim_relationship_manager')
@@ -235,23 +244,29 @@ interface RowFilterCondition {
             <!-- Reporting Date (from dim_date.reporting_date) -->
             <div class="form-group">
               <label for="reporting-date">Reporting Date <span class="label-hint">(from dim_date)</span></label>
-              <input
-                type="text"
-                id="reporting-date"
-                [(ngModel)]="reportingDate"
-                placeholder="Select or type a date…"
-                list="reporting-date-list"
-                class="form-input"
-              />
-              <datalist id="reporting-date-list">
-                @for (d of availableReportingDates; track d) {
-                  <option [value]="d">{{ d }}</option>
-                }
-              </datalist>
-              @if (availableReportingDates.length === 0) {
-                <span class="field-hint">Loading available dates from dim_date…</span>
+              @if (availableReportingDates.length > 0) {
+                <!-- Populated from dim_date — single date value picker -->
+                <select
+                  id="reporting-date"
+                  [(ngModel)]="reportingDate"
+                  class="form-select"
+                >
+                  <option value="">— select a reporting date —</option>
+                  @for (d of availableReportingDates; track d) {
+                    <option [value]="d">{{ d }}</option>
+                  }
+                </select>
+                <span class="field-hint">{{ availableReportingDates.length }} dates available in dim_date</span>
               } @else {
-                <span class="field-hint">{{ availableReportingDates.length }} dates available</span>
+                <!-- Fallback while dim_date is still loading -->
+                <input
+                  type="date"
+                  id="reporting-date"
+                  [(ngModel)]="reportingDate"
+                  class="form-input"
+                  title="Type YYYY-MM-DD — dim_date list is loading"
+                />
+                <span class="field-hint">Loading available dates from dim_date…</span>
               }
             </div>
 
@@ -268,23 +283,52 @@ interface RowFilterCondition {
                       class="mode-btn"
                       [class.active]="timeframeMode === 'today_minus_2'"
                       (click)="setTimeframeMode('today_minus_2')"
-                      title="Default: today minus 2 calendar days"
+                      title="Today minus 2 calendar days"
                     >Today − 2</button>
+                    <button
+                      type="button"
+                      class="mode-btn"
+                      [class.active]="timeframeMode === 'today_minus_1'"
+                      (click)="setTimeframeMode('today_minus_1')"
+                      title="Today minus 1 calendar day"
+                    >Today − 1</button>
                     <button
                       type="button"
                       class="mode-btn"
                       [class.active]="timeframeMode === 'today'"
                       (click)="setTimeframeMode('today')"
+                      title="Today (current date)"
                     >Today</button>
                     <button
                       type="button"
                       class="mode-btn"
                       [class.active]="timeframeMode === 'custom'"
                       (click)="setTimeframeMode('custom')"
-                    >Custom</button>
+                      title="Pick a specific date from dim_date or calendar"
+                    >Custom ▾</button>
                   </div>
                   @if (timeframeMode === 'custom') {
-                    <input type="date" [(ngModel)]="timeframeEnd" class="form-input tf-end" />
+                    @if (availableReportingDates.length > 0) {
+                      <!-- Single select from dim_date for custom end date -->
+                      <select
+                        [(ngModel)]="timeframeEnd"
+                        class="form-select tf-end-select"
+                        title="Select end date from dim_date"
+                      >
+                        <option value="">— select end date —</option>
+                        @for (d of availableReportingDates; track d) {
+                          <option [value]="d">{{ d }}</option>
+                        }
+                      </select>
+                    } @else {
+                      <!-- Fallback while dim_date is loading -->
+                      <input
+                        type="date"
+                        [(ngModel)]="timeframeEnd"
+                        class="form-input tf-end"
+                        title="Type YYYY-MM-DD — dim_date list is loading"
+                      />
+                    }
                   } @else {
                     <span class="computed-date-badge">{{ computedTimeframeEnd }}</span>
                   }
@@ -320,35 +364,90 @@ interface RowFilterCondition {
             <p class="empty-filters">No dimension joins configured for <code>{{ sourceTable }}</code> in the semantic layer.</p>
           }
 
-          <!-- ── Quick Filters ─────────────────────────────────────────────── -->
-          <div class="form-group filter-select-group">
-            <label>Quick Filters <span class="label-hint">(columns exposed as runtime user filters)</span></label>
-            <div class="chip-container">
-              <!-- Fact table columns -->
-              @if (tableColumns.length > 0) {
-                <span class="chip-group-label">{{ sourceTable }}</span>
-                @for (col of tableColumns; track col) {
-                  <span
-                    class="filter-chip"
-                    [class.active]="isQuickFilter(col)"
-                    (click)="toggleQuickFilter(col)"
-                  >{{ col }}</span>
-                }
-              }
-              <!-- Dimension columns -->
-              @for (dim of linkedDimensions; track dim) {
-                @if (getDimColumns(dim).length > 0) {
-                  <span class="chip-group-label">{{ dim }}</span>
-                  @for (col of getDimColumns(dim); track col) {
-                    <span
-                      class="filter-chip dim-filter-chip"
-                      [class.active]="isQuickFilter(dim + '.' + col)"
-                      (click)="toggleQuickFilter(dim + '.' + col)"
-                    >{{ col }}</span>
+          <!-- ── Quick Filters ──────────────────────────────────────────────── -->
+          <div class="form-group filters-builder">
+            <div class="flex-header">
+              <label>Quick Filters <span class="label-hint">(runtime-exposed filter conditions)</span></label>
+              <button (click)="addQuickFilter()" class="add-sub-btn">+ Add Filter Condition</button>
+            </div>
+            @if (quickFilters.length === 0) {
+              <p class="empty-filters">No quick filters configured. Add conditions that users can tune at runtime.</p>
+            } @else {
+              <div class="filters-list">
+                @for (filter of quickFilters; track $index; let idx = $index; let last = $last) {
+                  <div class="filter-row animate-fade-in">
+
+                    <!-- Table selector -->
+                    <select
+                      [(ngModel)]="filter.dimTable"
+                      (change)="onQuickFilterTableChange(filter)"
+                      class="form-select sm dim-select"
+                    >
+                      <option value="">{{ sourceTable || 'Fact Table' }}</option>
+                      @for (dim of linkedDimensions; track dim) {
+                        <option [value]="dim">{{ dim }}</option>
+                      }
+                    </select>
+
+                    <!-- Column selector -->
+                    <select [(ngModel)]="filter.attribute" (change)="loadQuickFilterValues(filter)" class="form-select sm">
+                      <option value="">-- Column --</option>
+                      @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
+                        <option [value]="col">{{ col }}</option>
+                      }
+                    </select>
+
+                    <!-- Operator -->
+                    <select [(ngModel)]="filter.operator" class="form-select sm operator">
+                      <option value="is">is</option>
+                      <option value="is not">is not</option>
+                      <option value="in">in</option>
+                      <option value="like">contains</option>
+                      <option value="=">=</option>
+                      <option value="!=">!=</option>
+                      <option value=">">&gt;</option>
+                      <option value=">=">&gt;=</option>
+                      <option value="<">&lt;</option>
+                      <option value="<=">&lt;=</option>
+                    </select>
+
+                    <!-- Value with distinct suggestions -->
+                    <input
+                      type="text"
+                      [(ngModel)]="filter.value"
+                      placeholder="Enter value…"
+                      [attr.list]="'qf-val-' + idx"
+                      class="form-input sm"
+                    />
+                    <datalist [attr.id]="'qf-val-' + idx">
+                      @for (val of getQuickFilterOptions(filter); track val) {
+                        <option [value]="val">{{ val }}</option>
+                      }
+                    </datalist>
+
+                    <button (click)="removeQuickFilter(idx)" class="remove-btn" title="Remove condition">✕</button>
+                  </div>
+
+                  <!-- AND / OR conjunction between conditions -->
+                  @if (!last) {
+                    <div class="conjunction-row">
+                      <button
+                        type="button"
+                        class="conj-btn"
+                        [class.active]="filter.conjunction === 'AND'"
+                        (click)="filter.conjunction = 'AND'"
+                      >AND</button>
+                      <button
+                        type="button"
+                        class="conj-btn"
+                        [class.active]="filter.conjunction === 'OR'"
+                        (click)="filter.conjunction = 'OR'"
+                      >OR</button>
+                    </div>
                   }
                 }
-              }
-            </div>
+              </div>
+            }
           </div>
 
           <!-- ── General Filters ───────────────────────────────────────────── -->
@@ -999,6 +1098,8 @@ interface RowFilterCondition {
 
     .tf-end { flex: 0 0 160px; }
 
+    .tf-end-select { min-width: 200px; }
+
     .computed-date-badge {
       padding: 8px 14px;
       background: rgba(15,23,42,0.5);
@@ -1057,52 +1158,7 @@ interface RowFilterCondition {
       text-transform: uppercase;
     }
 
-    /* ── Chip containers (quick filters) ────────────── */
-    .chip-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      background: rgba(15,23,42,0.3);
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .chip-group-label {
-      font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #475569;
-      padding: 0 4px;
-      align-self: center;
-    }
-
-    .filter-chip {
-      padding: 5px 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      color: #cbd5e1;
-    }
-    .filter-chip:hover { background: rgba(255,255,255,0.1); color: white; }
-    .filter-chip.active {
-      background: rgba(99,102,241,0.15);
-      color: #a5b4fc;
-      border-color: rgba(99,102,241,0.4);
-    }
-    .dim-filter-chip.active {
-      background: rgba(168,85,247,0.15);
-      color: #d8b4fe;
-      border-color: rgba(168,85,247,0.4);
-    }
-
-    /* ── General Filters builder ────────────────────── */
+    /* ── Quick & General Filters builder ──────────────────── */
     .flex-header {
       display: flex;
       justify-content: space-between;
@@ -1295,7 +1351,37 @@ interface RowFilterCondition {
     }
     .mode-toggle-btn.visual:hover { background: rgba(16,185,129,0.18); color: white; }
 
-    /* ── Row Filter cell ────────────────────────────── */
+    /* AND / OR conjunction row between quick-filter conditions */
+    .conjunction-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 4px 0 4px 10px;
+    }
+    .conj-btn {
+      padding: 4px 12px;
+      background: rgba(15,23,42,0.6);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+      letter-spacing: 0.5px;
+    }
+    .conj-btn:first-child { border-radius: 6px 0 0 6px; }
+    .conj-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+    .conj-btn:hover { background: rgba(99,102,241,0.1); color: #c7d2fe; }
+    .conj-btn.active {
+      background: rgba(99,102,241,0.22);
+      color: #a5b4fc;
+      border-color: rgba(99,102,241,0.4);
+    }
+
+    /* ── Filter row (shared by Quick Filters & General Filters) ── */
+    .filters-builder { }
+
     .filter-td { min-width: 240px; vertical-align: top; }
 
     .row-filter-wrapper {
@@ -1728,7 +1814,7 @@ export class ReportBuilderComponent implements OnInit {
   loadingDimJoins = false;
 
   // ── Reporting date ───────────────────────────────────────────────────────
-  reportingDate = '';
+  reportingDate = '';  // default applied at runtime in initializeDefaultCatalog / applyReportConfig
   availableReportingDates: string[] = [];
 
   // ── Form Fields ──────────────────────────────────────────────────────────
@@ -1740,9 +1826,9 @@ export class ReportBuilderComponent implements OnInit {
   granularity   = '';
   timeframeStart = '2022-01-01';
   timeframeEnd   = '';
-  timeframeMode: 'custom' | 'today_minus_2' | 'today' = 'today_minus_2';
-  quickFiltersList: string[]     = [];
-  generalFilters: FilterCondition[] = [];
+  timeframeMode: 'custom' | 'today_minus_2' | 'today_minus_1' | 'today' = 'today_minus_2';
+  quickFilters: QuickFilterCondition[] = [];
+  generalFilters: FilterCondition[]     = [];
 
   // ── Row filter builder state ─────────────────────────────────────────────
   activeRowFilterId = '';
@@ -1767,11 +1853,9 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   get computedTimeframeEnd(): string {
-    if (this.timeframeMode === 'today') {
-      return this.todayString();
-    } else if (this.timeframeMode === 'today_minus_2') {
-      return this.dateOffsetString(-2);
-    }
+    if (this.timeframeMode === 'today')         return this.dateOffsetString(0);
+    if (this.timeframeMode === 'today_minus_1') return this.dateOffsetString(-1);
+    if (this.timeframeMode === 'today_minus_2') return this.dateOffsetString(-2);
     return this.timeframeEnd;
   }
 
@@ -1825,10 +1909,18 @@ export class ReportBuilderComponent implements OnInit {
     this.status        = data.status  || 'draft';
     this.sourceTable   = data.sourceTable || '';
     this.granularity   = data.granularity || '';
-    this.reportingDate = data.reportingDate || '';
+    this.reportingDate = data.reportingDate || this.dateOffsetString(-1);
 
-    // Timeframe
-    if (data.timeframeToday) {
+    // Timeframe — restore relative mode or custom date
+    const offset: number | null = data.timeframeTodayOffset ?? null;
+    if (offset === 0) {
+      this.timeframeMode = 'today';
+    } else if (offset === -1) {
+      this.timeframeMode = 'today_minus_1';
+    } else if (offset === -2 || data.timeframeToday === false && !data.timeframeEnd) {
+      this.timeframeMode = 'today_minus_2';
+    } else if (data.timeframeToday) {
+      // backward-compat: old boolean flag → today
       this.timeframeMode = 'today';
     } else {
       this.timeframeMode = 'custom';
@@ -1836,10 +1928,22 @@ export class ReportBuilderComponent implements OnInit {
     }
     this.timeframeStart = this.formatDateForInput(data.timeframeStart || '2022-01-01');
 
-    // Quick & general filters
-    this.quickFiltersList = data.quickFilters
-      ? data.quickFilters.split(',').filter(Boolean)
-      : [];
+    // Quick filters — try JSON first (new format), fall back from old CSV column-list
+    try {
+      this.quickFilters = data.quickFilters ? JSON.parse(data.quickFilters) : [];
+      if (!Array.isArray(this.quickFilters)) this.quickFilters = [];
+    } catch {
+      // Legacy: comma-separated column names — convert to stub conditions with no value
+      this.quickFilters = data.quickFilters
+        ? data.quickFilters.split(',').filter(Boolean).map((col: string) => ({
+            dimTable:    '',
+            attribute:   col.includes('.') ? col.split('.')[1] : col,
+            operator:    'is',
+            value:       '',
+            conjunction: 'AND' as const
+          }))
+        : [];
+    }
 
     try {
       this.generalFilters = data.generalFilters ? JSON.parse(data.generalFilters) : [];
@@ -1904,11 +2008,11 @@ export class ReportBuilderComponent implements OnInit {
     this.reportVersion = 1;
     this.sourceTable   = '';
     this.granularity   = '';
-    this.reportingDate = '';
+    this.reportingDate = this.dateOffsetString(-1);
     this.timeframeStart = '2022-01-01';
     this.timeframeMode  = 'today_minus_2';
     this.timeframeEnd   = this.dateOffsetString(-2);
-    this.quickFiltersList = [];
+    this.quickFilters     = [];
     this.generalFilters   = [];
     this.linkedDimensions = [];
 
@@ -2025,10 +2129,12 @@ export class ReportBuilderComponent implements OnInit {
   // TIMEFRAME
   // ═══════════════════════════════════════════════════════════════════════════
 
-  setTimeframeMode(mode: 'custom' | 'today_minus_2' | 'today'): void {
+  setTimeframeMode(mode: 'custom' | 'today_minus_2' | 'today_minus_1' | 'today'): void {
     this.timeframeMode = mode;
     if (mode === 'today_minus_2') this.timeframeEnd = this.dateOffsetString(-2);
-    if (mode === 'today')         this.timeframeEnd = this.todayString();
+    if (mode === 'today_minus_1') this.timeframeEnd = this.dateOffsetString(-1);
+    if (mode === 'today')         this.timeframeEnd = this.dateOffsetString(0);
+    // 'custom' leaves timeframeEnd as-is for the user to pick
   }
 
   private todayString(): string      { return this.dateOffsetString(0); }
@@ -2053,11 +2159,34 @@ export class ReportBuilderComponent implements OnInit {
   // QUICK FILTERS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  isQuickFilter(key: string): boolean   { return this.quickFiltersList.includes(key); }
-  toggleQuickFilter(key: string): void {
-    const idx = this.quickFiltersList.indexOf(key);
-    if (idx === -1) this.quickFiltersList.push(key);
-    else            this.quickFiltersList.splice(idx, 1);
+  addQuickFilter(): void {
+    this.quickFilters.push({ dimTable: '', attribute: '', operator: 'is', value: '', conjunction: 'AND' });
+  }
+
+  removeQuickFilter(index: number): void {
+    this.quickFilters.splice(index, 1);
+  }
+
+  onQuickFilterTableChange(filter: QuickFilterCondition): void {
+    filter.attribute = '';
+    filter.value     = '';
+  }
+
+  loadQuickFilterValues(filter: QuickFilterCondition): void {
+    const table = filter.dimTable || this.sourceTable;
+    if (!table || !filter.attribute) return;
+    const key = `${table}.${filter.attribute}`;
+    if (this.distinctValues[key]) return;
+    this.reportService.getDistinctValues(table, filter.attribute).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (vals) => { this.distinctValues = { ...this.distinctValues, [key]: vals }; }
+    });
+  }
+
+  getQuickFilterOptions(filter: QuickFilterCondition): string[] {
+    const table = filter.dimTable || this.sourceTable;
+    return this.distinctValues[`${table}.${filter.attribute}`] || [];
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2338,8 +2467,13 @@ export class ReportBuilderComponent implements OnInit {
       reportingDate:   this.reportingDate,
       timeframeStart:  this.timeframeStart,
       timeframeEnd:    this.computedTimeframeEnd,
-      timeframeToday:  this.timeframeMode === 'today',
-      quickFilters:    this.quickFiltersList.join(','),
+      // Relative offset: 0=today, -1=today-1, -2=today-2, null=custom absolute date
+      timeframeTodayOffset: this.timeframeMode === 'today'         ?  0
+                          : this.timeframeMode === 'today_minus_1' ? -1
+                          : this.timeframeMode === 'today_minus_2' ? -2
+                          : null,
+      timeframeToday:  this.timeframeMode === 'today', // backward-compat
+      quickFilters:    JSON.stringify(this.quickFilters),
       generalFilters:  JSON.stringify(this.generalFilters),
       linkedDimensions: this.linkedDimensions.join(','),
       columns: this.columns.map((c, i) => ({
