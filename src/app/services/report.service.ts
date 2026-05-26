@@ -74,4 +74,24 @@ export class ReportService {
       headers: this.authService.getAuthHeader()
     });
   }
+
+  /**
+   * Fetches dimension view joins available for a given fact table.
+   * Backend endpoint: GET /api/reports/dimension-joins?factTable=<table>
+   * Returns: [{ dimView: string, joinType: string, joinSql: string, ... }]
+   */
+  getDimensionJoins(factTable: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/dimension-joins?factTable=${factTable}`, {
+      headers: this.authService.getAuthHeader()
+    });
+  }
+
+  /**
+   * Fetches available reporting dates from dim_date.reporting_date.
+   * Reuses the generic distinct-values endpoint.
+   */
+  getReportingDates(): Observable<string[]> {
+    return this.getDistinctValues('dim_date', 'reporting_date');
+  }
 }
+

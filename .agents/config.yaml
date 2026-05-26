@@ -17,3 +17,7 @@ skill_settings:
 
   ui-ux-pro-max:
     priority: high
+
+context_paths:
+  - GEMINI.md
+  - README.md
