@@ -390,7 +390,7 @@ interface RowFilterCondition {
                     </select>
 
                     <!-- Column selector -->
-                    <select [(ngModel)]="filter.attribute" (change)="loadQuickFilterValues(filter)" class="form-select sm">
+                    <select [(ngModel)]="filter.attribute" (change)="filter.value = ''" class="form-select sm">
                       <option value="">-- Column --</option>
                       @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
                         <option [value]="col">{{ col }}</option>
@@ -404,19 +404,15 @@ interface RowFilterCondition {
                       }
                     </select>
 
-                    <!-- Value with distinct suggestions -->
+                    <!-- Value -->
                     <input
                       type="text"
                       [(ngModel)]="filter.value"
                       placeholder="Enter value…"
-                      [attr.list]="'qf-val-' + idx"
                       class="form-input sm"
+                      [class.invalid-input]="isFilterValueInvalid(filter)"
+                      [title]="isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''"
                     />
-                    <datalist [attr.id]="'qf-val-' + idx">
-                      @for (val of getQuickFilterOptions(filter); track val) {
-                        <option [value]="val">{{ val }}</option>
-                      }
-                    </datalist>
 
                     <button (click)="removeQuickFilter(idx)" class="remove-btn" title="Remove condition">✕</button>
                   </div>
@@ -469,7 +465,7 @@ interface RowFilterCondition {
                     </select>
 
                     <!-- Attribute column selector -->
-                    <select [(ngModel)]="filter.attribute" (change)="loadGeneralFilterValues(filter)" class="form-select sm">
+                    <select [(ngModel)]="filter.attribute" (change)="filter.value = ''" class="form-select sm">
                       <option value="">-- Column --</option>
                       @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
                         <option [value]="col">{{ col }}</option>
@@ -483,19 +479,15 @@ interface RowFilterCondition {
                       }
                     </select>
 
-                    <!-- Value with distinct datalist -->
+                    <!-- Value -->
                     <input
                       type="text"
                       [(ngModel)]="filter.value"
                       placeholder="Enter value…"
-                      [attr.list]="'gf-val-' + idx"
                       class="form-input sm"
+                      [class.invalid-input]="isFilterValueInvalid(filter)"
+                      [title]="isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''"
                     />
-                    <datalist [attr.id]="'gf-val-' + idx">
-                      @for (val of getGeneralFilterOptions(filter); track val) {
-                        <option [value]="val">{{ val }}</option>
-                      }
-                    </datalist>
 
                     <button (click)="removeGeneralFilter(idx)" class="remove-btn" title="Remove condition">✕</button>
                   </div>
@@ -648,7 +640,7 @@ interface RowFilterCondition {
                           <!-- Structured filter chips -->
                           <div class="filter-chips-mini">
                             @for (f of row.rowFilters; track $index; let fi = $index) {
-                              <span class="filter-tag-mini">
+                              <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f)">
                                 @if (f.dimTable) {
                                   <span class="ft-dim">{{ f.dimTable }}.</span>
                                 }
@@ -702,6 +694,8 @@ interface RowFilterCondition {
                                   placeholder="value…"
                                   list="rfb-val-list"
                                   class="form-input sm rfb-val"
+                                  [class.invalid-input]="isFilterValueInvalid(pendingRowFilter)"
+                                  [title]="isFilterValueInvalid(pendingRowFilter) ? 'Value does not match the column type' : ''"
                                 />
                                 <datalist id="rfb-val-list">
                                   @for (v of pendingRowFilterValues; track v) {
@@ -1614,6 +1608,8 @@ interface RowFilterCondition {
     .success-alert { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #a7f3d0; }
     .error-alert   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
     .alert-icon    { font-size: 16px; }
+    .form-input.invalid-input { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important; }
+    .invalid-filter-tag { background: rgba(239, 68, 68, 0.15) !important; border-color: rgba(239, 68, 68, 0.3) !important; color: #fca5a5 !important; }
 
     /* ── Spinner ────────────────────────────────────── */
     .spinner {
@@ -1790,6 +1786,7 @@ export class ReportBuilderComponent implements OnInit {
   dimensionJoins: any[]  = [];          // all joins available for the selected fact table
   linkedDimensions: string[] = [];       // user-selected dim views to activate
   dimensionColumnsCache: { [dimView: string]: string[] } = {};
+  columnTypesCache: { [tableName: string]: { [columnName: string]: string } } = {};
   loadingDimJoins = false;
 
   // ── Reporting date ───────────────────────────────────────────────────────
@@ -2098,6 +2095,12 @@ export class ReportBuilderComponent implements OnInit {
     ).subscribe({
       next: (cols) => { this.tableColumns = cols; }
     });
+
+    this.reportService.getColumnTypes(table).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (types) => { this.columnTypesCache = { ...this.columnTypesCache, [table]: types }; }
+    });
   }
 
   loadDimensionJoins(factTable: string): void {
@@ -2123,6 +2126,12 @@ export class ReportBuilderComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (cols) => { this.dimensionColumnsCache = { ...this.dimensionColumnsCache, [dimView]: cols }; }
+    });
+
+    this.reportService.getColumnTypes(dimView).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (types) => { this.columnTypesCache = { ...this.columnTypesCache, [dimView]: types }; }
     });
   }
 
@@ -2196,22 +2205,7 @@ export class ReportBuilderComponent implements OnInit {
     filter.value     = '';
   }
 
-  loadQuickFilterValues(filter: QuickFilterCondition): void {
-    const table = filter.dimTable || this.sourceTable;
-    if (!table || !filter.attribute) return;
-    const key = `${table}.${filter.attribute}`;
-    if (this.distinctValues[key]) return;
-    this.reportService.getDistinctValues(table, filter.attribute).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (vals) => { this.distinctValues = { ...this.distinctValues, [key]: vals }; }
-    });
-  }
 
-  getQuickFilterOptions(filter: QuickFilterCondition): string[] {
-    const table = filter.dimTable || this.sourceTable;
-    return this.distinctValues[`${table}.${filter.attribute}`] || [];
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // GENERAL FILTERS
@@ -2230,22 +2224,7 @@ export class ReportBuilderComponent implements OnInit {
     filter.value     = '';
   }
 
-  loadGeneralFilterValues(filter: FilterCondition): void {
-    const table = filter.dimTable || this.sourceTable;
-    if (!table || !filter.attribute) return;
-    const key = `${table}.${filter.attribute}`;
-    if (this.distinctValues[key]) return;
-    this.reportService.getDistinctValues(table, filter.attribute).pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (vals) => { this.distinctValues = { ...this.distinctValues, [key]: vals }; }
-    });
-  }
 
-  getGeneralFilterOptions(filter: FilterCondition): string[] {
-    const table = filter.dimTable || this.sourceTable;
-    return this.distinctValues[`${table}.${filter.attribute}`] || [];
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ROW FILTER BUILDER
@@ -2282,6 +2261,7 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   onPendingFilterAttrChange(): void {
+    this.pendingRowFilter.value = '';
     const table = this.pendingRowFilter.dimTable || this.sourceTable;
     const attr  = this.pendingRowFilter.attribute;
     if (!table || !attr) return;
@@ -2302,9 +2282,67 @@ export class ReportBuilderComponent implements OnInit {
 
   confirmRowFilter(row: any): void {
     if (!this.pendingRowFilter.attribute) return;
+
+    const table = this.pendingRowFilter.dimTable || this.sourceTable;
+    const colTypes = this.columnTypesCache[table];
+    if (colTypes && this.pendingRowFilter.value && this.pendingRowFilter.value.trim() !== '') {
+      const type = colTypes[this.pendingRowFilter.attribute];
+      if (type && !this.validateFilterValue(type, this.pendingRowFilter.value)) {
+        alert(`Validation failed: Value "${this.pendingRowFilter.value}" is not valid for column "${this.pendingRowFilter.attribute}" of type "${type}" in table "${table}".`);
+        return;
+      }
+    }
+
     if (!row.rowFilters) row.rowFilters = [];
     row.rowFilters.push({ ...this.pendingRowFilter });
     this.cancelRowFilter();
+  }
+
+  validateFilterValue(type: string, value: string): boolean {
+    if (!type) return true;
+    const lowerType = type.toLowerCase();
+    const trimmed = value.trim();
+
+    if (lowerType.includes('int') && !lowerType.includes('interval')) {
+      return /^[+-]?\d+$/.test(trimmed);
+    }
+
+    if (
+      lowerType.includes('numeric') ||
+      lowerType.includes('decimal') ||
+      lowerType.includes('real') ||
+      lowerType.includes('double') ||
+      lowerType.includes('float')
+    ) {
+      if (trimmed === '') return false;
+      const num = Number(trimmed);
+      return !isNaN(num) && isFinite(num);
+    }
+
+    if (lowerType === 'boolean' || lowerType === 'bool') {
+      const v = trimmed.toLowerCase();
+      return v === 'true' || v === 'false' || v === '1' || v === '0';
+    }
+
+    if (lowerType.includes('date') || lowerType.includes('timestamp') || lowerType.includes('time')) {
+      if (trimmed === '') return false;
+      const timestamp = Date.parse(trimmed);
+      if (isNaN(timestamp)) return false;
+      if (/^\d+$/.test(trimmed) && trimmed.length < 4) return false;
+      return true;
+    }
+
+    return true;
+  }
+
+  isFilterValueInvalid(filter: any): boolean {
+    if (!filter.attribute || !filter.value || filter.value.trim() === '') return false;
+    const table = filter.dimTable || this.sourceTable;
+    const colTypes = this.columnTypesCache[table];
+    if (!colTypes) return false;
+    const type = colTypes[filter.attribute];
+    if (!type) return false;
+    return !this.validateFilterValue(type, filter.value);
   }
 
   removeRowFilter(row: any, index: number): void {
@@ -2474,6 +2512,55 @@ export class ReportBuilderComponent implements OnInit {
     if (!this.sourceTable) {
       this.errorMessage.set('Source Table is required.');
       return;
+    }
+
+    // Validate quick filters
+    for (const filter of this.quickFilters) {
+      if (filter.attribute && filter.value && filter.value.trim() !== '') {
+        const table = filter.dimTable || this.sourceTable;
+        const colTypes = this.columnTypesCache[table];
+        if (colTypes) {
+          const type = colTypes[filter.attribute];
+          if (type && !this.validateFilterValue(type, filter.value)) {
+            this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in table "${table}".`);
+            return;
+          }
+        }
+      }
+    }
+
+    // Validate general filters
+    for (const filter of this.generalFilters) {
+      if (filter.attribute && filter.value && filter.value.trim() !== '') {
+        const table = filter.dimTable || this.sourceTable;
+        const colTypes = this.columnTypesCache[table];
+        if (colTypes) {
+          const type = colTypes[filter.attribute];
+          if (type && !this.validateFilterValue(type, filter.value)) {
+            this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in table "${table}".`);
+            return;
+          }
+        }
+      }
+    }
+
+    // Validate row filters
+    for (const row of this.rows) {
+      if (row.rowFilters) {
+        for (const filter of row.rowFilters) {
+          if (filter.attribute && filter.value && filter.value.trim() !== '') {
+            const table = filter.dimTable || this.sourceTable;
+            const colTypes = this.columnTypesCache[table];
+            if (colTypes) {
+              const type = colTypes[filter.attribute];
+              if (type && !this.validateFilterValue(type, filter.value)) {
+                this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in row "${row.label || row.rowId}".`);
+                return;
+              }
+            }
+          }
+        }
+      }
     }
 
     this.saving.set(true);

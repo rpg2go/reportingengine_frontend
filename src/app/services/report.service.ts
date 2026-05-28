@@ -51,6 +51,10 @@ export class ReportService {
     return this.http.get<string[]>(`${this.apiUrl}/table-columns?table=${table}`);
   }
 
+  getColumnTypes(table: string): Observable<{ [column: string]: string }> {
+    return this.http.get<{ [column: string]: string }>(`${this.apiUrl}/column-types?table=${table}`);
+  }
+
   getDistinctValues(table: string, column: string): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/dimensions/values?table=${table}&column=${column}`);
   }
