@@ -399,16 +399,9 @@ interface RowFilterCondition {
 
                     <!-- Operator -->
                     <select [(ngModel)]="filter.operator" class="form-select sm operator">
-                      <option value="is">is</option>
-                      <option value="is not">is not</option>
-                      <option value="in">in</option>
-                      <option value="like">contains</option>
-                      <option value="=">=</option>
-                      <option value="!=">!=</option>
-                      <option value=">">&gt;</option>
-                      <option value=">=">&gt;=</option>
-                      <option value="<">&lt;</option>
-                      <option value="<=">&lt;=</option>
+                      @for (op of operators; track op.value) {
+                        <option [value]="op.value">{{ op.label }}</option>
+                      }
                     </select>
 
                     <!-- Value with distinct suggestions -->
@@ -485,16 +478,9 @@ interface RowFilterCondition {
 
                     <!-- Operator -->
                     <select [(ngModel)]="filter.operator" class="form-select sm operator">
-                      <option value="is">is</option>
-                      <option value="is not">is not</option>
-                      <option value="in">in</option>
-                      <option value="like">contains</option>
-                      <option value="=">=</option>
-                      <option value="!=">!=</option>
-                      <option value=">">&gt;</option>
-                      <option value=">=">&gt;=</option>
-                      <option value="<">&lt;</option>
-                      <option value="<=">&lt;=</option>
+                      @for (op of operators; track op.value) {
+                        <option [value]="op.value">{{ op.label }}</option>
+                      }
                     </select>
 
                     <!-- Value with distinct datalist -->
@@ -667,7 +653,7 @@ interface RowFilterCondition {
                                   <span class="ft-dim">{{ f.dimTable }}.</span>
                                 }
                                 <span class="ft-attr">{{ f.attribute }}</span>
-                                <span class="ft-op">{{ f.operator }}</span>
+                                <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
                                 <span class="ft-val">{{ f.value }}</span>
                                 <button (click)="removeRowFilter(row, fi)" class="ft-remove">✕</button>
                               </span>
@@ -704,16 +690,9 @@ interface RowFilterCondition {
 
                                 <!-- Operator -->
                                 <select [(ngModel)]="pendingRowFilter.operator" class="form-select sm rfb-op">
-                                  <option value="=">=</option>
-                                  <option value="!=">!=</option>
-                                  <option value="is">is</option>
-                                  <option value="is not">is not</option>
-                                  <option value="in">in</option>
-                                  <option value="like">contains</option>
-                                  <option value=">">&gt;</option>
-                                  <option value=">=">&gt;=</option>
-                                  <option value="<">&lt;</option>
-                                  <option value="<=">&lt;=</option>
+                                  @for (op of operators; track op.value) {
+                                    <option [value]="op.value">{{ op.label }}</option>
+                                  }
                                 </select>
 
                                 <!-- Value with distinct suggestions -->
@@ -1195,7 +1174,7 @@ interface RowFilterCondition {
     }
 
     .dim-select { max-width: 160px; color: #d8b4fe; font-weight: 600; }
-    .form-select.sm.operator { width: 90px; color: #a5b4fc; font-weight: 600; text-align: center; }
+    .form-select.sm.operator { width: 180px; color: #a5b4fc; font-weight: 600; text-align: center; }
 
     .remove-btn {
       background: none;
@@ -1461,7 +1440,7 @@ interface RowFilterCondition {
 
     .rfb-table { flex: 0 0 130px; color: #d8b4fe; font-weight: 600; }
     .rfb-attr  { flex: 1 1 100px; }
-    .rfb-op    { flex: 0 0 80px; color: #a5b4fc; font-weight: 600; }
+    .rfb-op    { flex: 0 0 180px; color: #a5b4fc; font-weight: 600; }
     .rfb-val   { flex: 1 1 80px; }
 
     .rfb-actions { display: flex; gap: 6px; }
@@ -1830,6 +1809,48 @@ export class ReportBuilderComponent implements OnInit {
   quickFilters: QuickFilterCondition[] = [];
   generalFilters: FilterCondition[]     = [];
 
+  // ── Operators list ───────────────────────────────────────────────────────
+  readonly operators = [
+    { value: '=', label: 'is' },
+    { value: 'is not', label: 'is not' },
+    { value: 'like', label: 'contains' },
+    { value: 'not like', label: 'does not contains' },
+    { value: 'starts with', label: 'start with' },
+    { value: 'ends with', label: 'end with' },
+    { value: 'is blank', label: 'is blank' },
+    { value: 'is not blank', label: 'is not blank' },
+    { value: 'is null', label: 'is null' },
+    { value: 'is not null', label: 'is not null' },
+    { value: 'in', label: 'in' },
+    { value: '!=', label: 'is different from' },
+    { value: '>', label: 'is greater then' },
+    { value: '>=', label: 'is greater or equal' },
+    { value: '<', label: 'is less then' },
+    { value: '<=', label: 'is less or equal' }
+  ];
+
+  getOperatorLabel(op: string): string {
+    const found = this.operators.find(o => o.value === op);
+    if (found) return found.label;
+    if (op === 'is') return 'is';
+    if (op === 'contains') return 'contains';
+    if (op === 'does not contains') return 'does not contains';
+    if (op === 'start with') return 'start with';
+    if (op === 'end with') return 'end with';
+    return op;
+  }
+
+  normalizeFilterOperator(op: string): string {
+    if (!op) return '=';
+    const clean = op.trim().toLowerCase();
+    if (clean === 'is') return '=';
+    if (clean === 'contains') return 'like';
+    if (clean === 'does not contains' || clean === 'does not contain') return 'not like';
+    if (clean === 'start with') return 'starts with';
+    if (clean === 'end with') return 'ends with';
+    return op;
+  }
+
   // ── Row filter builder state ─────────────────────────────────────────────
   activeRowFilterId = '';
   pendingRowFilter: RowFilterCondition = { dimTable: '', attribute: '', operator: '=', value: '' };
@@ -1932,13 +1953,14 @@ export class ReportBuilderComponent implements OnInit {
     try {
       this.quickFilters = data.quickFilters ? JSON.parse(data.quickFilters) : [];
       if (!Array.isArray(this.quickFilters)) this.quickFilters = [];
+      this.quickFilters.forEach(f => f.operator = this.normalizeFilterOperator(f.operator));
     } catch {
       // Legacy: comma-separated column names — convert to stub conditions with no value
       this.quickFilters = data.quickFilters
         ? data.quickFilters.split(',').filter(Boolean).map((col: string) => ({
             dimTable:    '',
             attribute:   col.includes('.') ? col.split('.')[1] : col,
-            operator:    'is',
+            operator:    '=',
             value:       '',
             conjunction: 'AND' as const
           }))
@@ -1947,6 +1969,7 @@ export class ReportBuilderComponent implements OnInit {
 
     try {
       this.generalFilters = data.generalFilters ? JSON.parse(data.generalFilters) : [];
+      this.generalFilters.forEach(f => f.operator = this.normalizeFilterOperator(f.operator));
     } catch {
       this.generalFilters = [];
     }
@@ -1972,6 +1995,7 @@ export class ReportBuilderComponent implements OnInit {
     this.rows = (data.rows || []).map((r: any) => {
       const measure         = this.parseMeasure(r.source || '');
       const { rowFilters, legacyFilterExpr } = this.parseRowFilterExpr(r.filterExpr || '');
+      rowFilters.forEach(f => f.operator = this.normalizeFilterOperator(f.operator));
       return {
         rowId:           r.rowId,
         label:           r.label,
@@ -2160,7 +2184,7 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   addQuickFilter(): void {
-    this.quickFilters.push({ dimTable: '', attribute: '', operator: 'is', value: '', conjunction: 'AND' });
+    this.quickFilters.push({ dimTable: '', attribute: '', operator: '=', value: '', conjunction: 'AND' });
   }
 
   removeQuickFilter(index: number): void {
@@ -2194,7 +2218,7 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   addGeneralFilter(): void {
-    this.generalFilters.push({ attribute: '', operator: 'is', value: '', dimTable: '' });
+    this.generalFilters.push({ attribute: '', operator: '=', value: '', dimTable: '' });
   }
 
   removeGeneralFilter(index: number): void {
