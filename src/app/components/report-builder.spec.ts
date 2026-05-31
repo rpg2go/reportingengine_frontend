@@ -50,7 +50,9 @@ describe('ReportBuilderComponent', () => {
       getDimensionJoins: vi.fn().mockReturnValue(of([])),
       getDistinctValues: vi.fn().mockReturnValue(of([])),
       createReport: vi.fn(),
-      saveReport: vi.fn()
+      saveReport: vi.fn(),
+      validateReport: vi.fn().mockReturnValue(of({ errors: [] })),
+      previewSql: vi.fn().mockReturnValue(of({ sql: '' }))
     };
     mockAuthService = {
       getUsername: vi.fn().mockReturnValue('admin')
@@ -476,7 +478,13 @@ describe('ReportBuilderComponent', () => {
 
     // serializeMeasure
     const sm = component['serializeMeasure']({ rowType: 'data', customSqlMode: false, measureAgg: 'SUM', measureCol: 'amount' });
-    expect(sm).toBe('SUM(amount)');
+    expect(sm).toEqual({
+      mode: 'visual',
+      aggregation: 'SUM',
+      targetColumn: 'amount',
+      table: null,
+      rawSql: null
+    });
 
     // serializeRowFilters
     const srf = component['serializeRowFilters']({
@@ -533,6 +541,97 @@ describe('ReportBuilderComponent', () => {
     component.confirmRowFilter(row);
     expect(row.rowFilters.length).toBe(1);
     expect(row.rowFilters[0].value).toBe('25');
+  });
+
+  it('should switch preview tabs and manage loading state', () => {
+    createComponent({ id: 'new' });
+    
+    // Switch to grid by default
+    component.activePreviewTab.set('grid');
+    expect(component.activePreviewTab()).toBe('grid');
+
+    // Simulate clicking the SQL tab
+    component.activePreviewTab.set('sql');
+    expect(component.activePreviewTab()).toBe('sql');
+
+    // Loader is active
+    component.isLoadingSql.set(true);
+    expect(component.isLoadingSql()).toBe(true);
+
+    component.isLoadingSql.set(false);
+    expect(component.isLoadingSql()).toBe(false);
+  });
+
+  it('should trigger SQL preview request on previewSql call with canvas worksheet form state', () => {
+    createComponent({ id: 'R1' });
+    mockReportService.previewSql.mockReturnValue(of({ sql: 'SELECT * FROM analytics.fact_sales' }));
+
+    component.reportId = 'R1';
+    component.reportName = 'Sales Report';
+    component.sourceTable = 'analytics.fact_sales';
+    component.columns = [
+      { colId: 'C1', label: 'WTD no.', colType: 'WEEK', periodOffset: 0, rollingN: null, formulaExpr: null }
+    ];
+    component.rows = [
+      { rowId: 'R1', label: 'GBS gross', rowType: 'data', source: 'SUM(amount)', activeCols: ['C1'] }
+    ];
+
+    component.runSqlPreview();
+
+    expect(mockReportService.previewSql).toHaveBeenCalled();
+    expect(component.compiledSql()).toBe('SELECT * FROM analytics.fact_sales');
+    expect(component.isLoadingSql()).toBe(false);
+  });
+
+  it('should highlight error cells and return true for element warning state', () => {
+    createComponent({ id: 'new' });
+    
+    component.validationErrors.set([
+      { elementId: 'R5', fieldContext: 'filterExpr', errorSeverity: 'WARNING', displayMessage: 'Row warning details' }
+    ]);
+
+    expect(component.hasError('R5', 'WARNING')).toBe(true);
+    expect(component.hasError('R5', 'CRITICAL')).toBe(false);
+    expect(component.hasError('R99')).toBe(false);
+    expect(component.getErrorMessage('R5')).toContain('[WARNING] Row warning details');
+  });
+
+  it('should open SQL modal, load compilation, close it, and copy to clipboard', async () => {
+    createComponent({ id: 'R1' });
+    mockReportService.previewSql.mockReturnValue(of({ sql: 'SELECT * FROM analytics.fact_sales' }));
+
+    if (!navigator.clipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: () => Promise.resolve()
+        },
+        configurable: true
+      });
+    }
+    const clipboardSpy = vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => Promise.resolve());
+
+    component.reportId = 'R1';
+    component.reportName = 'Sales Report';
+    component.sourceTable = 'analytics.fact_sales';
+    component.columns = [];
+    component.rows = [];
+
+    // Trigger previewSql
+    component.previewSql();
+
+    expect(component.isSqlModalOpen()).toBe(true);
+    expect(mockReportService.previewSql).toHaveBeenCalled();
+    expect(component.previewSqlText()).toBe('SELECT * FROM analytics.fact_sales');
+    expect(component.isLoadingSql()).toBe(false);
+
+    // Trigger copySqlToClipboard
+    await component.copySqlToClipboard();
+    expect(clipboardSpy).toHaveBeenCalledWith('SELECT * FROM analytics.fact_sales');
+    expect(component.isCopied()).toBe(true);
+
+    // Trigger closeSqlModal
+    component.closeSqlModal();
+    expect(component.isSqlModalOpen()).toBe(false);
   });
 });
 

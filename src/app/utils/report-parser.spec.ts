@@ -24,6 +24,19 @@ describe('Report Parser Utilities', () => {
       });
     });
 
+    it('should parse MeasureDefinition objects correctly', () => {
+      expect(parseMeasure({ mode: 'visual', aggregation: 'SUM', targetColumn: 'amount' })).toEqual({
+        aggFunction: 'SUM',
+        measureCol: 'amount',
+        customSqlMode: false
+      });
+      expect(parseMeasure({ mode: 'raw', rawSql: 'SUM(amount) / 100' })).toEqual({
+        aggFunction: 'SUM',
+        measureCol: '',
+        customSqlMode: true
+      });
+    });
+
     it('should fall back to custom SQL mode for custom expressions', () => {
       expect(parseMeasure('SUM(amount) / 100')).toEqual({
         aggFunction: 'SUM',
@@ -39,17 +52,29 @@ describe('Report Parser Utilities', () => {
   });
 
   describe('serializeMeasure', () => {
-    it('should return source if customSqlMode is true or not structured data', () => {
+    it('should return object if customSqlMode is true or calculation row', () => {
       const row = { rowType: 'data', customSqlMode: true, source: 'SUM(amount) / 100' };
-      expect(serializeMeasure(row)).toBe('SUM(amount) / 100');
+      expect(serializeMeasure(row)).toEqual({
+        mode: 'raw',
+        aggregation: null,
+        targetColumn: null,
+        table: null,
+        rawSql: 'SUM(amount) / 100'
+      });
 
       const nonDataRow = { rowType: 'section', source: 'Section title' };
-      expect(serializeMeasure(nonDataRow)).toBe('Section title');
+      expect(serializeMeasure(nonDataRow)).toBeNull();
     });
 
-    it('should build aggregate string if structured info is provided', () => {
+    it('should build visual object if customSqlMode is false', () => {
       const row = { rowType: 'data', customSqlMode: false, measureAgg: 'AVG', measureCol: 'price' };
-      expect(serializeMeasure(row)).toBe('AVG(price)');
+      expect(serializeMeasure(row)).toEqual({
+        mode: 'visual',
+        aggregation: 'AVG',
+        targetColumn: 'price',
+        table: null,
+        rawSql: null
+      });
     });
   });
 

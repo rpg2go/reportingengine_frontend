@@ -60,7 +60,18 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
               <div class="breadcrumbs">
                 <a routerLink="/dashboard">Reports</a> / <span>{{ report.reportId }}</span>
               </div>
-              <h1>{{ report.reportId }}</h1>
+              <h1 style="display: flex; align-items: center; gap: 8px;">
+                {{ report.reportId }}
+                @if (running()) {
+                  <span class="report-status-badge running">
+                    <span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> Running
+                  </span>
+                } @else {
+                  <span class="report-status-badge" [class]="report.status.toLowerCase()">
+                    {{ report.status }}
+                  </span>
+                }
+              </h1>
               <p class="report-subtitle">{{ report.name }}</p>
             </div>
 
@@ -610,6 +621,21 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     .row-type-badge.data { background: rgba(56, 189, 248, 0.1); color: #38bdf8; }
     .row-type-badge.calc { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
     .row-type-badge.blank { background: transparent; color: #475569; }
+
+    /* Status Badges */
+    .report-status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .report-status-badge.draft { background: rgba(234, 179, 8, 0.15); color: #facc15; }
+    .report-status-badge.published { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .report-status-badge.running { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
 
     /* Spreadsheet View Styles */
     .spreadsheet-container {

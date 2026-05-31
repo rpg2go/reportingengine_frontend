@@ -43,6 +43,14 @@ export class ReportService {
     return this.http.post(this.apiUrl, config);
   }
 
+  validateReport(config: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/validate`, config);
+  }
+
+  previewSql(config: any): Observable<{ sql: string }> {
+    return this.http.post<{ sql: string }>(`${this.apiUrl}/preview-sql`, config);
+  }
+
   getTables(): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/tables`);
   }

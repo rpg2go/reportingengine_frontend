@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,13 @@ import {
   formatDateForInput,
   dateOffsetString
 } from '../utils/report-parser';
+
+export interface ValidationError {
+  elementId: string;
+  fieldContext: string;
+  errorSeverity: 'CRITICAL' | 'WARNING';
+  displayMessage: string;
+}
 
 /** Base quick/general filter condition (used on the report header scope). */
 interface FilterCondition {
@@ -98,6 +105,9 @@ interface RowFilterCondition {
             <button (click)="togglePreview()" class="preview-btn">
               👁️ {{ showPreview() ? 'Hide Preview' : 'Preview Layout' }}
             </button>
+            <button (click)="previewSql()" class="btn-preview-sql">
+              ‹› Preview SQL
+            </button>
             <button (click)="saveConfig()" [disabled]="saving()" class="save-btn">
               @if (saving()) {
                 <span class="spinner"></span> Saving...
@@ -122,56 +132,109 @@ interface RowFilterCondition {
           </div>
         }
 
+        <!-- Validation Diagnostics Console -->
+        @if (validationErrors().length > 0) {
+          <div class="validation-console card animate-fade-in">
+            <h3 class="section-title">🛑 Validation Diagnostics ({{ validationErrors().length }} Issues Found)</h3>
+            <p class="section-desc">Resolve these logical, formula, or database catalog mismatch errors to ensure query and process safety.</p>
+            <div class="diagnostics-grid">
+              @for (err of validationErrors(); track err.elementId + '-' + err.fieldContext + '-' + err.displayMessage) {
+                <div class="diagnostic-item" [class.critical]="err.errorSeverity === 'CRITICAL'" [class.warning]="err.errorSeverity === 'WARNING'">
+                  <span class="item-icon">{{ err.errorSeverity === 'CRITICAL' ? '🛑' : '⚠️' }}</span>
+                  <div class="item-body">
+                    <strong>{{ err.elementId }}</strong> ({{ err.fieldContext }}): {{ err.displayMessage }}
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- ── Preview Modal ───────────────────────────────────── -->
         @if (showPreview()) {
           <section class="preview-section card animate-fade-in">
-            <h3 class="section-title">📊 Live Layout Preview</h3>
-            <p class="section-desc">Molded view of rows and active columns. Formula evaluations run during Phase 2.</p>
-            <div class="table-wrapper">
-              <table class="spreadsheet-table">
-                <thead>
-                  <tr>
-                    <th class="sticky-col">Label</th>
-                    <th>ID</th>
-                    <th>Type</th>
-                    @for (col of columns; track col.colId) {
-                      <th class="col-flag-header">
-                        <div><code>{{ col.colId }}</code></div>
-                        <div class="preview-col-label">{{ col.label }}</div>
-                      </th>
-                    }
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of rows; track row.rowId) {
-                    <tr [class]="'row-style-' + (row.style || 'normal').toLowerCase()">
-                      <td class="sticky-col label-cell" [style.padding-left.px]="20 + row.indentLevel * 16">
-                        @if (row.rowType === 'section') {
-                          📂 <strong>{{ row.label }}</strong>
-                        } @else if (row.rowType === 'calc') {
-                          🧮 {{ row.label }}
-                        } @else if (row.rowType === 'data') {
-                          📊 {{ row.label }}
-                        } @else {
-                          &nbsp;
-                        }
-                      </td>
-                      <td><code>{{ row.rowId }}</code></td>
-                      <td><span class="row-type-badge" [class]="row.rowType">{{ row.rowType }}</span></td>
+            <div class="preview-header-flex">
+              <div>
+                <h3 class="section-title">📊 Live Layout Preview</h3>
+                <p class="section-desc">Molded view of rows and active columns. Formula evaluations run during Phase 2.</p>
+              </div>
+              <div class="preview-tabs">
+                <button 
+                  type="button" 
+                  class="tab-btn" 
+                  [class.active]="activePreviewTab() === 'grid'"
+                  (click)="activePreviewTab.set('grid')">
+                  ▦ Grid View
+                </button>
+                <button 
+                  type="button" 
+                  class="tab-btn" 
+                  [class.active]="activePreviewTab() === 'sql'"
+                  (click)="activePreviewTab.set('sql')">
+                  ‹› SQL Code Preview
+                </button>
+              </div>
+            </div>
+
+            @if (activePreviewTab() === 'grid') {
+              <div class="table-wrapper">
+                <table class="spreadsheet-table">
+                  <thead>
+                    <tr>
+                      <th class="sticky-col">Label</th>
+                      <th>ID</th>
+                      <th>Type</th>
                       @for (col of columns; track col.colId) {
-                        <td class="col-flag-cell">
-                          @if (row.activeCols && row.activeCols.includes(col.colId.toUpperCase())) {
-                            <span class="flag-dot">✓</span>
-                          } @else {
-                            <span class="flag-dash">-</span>
-                          }
-                        </td>
+                        <th class="col-flag-header">
+                          <div><code>{{ col.colId }}</code></div>
+                          <div class="preview-col-label">{{ col.label }}</div>
+                        </th>
                       }
                     </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    @for (row of rows; track row.rowId) {
+                      <tr [class]="'row-style-' + (row.style || 'normal').toLowerCase()">
+                        <td class="sticky-col label-cell" [style.padding-left.px]="20 + row.indentLevel * 16">
+                          @if (row.rowType === 'section') {
+                            📂 <strong>{{ row.label }}</strong>
+                          } @else if (row.rowType === 'calc') {
+                            🧮 {{ row.label }}
+                          } @else if (row.rowType === 'data') {
+                            📊 {{ row.label }}
+                          } @else {
+                            &nbsp;
+                          }
+                        </td>
+                        <td><code>{{ row.rowId }}</code></td>
+                        <td><span class="row-type-badge" [class]="row.rowType">{{ row.rowType }}</span></td>
+                        @for (col of columns; track col.colId) {
+                          <td class="col-flag-cell">
+                            @if (row.activeCols && row.activeCols.includes(col.colId.toUpperCase())) {
+                              <span class="flag-dot">✓</span>
+                            } @else {
+                              <span class="flag-dash">-</span>
+                            }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else if (activePreviewTab() === 'sql') {
+              <div class="sql-preview-container">
+                @if (isLoadingSql()) {
+                  <div class="loading-state">
+                    <span class="spinner"></span> Loading SQL preview...
+                  </div>
+                } @else if (compiledSql()) {
+                  <pre class="sql-code-block"><code>{{ compiledSql() }}</code></pre>
+                } @else {
+                  <div class="empty-state">No compiled SQL preview available.</div>
+                }
+              </div>
+            }
           </section>
         }
 
@@ -531,33 +594,44 @@ interface RowFilterCondition {
               </thead>
               <tbody>
                 @for (row of rows; track row.rowId; let idx = $index) {
-                  <tr [class.selected]="row.selected">
+                  <tr [class.selected]="row.selected"
+                      [class.has-critical]="hasError(row.rowId, 'CRITICAL')"
+                      [class.has-warning]="hasError(row.rowId, 'WARNING')"
+                      [title]="hasError(row.rowId) ? getErrorMessage(row.rowId) : ''">
                     <td><input type="checkbox" [(ngModel)]="row.selected" /></td>
 
                     <!-- Row ID -->
                     <td>
-                      <input type="text" [(ngModel)]="row.rowId" placeholder="R1" class="cell-input center" />
+                      <div class="row-id-cell">
+                        <input type="text" [(ngModel)]="row.rowId" (ngModelChange)="triggerValidationDebounced()" placeholder="R1" class="cell-input center" />
+                        @if (hasError(row.rowId, 'CRITICAL')) {
+                          <span class="error-badge" [title]="getErrorMessage(row.rowId)">🛑</span>
+                        }
+                        @if (hasError(row.rowId, 'WARNING')) {
+                          <span class="error-badge" [title]="getErrorMessage(row.rowId)">⚠️</span>
+                        }
+                      </div>
                     </td>
 
                     <!-- Row Label with indent controls -->
                     <td>
                       <div class="indent-wrapper" [style.padding-left.px]="row.indentLevel * 12">
-                        <button (click)="changeIndent(row, -1)" class="indent-btn" title="Decrease indent">«</button>
-                        <button (click)="changeIndent(row, 1)" class="indent-btn" title="Increase indent">»</button>
-                        <input type="text" [(ngModel)]="row.label" placeholder="Row Label" class="cell-input" />
+                        <button (click)="changeIndent(row, -1); triggerValidationDebounced()" class="indent-btn" title="Decrease indent">«</button>
+                        <button (click)="changeIndent(row, 1); triggerValidationDebounced()" class="indent-btn" title="Increase indent">»</button>
+                        <input type="text" [(ngModel)]="row.label" (ngModelChange)="triggerValidationDebounced()" placeholder="Row Label" class="cell-input" />
                       </div>
                     </td>
 
                     <!-- Style / Type -->
                     <td>
                       <div class="style-cell">
-                        <select [(ngModel)]="row.rowType" (change)="onRowTypeChange(row)" class="cell-select">
+                        <select [(ngModel)]="row.rowType" (change)="onRowTypeChange(row); triggerValidationDebounced()" class="cell-select">
                           <option value="data">📊 data</option>
                           <option value="calc">🧮 calc</option>
                           <option value="section">📂 section</option>
                           <option value="blank">🫙 blank</option>
                         </select>
-                        <select [(ngModel)]="row.style" class="cell-select">
+                        <select [(ngModel)]="row.style" (ngModelChange)="triggerValidationDebounced()" class="cell-select">
                           <option value="normal">Normal</option>
                           <option value="header">Header</option>
                           <option value="section">Section</option>
@@ -577,11 +651,12 @@ interface RowFilterCondition {
                             <input
                               type="text"
                               [(ngModel)]="row.source"
+                              (ngModelChange)="triggerValidationDebounced()"
                               placeholder="e.g. SUM(amount)"
                               class="cell-input code"
                             />
                             <button
-                              (click)="row.customSqlMode = false"
+                              (click)="row.customSqlMode = false; triggerValidationDebounced()"
                               class="mode-toggle-btn visual"
                               title="Switch to visual builder"
                             >⬡ Visual</button>
@@ -589,7 +664,7 @@ interface RowFilterCondition {
                         } @else {
                           <!-- Visual measure builder -->
                           <div class="measure-builder-row">
-                            <select [(ngModel)]="row.measureAgg" class="cell-select agg-select">
+                            <select [(ngModel)]="row.measureAgg" (ngModelChange)="triggerValidationDebounced()" class="cell-select agg-select">
                               <option value="SUM">SUM</option>
                               <option value="COUNT">COUNT</option>
                               <option value="COUNT_DISTINCT">COUNT DIST</option>
@@ -598,14 +673,14 @@ interface RowFilterCondition {
                               <option value="MAX">MAX</option>
                             </select>
                             <span class="measure-of">of</span>
-                            <select [(ngModel)]="row.measureCol" class="cell-select col-select">
+                            <select [(ngModel)]="row.measureCol" (ngModelChange)="triggerValidationDebounced()" class="cell-select col-select">
                               <option value="">-- column --</option>
                               @for (col of tableColumns; track col) {
                                 <option [value]="col">{{ col }}</option>
                               }
                             </select>
                             <button
-                              (click)="row.customSqlMode = true"
+                              (click)="row.customSqlMode = true; triggerValidationDebounced()"
                               class="mode-toggle-btn sql"
                               title="Switch to raw SQL mode"
                             >SQL</button>
@@ -616,6 +691,7 @@ interface RowFilterCondition {
                         <input
                           type="text"
                           [(ngModel)]="row.source"
+                          (ngModelChange)="triggerValidationDebounced()"
                           placeholder="e.g. R2 / R3"
                           class="cell-input code"
                         />
@@ -780,16 +856,27 @@ interface RowFilterCondition {
               </thead>
               <tbody>
                 @for (col of columns; track col.colId; let idx = $index) {
-                  <tr [class.selected]="col.selected">
+                  <tr [class.selected]="col.selected"
+                      [class.has-critical]="hasError(col.colId, 'CRITICAL')"
+                      [class.has-warning]="hasError(col.colId, 'WARNING')"
+                      [title]="hasError(col.colId) ? getErrorMessage(col.colId) : ''">
                     <td><input type="checkbox" [(ngModel)]="col.selected" /></td>
                     <td>
-                      <input type="text" [(ngModel)]="col.colId" placeholder="C1" class="cell-input center" />
+                      <div class="row-id-cell">
+                        <input type="text" [(ngModel)]="col.colId" (ngModelChange)="triggerValidationDebounced()" placeholder="C1" class="cell-input center" />
+                        @if (hasError(col.colId, 'CRITICAL')) {
+                          <span class="error-badge" [title]="getErrorMessage(col.colId)">🛑</span>
+                        }
+                        @if (hasError(col.colId, 'WARNING')) {
+                          <span class="error-badge" [title]="getErrorMessage(col.colId)">⚠️</span>
+                        }
+                      </div>
                     </td>
                     <td>
-                      <input type="text" [(ngModel)]="col.label" placeholder="Column Header Label" class="cell-input" />
+                      <input type="text" [(ngModel)]="col.label" (ngModelChange)="triggerValidationDebounced()" placeholder="Column Header Label" class="cell-input" />
                     </td>
                     <td>
-                      <select [(ngModel)]="col.colType" class="cell-select">
+                      <select [(ngModel)]="col.colType" (ngModelChange)="onColTypeChange(col); triggerValidationDebounced()" class="cell-select">
                         <option value="WEEK">WEEK</option>
                         <option value="MTD">MTD</option>
                         <option value="YTD">YTD</option>
@@ -798,22 +885,23 @@ interface RowFilterCondition {
                       </select>
                     </td>
                     <td>
-                      <select [(ngModel)]="col.headerLayout" class="cell-select">
+                      <select [(ngModel)]="col.headerLayout" (ngModelChange)="triggerValidationDebounced()" class="cell-select">
                         <option value="normal">Normal</option>
                         <option value="bold">Bold, Center</option>
                         <option value="border">Bold, Border</option>
                       </select>
                     </td>
                     <td>
-                      <input type="number" [(ngModel)]="col.periodOffset" [disabled]="col.colType === 'CALC'" class="cell-input center" />
+                      <input type="number" [(ngModel)]="col.periodOffset" (ngModelChange)="triggerValidationDebounced()" [disabled]="col.colType === 'CALC'" class="cell-input center" />
                     </td>
                     <td>
-                      <input type="number" [(ngModel)]="col.rollingN" [disabled]="col.colType !== 'ROLLING'" placeholder="e.g. 10" class="cell-input center" />
+                      <input type="number" [(ngModel)]="col.rollingN" (ngModelChange)="triggerValidationDebounced()" [disabled]="col.colType !== 'ROLLING'" placeholder="e.g. 10" class="cell-input center" />
                     </td>
                     <td>
                       <input
                         type="text"
                         [(ngModel)]="col.formulaExpr"
+                        (ngModelChange)="triggerValidationDebounced()"
                         [placeholder]="col.colType === 'CALC' ? 'e.g. (C1-C2)/C2' : '-'"
                         [disabled]="col.colType !== 'CALC'"
                         class="cell-input code"
@@ -828,6 +916,42 @@ interface RowFilterCondition {
             </table>
           </div>
         </section>
+
+        <!-- SQL Preview Modal Overlay -->
+        @if (isSqlModalOpen()) {
+          <div class="sql-modal-overlay animate-fade-in" (click)="closeSqlModal()">
+            <div class="sql-modal-card animate-scale-up" (click)="$event.stopPropagation()">
+              <div class="sql-modal-header">
+                <div>
+                  <h2>‹› Compiled PostgreSQL Query Preview</h2>
+                  <p class="modal-subtitle">Dry-run matrix compilation. View query before saving configuration.</p>
+                </div>
+                <button class="modal-close-btn" (click)="closeSqlModal()">✕</button>
+              </div>
+              <div class="sql-modal-body">
+                @if (isLoadingSql()) {
+                  <div class="modal-loading">
+                    <span class="spinner"></span>
+                    <span>Compiling report matrix query...</span>
+                  </div>
+                } @else {
+                  <div class="sql-viewer-wrapper">
+                    <div class="sql-viewer-actions">
+                      <span class="file-tag">PGSQL</span>
+                      <button (click)="copySqlToClipboard()" class="copy-btn">
+                        {{ isCopied() ? '✓ Copied!' : '📋 Copy to Clipboard' }}
+                      </button>
+                    </div>
+                    <pre><code class="language-sql">{{ previewSqlText() }}</code></pre>
+                  </div>
+                }
+              </div>
+              <div class="sql-modal-footer">
+                <button (click)="closeSqlModal()" class="footer-close-btn">Close Preview</button>
+              </div>
+            </div>
+          </div>
+        }
 
       </main>
     </div>
@@ -1767,6 +1891,336 @@ interface RowFilterCondition {
         font-size: 22px;
       }
     }
+
+    /* Validation & Linting Engine Styles */
+    .has-critical {
+      border-left: 4px solid #ef4444 !important;
+      background-color: rgba(239, 68, 68, 0.04) !important;
+    }
+    .has-warning {
+      border-left: 4px solid #f59e0b !important;
+      background-color: rgba(245, 158, 11, 0.03) !important;
+    }
+    .row-id-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+    .error-badge {
+      font-size: 14px;
+      cursor: help;
+      user-select: none;
+    }
+    .validation-console {
+      margin-bottom: 24px;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      background: rgba(15, 23, 42, 0.6) !important;
+    }
+    .diagnostics-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin-top: 12px;
+    }
+    .diagnostic-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid transparent;
+    }
+    .diagnostic-item.critical {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, 0.05);
+      color: #fca5a5;
+    }
+    .diagnostic-item.warning {
+      border-left-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.04);
+      color: #fde047;
+    }
+    .item-icon {
+      font-size: 15px;
+    }
+    .item-body {
+      flex: 1;
+    }
+
+    /* Live SQL Preview Styles */
+    .preview-header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .preview-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0;
+      background: rgba(15, 23, 42, 0.4);
+      padding: 4px;
+      border-radius: 10px;
+      width: fit-content;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .tab-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab-btn:hover {
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .tab-btn.active {
+      background: #1e293b;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .sql-preview-container {
+      background: #0f172a;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      margin-top: 12px;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .sql-code-block {
+      margin: 0;
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      max-height: 450px;
+      overflow-y: auto;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .loading-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #94a3b8;
+      font-size: 14px;
+      padding: 40px 0;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* SQL Preview Modal Overlay */
+    .sql-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .sql-modal-card {
+      width: 90%;
+      max-width: 900px;
+      max-height: 85vh;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sql-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sql-modal-header h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .modal-subtitle {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .modal-close-btn:hover {
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .sql-modal-body {
+      padding: 24px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .modal-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 80px 0;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .sql-viewer-wrapper {
+      display: flex;
+      flex-direction: column;
+      background: #0f172a;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+    }
+    .sql-viewer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .file-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #6366f1;
+      background: rgba(99, 102, 241, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .copy-btn {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #f1f5f9;
+    }
+    .sql-viewer-wrapper pre {
+      margin: 0;
+      padding: 16px 20px;
+      overflow-x: auto;
+      max-height: 400px;
+    }
+    .sql-viewer-wrapper code {
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      white-space: pre;
+    }
+    .sql-modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: flex-end;
+      background: rgba(30, 41, 59, 0.5);
+    }
+    .footer-close-btn {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #cbd5e1;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .footer-close-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #f1f5f9;
+    }
+    .btn-preview-sql {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-preview-sql:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    .btn-preview-sql:active {
+      transform: scale(0.98);
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out;
+    }
+    .animate-scale-up {
+      animation: scaleUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes scaleUp {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
   `]
 })
 export class ReportBuilderComponent implements OnInit {
@@ -1776,6 +2230,233 @@ export class ReportBuilderComponent implements OnInit {
   successMessage = signal<string | null>(null);
   errorMessage   = signal<string | null>(null);
   sidebarOpen    = signal(false);
+
+  // SQL Preview State
+  activePreviewTab = signal<'grid' | 'sql'>('grid');
+  compiledSql      = signal<string>('');
+  isLoadingSql     = signal<boolean>(false);
+  isSqlModalOpen   = signal<boolean>(false);
+  previewSqlText   = signal<string>('');
+  isCopied         = signal<boolean>(false);
+
+  validationErrors = signal<ValidationError[]>([]);
+  isValid = computed(() => !this.validationErrors().some(e => e.errorSeverity === 'CRITICAL'));
+  
+  hasError(elementId: string, severity?: 'CRITICAL' | 'WARNING'): boolean {
+    return this.validationErrors().some(e => 
+      e.elementId.toUpperCase() === elementId.toUpperCase() && 
+      (!severity || e.errorSeverity === severity)
+    );
+  }
+
+  getErrorMessage(elementId: string): string {
+    return this.validationErrors()
+      .filter(e => e.elementId.toUpperCase() === elementId.toUpperCase())
+      .map(e => `[${e.errorSeverity}] ${e.displayMessage}`)
+      .join('\n');
+  }
+
+  private validationTimeout: any;
+
+  triggerValidationDebounced(): void {
+    if (this.validationTimeout) {
+      clearTimeout(this.validationTimeout);
+    }
+    this.validationTimeout = setTimeout(() => {
+      this.runValidation();
+      if (this.activePreviewTab() === 'sql' && this.showPreview()) {
+        this.runSqlPreview();
+      }
+    }, 450);
+  }
+
+  runValidation(): void {
+    if (!this.reportId) return;
+    const payload = {
+      reportId:        this.reportId,
+      name:            this.reportName,
+      version:         this.reportVersion,
+      exploreId:       1,
+      status:          this.status,
+      sourceTable:     this.sourceTable,
+      granularity:     this.granularity,
+      reportingDate:   this.reportingDate,
+      timeframeStart:  this.timeframeStart,
+      timeframeEnd:    this.computedTimeframeEnd,
+      timeframeToday:  this.timeframeMode === 'today',
+      quickFilters:    JSON.stringify(this.quickFilters),
+      generalFilters:  JSON.stringify(this.generalFilters),
+      linkedDimensions: this.linkedDimensions.join(','),
+      columns: this.columns.map((c, i) => ({
+        colId:        c.colId,
+        label:        c.label,
+        colType:      c.colType,
+        periodOffset: c.periodOffset || 0,
+        rollingN:     c.colType === 'ROLLING' ? c.rollingN : null,
+        formulaExpr:  c.colType === 'CALC' ? c.formulaExpr : '',
+        displayOrder: i + 1
+      })),
+      rows: this.rows.map((r, i) => ({
+        rowId:        r.rowId,
+        reportId:     this.reportId,
+        label:        r.label,
+        rowType:      r.rowType,
+        source:       this.serializeMeasure(r),
+        parentRowId:  r.parentRowId || null,
+        style:        r.style || 'normal',
+        indentLevel:  r.indentLevel,
+        displayOrder: i + 1,
+        activeCols:   r.activeCols,
+        filterExpr:   this.serializeRowFilters(r)
+      }))
+    };
+
+    this.reportService.validateReport(payload).subscribe({
+      next: (res: any) => {
+        this.validationErrors.set(res.errors || []);
+      },
+      error: (err) => {
+        console.warn('Asynchronous validation call failed:', err);
+      }
+    });
+  }
+
+  runSqlPreview(): void {
+    if (!this.reportId) {
+      this.compiledSql.set('');
+      return;
+    }
+    this.isLoadingSql.set(true);
+    const payload = {
+      reportId:        this.reportId,
+      name:            this.reportName,
+      version:         this.reportVersion,
+      exploreId:       1,
+      status:          this.status,
+      sourceTable:     this.sourceTable,
+      granularity:     this.granularity,
+      reportingDate:   this.reportingDate,
+      timeframeStart:  this.timeframeStart,
+      timeframeEnd:    this.computedTimeframeEnd,
+      timeframeToday:  this.timeframeMode === 'today',
+      quickFilters:    JSON.stringify(this.quickFilters),
+      generalFilters:  JSON.stringify(this.generalFilters),
+      linkedDimensions: this.linkedDimensions.join(','),
+      columns: this.columns.map((c, i) => ({
+        colId:        c.colId,
+        label:        c.label,
+        colType:      c.colType,
+        periodOffset: c.periodOffset || 0,
+        rollingN:     c.colType === 'ROLLING' ? c.rollingN : null,
+        formulaExpr:  c.colType === 'CALC' ? c.formulaExpr : '',
+        displayOrder: i + 1
+      })),
+      rows: this.rows.map((r, i) => ({
+        rowId:        r.rowId,
+        reportId:     this.reportId,
+        label:        r.label,
+        rowType:      r.rowType,
+        source:       this.serializeMeasure(r),
+        parentRowId:  r.parentRowId || null,
+        style:        r.style || 'normal',
+        indentLevel:  r.indentLevel,
+        displayOrder: i + 1,
+        activeCols:   r.activeCols,
+        filterExpr:   this.serializeRowFilters(r)
+      }))
+    };
+
+    this.reportService.previewSql(payload).subscribe({
+      next: (res: any) => {
+        this.compiledSql.set(res.sql || '');
+        this.isLoadingSql.set(false);
+      },
+      error: (err: any) => {
+        console.warn('SQL preview generation failed:', err);
+        this.compiledSql.set(err.error?.error || 'Failed to compile SQL preview.');
+        this.isLoadingSql.set(false);
+      }
+    });
+  }
+
+  previewSql(): void {
+    if (!this.reportId) {
+      this.previewSqlText.set('No Report ID specified.');
+      return;
+    }
+    this.isSqlModalOpen.set(true);
+    this.isLoadingSql.set(true);
+    this.previewSqlText.set('');
+
+    const payload = {
+      reportId:        this.reportId,
+      name:            this.reportName,
+      version:         this.reportVersion,
+      exploreId:       1,
+      status:          this.status,
+      sourceTable:     this.sourceTable,
+      granularity:     this.granularity,
+      reportingDate:   this.reportingDate,
+      timeframeStart:  this.timeframeStart,
+      timeframeEnd:    this.computedTimeframeEnd,
+      timeframeToday:  this.timeframeMode === 'today',
+      quickFilters:    JSON.stringify(this.quickFilters),
+      generalFilters:  JSON.stringify(this.generalFilters),
+      linkedDimensions: this.linkedDimensions.join(','),
+      columns: this.columns.map((c, i) => ({
+        colId:        c.colId,
+        label:        c.label,
+        colType:      c.colType,
+        periodOffset: c.periodOffset || 0,
+        rollingN:     c.colType === 'ROLLING' ? c.rollingN : null,
+        formulaExpr:  c.colType === 'CALC' ? c.formulaExpr : '',
+        displayOrder: i + 1
+      })),
+      rows: this.rows.map((r, i) => ({
+        rowId:        r.rowId,
+        reportId:     this.reportId,
+        label:        r.label,
+        rowType:      r.rowType,
+        source:       this.serializeMeasure(r),
+        parentRowId:  r.parentRowId || null,
+        style:        r.style || 'normal',
+        indentLevel:  r.indentLevel,
+        displayOrder: i + 1,
+        activeCols:   r.activeCols,
+        filterExpr:   this.serializeRowFilters(r)
+      }))
+    };
+
+    this.reportService.previewSql(payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: any) => {
+          this.previewSqlText.set(res.sql || '');
+          this.isLoadingSql.set(false);
+        },
+        error: (err: any) => {
+          console.warn('SQL preview generation failed:', err);
+          this.previewSqlText.set(err.error?.error || 'Failed to compile SQL preview.');
+          this.isLoadingSql.set(false);
+        }
+      });
+  }
+
+  closeSqlModal(): void {
+    this.isSqlModalOpen.set(false);
+  }
+
+  copySqlToClipboard(): Promise<void> | void {
+    const sqlText = this.previewSqlText();
+    if (sqlText) {
+      return navigator.clipboard.writeText(sqlText).then(() => {
+        this.isCopied.set(true);
+        setTimeout(() => this.isCopied.set(false), 2000);
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+      });
+    }
+  }
 
   // ── DB Metadata ─────────────────────────────────────────────────────────
   dbTables: string[]     = [];
@@ -1864,7 +2545,17 @@ export class ReportBuilderComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  constructor() {}
+  constructor() {
+    try {
+      effect(() => {
+        if (this.activePreviewTab() === 'sql' && this.showPreview()) {
+          this.runSqlPreview();
+        }
+      }, { allowSignalWrites: true });
+    } catch (e) {
+      console.warn('Reactivity/Effect context not available. Skipping effect creation.', e);
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // COMPUTED PROPERTIES
@@ -1990,14 +2681,22 @@ export class ReportBuilderComponent implements OnInit {
 
     // Rows — parse measure + rowFilters
     this.rows = (data.rows || []).map((r: any) => {
-      const measure         = this.parseMeasure(r.source || '');
+      const measure         = this.parseMeasure(r.source);
       const { rowFilters, legacyFilterExpr } = this.parseRowFilterExpr(r.filterExpr || '');
       rowFilters.forEach(f => f.operator = this.normalizeFilterOperator(f.operator));
+      
+      let sourceStr = '';
+      if (typeof r.source === 'string') {
+        sourceStr = r.source;
+      } else if (r.source && typeof r.source === 'object') {
+        sourceStr = r.source.rawSql || '';
+      }
+
       return {
         rowId:           r.rowId,
         label:           r.label,
         rowType:         r.rowType,
-        source:          r.source || '',
+        source:          sourceStr,
         parentRowId:     r.parentRowId || '',
         style:           r.style || 'normal',
         indentLevel:     r.indentLevel || 0,
@@ -2021,6 +2720,7 @@ export class ReportBuilderComponent implements OnInit {
     }
     // Eagerly load cached columns for already-linked dimensions
     this.linkedDimensions.forEach(dim => this.loadDimensionColumns(dim));
+    this.runValidation();
   }
 
   initializeDefaultCatalog(): void {
@@ -2050,6 +2750,7 @@ export class ReportBuilderComponent implements OnInit {
       this.makeDefaultRow('R2', 'GBS gross',       'data',    'normal',  1, { agg: 'SUM', col: 'amount', filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '2' }] }),
       this.makeDefaultRow('R3', 'GBS net',         'data',    'normal',  1, { agg: 'SUM', col: 'amount', filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '10' }] })
     ];
+    this.runValidation();
   }
 
   private makeDefaultRow(
@@ -2368,7 +3069,7 @@ export class ReportBuilderComponent implements OnInit {
   // MEASURE SERIALIZATION HELPERS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  private parseMeasure(source: string): { aggFunction: string; measureCol: string; customSqlMode: boolean } {
+  private parseMeasure(source: any): { aggFunction: string; measureCol: string; customSqlMode: boolean } {
     return parseMeasure(source);
   }
 
@@ -2376,7 +3077,7 @@ export class ReportBuilderComponent implements OnInit {
     return parseRowFilterExpr(filterExpr);
   }
 
-  private serializeMeasure(row: any): string {
+  private serializeMeasure(row: any): any {
     return serializeMeasure(row);
   }
 
@@ -2464,6 +3165,15 @@ export class ReportBuilderComponent implements OnInit {
       this.rows.forEach(row => {
         if (row.activeCols) row.activeCols = row.activeCols.filter((id: string) => id.toUpperCase() !== cid);
       });
+    }
+  }
+
+  onColTypeChange(col: any): void {
+    if (col.colType !== 'ROLLING') {
+      col.rollingN = null;
+    }
+    if (col.colType !== 'CALC') {
+      col.formulaExpr = '';
     }
   }
 
@@ -2592,8 +3302,8 @@ export class ReportBuilderComponent implements OnInit {
         label:        c.label,
         colType:      c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN:     c.rollingN,
-        formulaExpr:  c.formulaExpr,
+        rollingN:     c.colType === 'ROLLING' ? c.rollingN : null,
+        formulaExpr:  c.colType === 'CALC' ? c.formulaExpr : '',
         displayOrder: i + 1
       })),
       rows: this.rows.map((r, i) => ({
