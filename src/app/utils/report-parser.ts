@@ -5,33 +5,37 @@ export interface RowFilterCondition {
   value: string;
 }
 
-export function parseMeasure(source: any): { aggFunction: string; measureCol: string; customSqlMode: boolean } {
-  if (!source) return { aggFunction: 'SUM', measureCol: '', customSqlMode: false };
+export function parseMeasure(source: any): { aggFunction: string; measureCol: string; sourceTable: string; customSqlMode: boolean; rawExpression: string } {
+  if (!source) return { aggFunction: 'SUM', measureCol: '', sourceTable: '', customSqlMode: false, rawExpression: '' };
   
   if (typeof source === 'object') {
-    const mode = source.mode || 'visual';
-    if (mode === 'raw') {
+    const isRaw = (source.rawExpression != null && source.rawExpression !== '') || (source.rawSql != null && source.rawSql !== '') || source.mode === 'raw';
+    if (isRaw) {
       return {
         aggFunction: 'SUM',
         measureCol: '',
-        customSqlMode: true
+        sourceTable: source.sourceTable || source.table || '',
+        customSqlMode: true,
+        rawExpression: source.rawExpression || source.rawSql || ''
       };
     } else {
       return {
-        aggFunction: source.aggregation || 'SUM',
+        aggFunction: source.aggregation || source.aggregationFunction || 'SUM',
         measureCol: source.targetColumn || '',
-        customSqlMode: false
+        sourceTable: source.sourceTable || source.table || '',
+        customSqlMode: false,
+        rawExpression: ''
       };
     }
   }
 
   if (typeof source === 'string') {
     const m = source.match(/^(SUM|COUNT|COUNT_DISTINCT|AVG|MIN|MAX)\((.+)\)$/i);
-    if (m) return { aggFunction: m[1].toUpperCase(), measureCol: m[2], customSqlMode: false };
-    return { aggFunction: 'SUM', measureCol: '', customSqlMode: true };
+    if (m) return { aggFunction: m[1].toUpperCase(), measureCol: m[2], sourceTable: '', customSqlMode: false, rawExpression: '' };
+    return { aggFunction: 'SUM', measureCol: '', sourceTable: '', customSqlMode: true, rawExpression: source };
   }
 
-  return { aggFunction: 'SUM', measureCol: '', customSqlMode: false };
+  return { aggFunction: 'SUM', measureCol: '', sourceTable: '', customSqlMode: false, rawExpression: '' };
 }
 
 export function serializeMeasure(row: any): any {
@@ -39,30 +43,27 @@ export function serializeMeasure(row: any): any {
 
   if (row.rowType === 'calc') {
     return {
-      mode: 'raw',
-      aggregation: null,
+      sourceTable: null,
       targetColumn: null,
-      table: null,
-      rawSql: row.source || ''
+      aggregation: null,
+      rawExpression: row.source || ''
     };
   }
 
   // Data row
   if (row.customSqlMode) {
     return {
-      mode: 'raw',
-      aggregation: null,
+      sourceTable: row.sourceTable || null,
       targetColumn: null,
-      table: null,
-      rawSql: row.source || ''
+      aggregation: null,
+      rawExpression: row.source || ''
     };
   } else {
     return {
-      mode: 'visual',
-      aggregation: row.measureAgg || 'SUM',
+      sourceTable: row.sourceTable || null,
       targetColumn: row.measureCol || '',
-      table: null,
-      rawSql: null
+      aggregation: row.measureAgg || 'SUM',
+      rawExpression: null
     };
   }
 }

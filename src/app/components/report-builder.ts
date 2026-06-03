@@ -47,10 +47,25 @@ interface RowFilterCondition {
   value: string;
 }
 
+export interface DwhField {
+  name: string;
+  displayName: string;
+  sourceTable: string;
+  type?: string;
+}
+
+export interface FieldGroup {
+  category: string;
+  sourceTable: string;
+  fields: DwhField[];
+}
+
+import { ColResizerDirective } from '../directives/col-resizer.directive';
+
 @Component({
   selector: 'app-report-builder',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ColResizerDirective],
   template: `
     <div class="builder-container">
       <!-- Mobile topbar -->
@@ -65,26 +80,29 @@ interface RowFilterCondition {
       <!-- Sidebar overlay backdrop -->
       <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="closeSidebar()"></div>
       <!-- ════════════════════════════════════════════ SIDEBAR -->
-      <aside class="sidebar" [class.open]="sidebarOpen()">
+      <aside class="sidebar" [class.open]="sidebarOpen()" [class.collapsed]="isMainMenuCollapsed()">
         <button class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close navigation">✕</button>
         <div class="sidebar-brand">
           <span class="brand-icon">🛠️</span>
           <span class="brand-text">Report Builder</span>
+          <button class="menu-collapse-btn" (click)="toggleMainMenu()" [title]="isMainMenuCollapsed() ? 'Expand Menu' : 'Collapse Menu'">
+            {{ isMainMenuCollapsed() ? '➔' : '«' }}
+          </button>
         </div>
 
         <nav class="sidebar-menu">
-          <a routerLink="/dashboard" class="menu-item">
+          <a routerLink="/dashboard" class="menu-item" [title]="isMainMenuCollapsed() ? 'Reports Catalog' : ''">
             <span class="menu-icon">📁</span>
-            <span>Reports Catalog</span>
+            <span class="menu-text">Reports Catalog</span>
           </a>
-          <a routerLink="/semantic" class="menu-item">
+          <a routerLink="/semantic" class="menu-item" [title]="isMainMenuCollapsed() ? 'Semantic Layer' : ''">
             <span class="menu-icon">🧠</span>
-            <span>Semantic Layer</span>
+            <span class="menu-text">Semantic Layer</span>
           </a>
         </nav>
 
         <div class="sidebar-user">
-          <button (click)="goBack()" class="back-btn">← Cancel &amp; Exit</button>
+          <button (click)="goBack()" class="back-btn">{{ isMainMenuCollapsed() ? '✕' : '← Cancel & Exit' }}</button>
         </div>
       </aside>
 
@@ -282,24 +300,13 @@ interface RowFilterCondition {
               </select>
             </div>
 
-            <!-- Source Table (Fact) -->
-            <div class="form-group">
-              <label for="source-table">Source Table (Fact)*</label>
-              <select id="source-table" [(ngModel)]="sourceTable" (change)="onTableChange()" class="form-select">
-                <option value="">-- Select database table --</option>
-                @for (tbl of dbTables; track tbl) {
-                  <option [value]="tbl">{{ tbl }}</option>
-                }
-              </select>
-            </div>
-
-            <!-- Granularity -->
+            <!-- Granularity (bound to conformed keys) -->
             <div class="form-group">
               <label for="granularity">Report Granularity*</label>
               <select id="granularity" [(ngModel)]="granularity" class="form-select">
                 <option value="">-- Select grouping column --</option>
-                @for (col of tableColumns; track col) {
-                  <option [value]="col">{{ col }}</option>
+                @for (key of conformedKeys; track key) {
+                  <option [value]="key">{{ key }}</option>
                 }
               </select>
             </div>
@@ -400,31 +407,37 @@ interface RowFilterCondition {
             </div>
           </div>
 
-          <!-- ── Linked Dimensions (shown once a fact table is selected) ───── -->
-          @if (sourceTable && dimensionJoins.length > 0) {
+          <!-- ── Linked Dimensions (shown once a fact table is active) ───── -->
+          @if (allAvailableDimensions().length > 0) {
             <div class="form-group">
               <label>
                 🔗 Linked Dimensions
                 <span class="label-hint">— click to enable dimension columns in filters &amp; measure builders</span>
               </label>
               <div class="chip-container dim-chip-container">
-                @for (join of dimensionJoins; track join.dimView) {
+                @for (dim of allAvailableDimensions(); track dim) {
                   <span
                     class="dim-chip"
-                    [class.active]="isDimensionLinked(join.dimView)"
-                    (click)="toggleLinkedDimension(join.dimView)"
-                    [title]="join.joinType + ': ' + join.joinSql"
+                    [class.active]="isDimensionLinked(dim)"
+                    [class.conformed]="conformedDimensions().includes(dim)"
+                    [class.mismatched]="mismatchedDimensions().includes(dim)"
+                    (click)="toggleLinkedDimension(dim)"
+                    [title]="conformedDimensions().includes(dim) ? 'Conformed Dimension: Valid for cross-fact routing' : 'Mismatched Dimension: Not supported by all active fact tables'"
                   >
-                    <span class="dim-chip-icon">{{ isDimensionLinked(join.dimView) ? '✓' : '+' }}</span>
-                    {{ join.dimView }}
-                    <span class="dim-chip-join-badge">{{ join.joinType }}</span>
+                    <span class="dim-chip-icon">{{ isDimensionLinked(dim) ? '✓' : '+' }}</span>
+                    {{ dim }}
+                    @if (conformedDimensions().includes(dim)) {
+                      <span class="dim-chip-status conformed-badge">Conformed</span>
+                    } @else {
+                      <span class="dim-chip-status mismatched-badge">Mismatched</span>
+                    }
                   </span>
                 }
               </div>
             </div>
           }
-          @if (sourceTable && dimensionJoins.length === 0 && !loadingDimJoins) {
-            <p class="empty-filters">No dimension joins configured for <code>{{ sourceTable }}</code> in the semantic layer.</p>
+          @if (allAvailableDimensions().length === 0) {
+            <p class="empty-filters">Assign data columns to rows to discover linked dimensions in the semantic layer.</p>
           }
 
           <!-- ── Quick Filters ──────────────────────────────────────────────── -->
@@ -446,9 +459,9 @@ interface RowFilterCondition {
                       (change)="onQuickFilterTableChange(filter)"
                       class="form-select sm dim-select"
                     >
-                      <option value="">{{ sourceTable || 'Fact Table' }}</option>
-                      @for (dim of linkedDimensions; track dim) {
-                        <option [value]="dim">{{ dim }}</option>
+                      <option value="">-- Table --</option>
+                      @for (dim of conformedDimensions(); track dim) {
+                        <option [value]="dim">{{ dim }} (Dim)</option>
                       }
                     </select>
 
@@ -521,9 +534,9 @@ interface RowFilterCondition {
                       (change)="onGeneralFilterTableChange(filter)"
                       class="form-select sm dim-select"
                     >
-                      <option value="">{{ sourceTable || 'Fact Table' }}</option>
-                      @for (dim of linkedDimensions; track dim) {
-                        <option [value]="dim">{{ dim }}</option>
+                      <option value="">-- Table --</option>
+                      @for (dim of conformedDimensions(); track dim) {
+                        <option [value]="dim">{{ dim }} (Dim)</option>
                       }
                     </select>
 
@@ -578,246 +591,337 @@ interface RowFilterCondition {
             </div>
           </div>
 
-          <div class="table-wrapper rows-table-wrapper">
-            <table class="grid-table">
-              <thead>
-                <tr>
-                  <th style="width:40px"><input type="checkbox" (change)="toggleAllRowsSelect($event)" /></th>
-                  <th style="width:70px">Row ID</th>
-                  <th>Row Name (Label)*</th>
-                  <th style="width:160px">Style / Layout</th>
-                  <th style="width:260px">Measure Definition</th>
-                  <th style="width:260px">Row Conditions / Filters</th>
-                  <th style="width:140px">Active Columns</th>
-                  <th style="width:60px;text-align:center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (row of rows; track row.rowId; let idx = $index) {
-                  <tr [class.selected]="row.selected"
-                      [class.has-critical]="hasError(row.rowId, 'CRITICAL')"
-                      [class.has-warning]="hasError(row.rowId, 'WARNING')"
-                      [title]="hasError(row.rowId) ? getErrorMessage(row.rowId) : ''">
-                    <td><input type="checkbox" [(ngModel)]="row.selected" /></td>
+          <div class="rows-container-layout" [class.picker-closed]="!isFieldPickerOpen()">
+            <!-- Left Side: Searchable DWH Catalog Tree -->
+            <div class="catalog-panel" [class.collapsed]="!isFieldPickerOpen()">
+              <div class="catalog-search-box">
+                <input 
+                  type="text" 
+                  class="form-input search-input" 
+                  placeholder="🔍 Search DWH fields..." 
+                  [ngModel]="fieldsSearchQuery()" 
+                  (ngModelChange)="fieldsSearchQuery.set($event)"
+                />
+              </div>
 
-                    <!-- Row ID -->
-                    <td>
-                      <div class="row-id-cell">
-                        <input type="text" [(ngModel)]="row.rowId" (ngModelChange)="triggerValidationDebounced()" placeholder="R1" class="cell-input center" />
-                        @if (hasError(row.rowId, 'CRITICAL')) {
-                          <span class="error-badge" [title]="getErrorMessage(row.rowId)">🛑</span>
-                        }
-                        @if (hasError(row.rowId, 'WARNING')) {
-                          <span class="error-badge" [title]="getErrorMessage(row.rowId)">⚠️</span>
-                        }
-                      </div>
-                    </td>
-
-                    <!-- Row Label with indent controls -->
-                    <td>
-                      <div class="indent-wrapper" [style.padding-left.px]="row.indentLevel * 12">
-                        <button (click)="changeIndent(row, -1); triggerValidationDebounced()" class="indent-btn" title="Decrease indent">«</button>
-                        <button (click)="changeIndent(row, 1); triggerValidationDebounced()" class="indent-btn" title="Increase indent">»</button>
-                        <input type="text" [(ngModel)]="row.label" (ngModelChange)="triggerValidationDebounced()" placeholder="Row Label" class="cell-input" />
-                      </div>
-                    </td>
-
-                    <!-- Style / Type -->
-                    <td>
-                      <div class="style-cell">
-                        <select [(ngModel)]="row.rowType" (change)="onRowTypeChange(row); triggerValidationDebounced()" class="cell-select">
-                          <option value="data">📊 data</option>
-                          <option value="calc">🧮 calc</option>
-                          <option value="section">📂 section</option>
-                          <option value="blank">🫙 blank</option>
-                        </select>
-                        <select [(ngModel)]="row.style" (ngModelChange)="triggerValidationDebounced()" class="cell-select">
-                          <option value="normal">Normal</option>
-                          <option value="header">Header</option>
-                          <option value="section">Section</option>
-                          <option value="total">Total</option>
-                          <option value="highlight">Highlight</option>
-                          <option value="blank">Blank</option>
-                        </select>
-                      </div>
-                    </td>
-
-                    <!-- ── Measure Definition column ─────────────────── -->
-                    <td class="measure-td">
-                      @if (row.rowType === 'data') {
-                        @if (row.customSqlMode) {
-                          <!-- Custom SQL mode -->
-                          <div class="measure-custom-row">
-                            <input
-                              type="text"
-                              [(ngModel)]="row.source"
-                              (ngModelChange)="triggerValidationDebounced()"
-                              placeholder="e.g. SUM(amount)"
-                              class="cell-input code"
-                            />
-                            <button
-                              (click)="row.customSqlMode = false; triggerValidationDebounced()"
-                              class="mode-toggle-btn visual"
-                              title="Switch to visual builder"
-                            >⬡ Visual</button>
-                          </div>
-                        } @else {
-                          <!-- Visual measure builder -->
-                          <div class="measure-builder-row">
-                            <select [(ngModel)]="row.measureAgg" (ngModelChange)="triggerValidationDebounced()" class="cell-select agg-select">
-                              <option value="SUM">SUM</option>
-                              <option value="COUNT">COUNT</option>
-                              <option value="COUNT_DISTINCT">COUNT DIST</option>
-                              <option value="AVG">AVG</option>
-                              <option value="MIN">MIN</option>
-                              <option value="MAX">MAX</option>
-                            </select>
-                            <span class="measure-of">of</span>
-                            <select [(ngModel)]="row.measureCol" (ngModelChange)="triggerValidationDebounced()" class="cell-select col-select">
-                              <option value="">-- column --</option>
-                              @for (col of tableColumns; track col) {
-                                <option [value]="col">{{ col }}</option>
-                              }
-                            </select>
-                            <button
-                              (click)="row.customSqlMode = true; triggerValidationDebounced()"
-                              class="mode-toggle-btn sql"
-                              title="Switch to raw SQL mode"
-                            >SQL</button>
+              <div class="catalog-tree">
+                @for (group of filteredSchemaTree(); track group.sourceTable) {
+                  <div class="category-group">
+                    <div class="category-title" (click)="toggleCategoryExpanded(group.sourceTable)">
+                      <span class="folder-icon">{{ isCategoryExpanded(group.sourceTable) ? '📂' : '📁' }}</span>
+                      <span class="cat-name">{{ group.category }}</span>
+                      <span class="table-badge">{{ group.sourceTable.replace('analytics.', '') }}</span>
+                    </div>
+                    
+                    @if (isCategoryExpanded(group.sourceTable)) {
+                      <div class="fields-list-mini">
+                        @for (field of group.fields; track field.name) {
+                          <div 
+                            class="field-item-draggable"
+                            draggable="true"
+                            (dragstart)="onFieldDragStart($event, field)"
+                            (click)="onFieldClick(field)"
+                            title="Drag to row or click to apply to selected row"
+                          >
+                            <span class="field-icon">📊</span>
+                            <span class="field-name">{{ field.displayName }}</span>
+                            <span class="field-type">{{ field.type }}</span>
                           </div>
                         }
-                      } @else if (row.rowType === 'calc') {
-                        <!-- Calc row: row-ID formula -->
-                        <input
-                          type="text"
-                          [(ngModel)]="row.source"
-                          (ngModelChange)="triggerValidationDebounced()"
-                          placeholder="e.g. R2 / R3"
-                          class="cell-input code"
-                        />
-                      } @else {
-                        <span class="cell-na">—</span>
-                      }
-                    </td>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (filteredSchemaTree().length === 0) {
+                  <div class="catalog-empty">No matching fields found.</div>
+                }
+              </div>
+            </div>
 
-                    <!-- ── Row Conditions / Filters column ───────────── -->
-                    <td class="filter-td">
-                      @if (row.rowType === 'data') {
-                        <div class="row-filter-wrapper">
+            <!-- Drag & Collapse/Expand toggle handle on the dividing line -->
+            <button type="button" class="picker-toggle-handle" (click)="toggleFieldPicker()" [title]="isFieldPickerOpen() ? 'Collapse Catalog' : 'Expand Catalog'" aria-label="Toggle schema catalog panel">
+              <span>{{ isFieldPickerOpen() ? '‹' : '›' }}</span>
+            </button>
 
-                          <!-- Legacy filter badge (backward compat) -->
-                          @if (row.legacyFilterExpr) {
-                            <div class="legacy-filter-badge" title="Legacy SQL filter — add structured conditions above to replace">
-                              <span class="legacy-icon">⚠️</span>
-                              <code>{{ row.legacyFilterExpr }}</code>
-                            </div>
+            <!-- Right Side: Grid Table Canvas -->
+            <div class="table-wrapper rows-table-wrapper">
+              <table class="grid-table" [style.--grid-template-cols]="computedWidthsString()" [style.--col-width-0]="columnWidths()[0] + 'px'" [style.--col-width-1]="columnWidths()[1] + 'px'">
+                <thead>
+                  <tr>
+                    <th class="sticky-col-1" appColResizer [minWidth]="40" (widthChanged)="onColumnWidthChanged(0, $event)">
+                      <input type="checkbox" (change)="toggleAllRowsSelect($event)" />
+                    </th>
+                    <th class="sticky-col-2" appColResizer [minWidth]="60" (widthChanged)="onColumnWidthChanged(1, $event)">
+                      Row ID
+                    </th>
+                    <th class="sticky-col-3" appColResizer [minWidth]="100" (widthChanged)="onColumnWidthChanged(2, $event)">
+                      Row Name (Label)*
+                    </th>
+                    <th class="style-col-hdr" appColResizer [minWidth]="120" (widthChanged)="onColumnWidthChanged(3, $event)">
+                      Style / Layout
+                    </th>
+                    <th class="measure-col-hdr" appColResizer [minWidth]="150" (widthChanged)="onColumnWidthChanged(4, $event)">
+                      Measure Definition
+                    </th>
+                    <th class="filter-col-hdr" appColResizer [minWidth]="150" (widthChanged)="onColumnWidthChanged(5, $event)">
+                      Row Conditions / Filters
+                    </th>
+                    <th class="active-col-hdr" appColResizer [minWidth]="100" (widthChanged)="onColumnWidthChanged(6, $event)">
+                      Active Columns
+                    </th>
+                    <th class="actions-col-hdr" appColResizer [minWidth]="50" (widthChanged)="onColumnWidthChanged(7, $event)">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows; track row.rowId; let idx = $index) {
+                    <tr [class.selected]="row.selected"
+                        [class.has-critical]="hasError(row.rowId, 'CRITICAL')"
+                        [class.has-warning]="hasError(row.rowId, 'WARNING')"
+                        [title]="hasError(row.rowId) ? getErrorMessage(row.rowId) : ''"
+                        (dragover)="onRowDragOver($event)"
+                        (drop)="onRowDrop($event, row)">
+                      <td class="sticky-col-1"><input type="checkbox" [(ngModel)]="row.selected" /></td>
+
+                      <!-- Row ID -->
+                      <td class="sticky-col-2">
+                        <div class="row-id-cell">
+                          <input type="text" [(ngModel)]="row.rowId" (ngModelChange)="triggerValidationDebounced()" placeholder="R1" class="cell-input center" />
+                          @if (hasError(row.rowId, 'CRITICAL')) {
+                            <span class="error-badge" [title]="getErrorMessage(row.rowId)">🛑</span>
                           }
-
-                          <!-- Structured filter chips -->
-                          <div class="filter-chips-mini">
-                            @for (f of row.rowFilters; track $index; let fi = $index) {
-                              <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f)">
-                                @if (f.dimTable) {
-                                  <span class="ft-dim">{{ f.dimTable }}.</span>
-                                }
-                                <span class="ft-attr">{{ f.attribute }}</span>
-                                <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
-                                <span class="ft-val">{{ f.value }}</span>
-                                <button (click)="removeRowFilter(row, fi)" class="ft-remove">✕</button>
-                              </span>
-                            }
-                          </div>
-
-                          <!-- Builder panel (active for this row) -->
-                          @if (activeRowFilterId === row.rowId) {
-                            <div class="row-filter-builder animate-fade-in">
-                              <div class="rfb-row">
-                                <!-- Table selector: fact or any linked dim -->
-                                <select
-                                  [(ngModel)]="pendingRowFilter.dimTable"
-                                  (change)="onPendingFilterTableChange()"
-                                  class="form-select sm rfb-table"
-                                >
-                                  <option value="">{{ sourceTable || 'Fact Table' }}</option>
-                                  @for (dim of linkedDimensions; track dim) {
-                                    <option [value]="dim">{{ dim }}</option>
-                                  }
-                                </select>
-
-                                <!-- Column selector -->
-                                <select
-                                  [(ngModel)]="pendingRowFilter.attribute"
-                                  (change)="onPendingFilterAttrChange()"
-                                  class="form-select sm rfb-attr"
-                                >
-                                  <option value="">-- column --</option>
-                                  @for (col of pendingFilterColumns; track col) {
-                                    <option [value]="col">{{ col }}</option>
-                                  }
-                                </select>
-
-                                <!-- Operator -->
-                                <select [(ngModel)]="pendingRowFilter.operator" class="form-select sm rfb-op">
-                                  @for (op of operators; track op.value) {
-                                    <option [value]="op.value">{{ op.label }}</option>
-                                  }
-                                </select>
-
-                                <!-- Value with distinct suggestions -->
-                                <input
-                                  type="text"
-                                  [(ngModel)]="pendingRowFilter.value"
-                                  placeholder="value…"
-                                  list="rfb-val-list"
-                                  class="form-input sm rfb-val"
-                                  [class.invalid-input]="isFilterValueInvalid(pendingRowFilter)"
-                                  [title]="isFilterValueInvalid(pendingRowFilter) ? 'Value does not match the column type' : ''"
-                                />
-                                <datalist id="rfb-val-list">
-                                  @for (v of pendingRowFilterValues; track v) {
-                                    <option [value]="v">{{ v }}</option>
-                                  }
-                                </datalist>
-                              </div>
-
-                              <div class="rfb-actions">
-                                <button (click)="confirmRowFilter(row)" class="rfb-confirm-btn">✓ Add Condition</button>
-                                <button (click)="cancelRowFilter()" class="rfb-cancel-btn">Cancel</button>
-                              </div>
-                            </div>
-                          } @else {
-                            <button (click)="openRowFilterBuilder(row)" class="add-row-filter-btn">
-                              + Add Condition
-                            </button>
+                          @if (hasError(row.rowId, 'WARNING')) {
+                            <span class="error-badge" [title]="getErrorMessage(row.rowId)">⚠️</span>
                           }
                         </div>
-                      } @else if (row.rowType === 'calc') {
-                        <span class="cell-na">n/a for calc rows</span>
-                      } @else {
-                        <span class="cell-na">—</span>
-                      }
-                    </td>
+                      </td>
 
-                    <!-- Active Columns toggles -->
-                    <td>
-                      <div class="col-enable-toggles">
-                        @for (col of columns; track col.colId) {
-                          <span
-                            class="col-badge"
-                            [class.active]="row.activeCols.includes(col.colId.toUpperCase())"
-                            (click)="toggleColForRow(row, col.colId)"
-                          >{{ col.colId }}</span>
+                      <!-- Row Label with indent controls -->
+                      <td class="sticky-col-3">
+                        <div class="indent-wrapper" [style.padding-left.px]="row.indentLevel * 12">
+                          <button (click)="changeIndent(row, -1); triggerValidationDebounced()" class="indent-btn" title="Decrease indent">«</button>
+                          <button (click)="changeIndent(row, 1); triggerValidationDebounced()" class="indent-btn" title="Increase indent">»</button>
+                          <input type="text" [(ngModel)]="row.label" (ngModelChange)="triggerValidationDebounced()" placeholder="Row Label" class="cell-input" />
+                        </div>
+                      </td>
+
+                      <!-- Style / Type -->
+                      <td>
+                        <div class="style-cell">
+                          <select [(ngModel)]="row.rowType" (change)="onRowTypeChange(row); triggerValidationDebounced()" class="cell-select">
+                            <option value="data">📊 data</option>
+                            <option value="calc">🧮 calc</option>
+                            <option value="section">📂 section</option>
+                            <option value="blank">🫙 blank</option>
+                          </select>
+                          <select [(ngModel)]="row.style" (ngModelChange)="triggerValidationDebounced()" class="cell-select">
+                            <option value="normal">Normal</option>
+                            <option value="header">Header</option>
+                            <option value="section">Section</option>
+                            <option value="total">Total</option>
+                            <option value="highlight">Highlight</option>
+                            <option value="blank">Blank</option>
+                          </select>
+                        </div>
+                      </td>
+
+                      <!-- ── Measure Definition column ─────────────────── -->
+                      <td class="measure-td">
+                        @if (row.rowType === 'data') {
+                          @if (row.customSqlMode) {
+                            <!-- Custom SQL mode -->
+                            <div class="measure-custom-row">
+                              <input
+                                type="text"
+                                [(ngModel)]="row.source"
+                                (ngModelChange)="triggerValidationDebounced()"
+                                placeholder="e.g. SUM(amount)"
+                                class="cell-input code"
+                              />
+                              <button
+                                (click)="row.customSqlMode = false; triggerValidationDebounced()"
+                                class="mode-toggle-btn visual"
+                                title="Switch to visual builder"
+                              >⬡ Visual</button>
+                            </div>
+                          } @else {
+                            <!-- Visual measure builder -->
+                            <div class="measure-builder-row">
+                              <select [(ngModel)]="row.measureAgg" (ngModelChange)="onRowMeasureChange(row); triggerValidationDebounced()" class="cell-select agg-select">
+                                <option value="SUM">SUM</option>
+                                <option value="COUNT">COUNT</option>
+                                <option value="COUNT_DISTINCT">COUNT DIST</option>
+                                <option value="AVG">AVG</option>
+                                <option value="MIN">MIN</option>
+                                <option value="MAX">MAX</option>
+                              </select>
+                              <span class="measure-of">of</span>
+                              <select 
+                                [ngModel]="getMeasureColPath(row)" 
+                                (ngModelChange)="setMeasureColPath(row, $event)" 
+                                class="cell-select col-select"
+                              >
+                                <option value="">-- select field --</option>
+                                @for (group of dwhFieldsTree(); track group.sourceTable) {
+                                  <optgroup [label]="group.category">
+                                    @for (field of group.fields; track field.name) {
+                                      <option [value]="group.sourceTable + '.' + field.name">
+                                        {{ field.name }}
+                                      </option>
+                                    }
+                                  </optgroup>
+                                }
+                              </select>
+                              <button
+                                (click)="row.customSqlMode = true; triggerValidationDebounced()"
+                                class="mode-toggle-btn sql"
+                                title="Switch to raw SQL mode"
+                              >SQL</button>
+                            </div>
+                            @if (row.sourceTable) {
+                              <div class="source-table-indicator">
+                                Source: <code>{{ row.sourceTable.replace('analytics.', '') }}</code>
+                              </div>
+                            }
+                          }
+                        } @else if (row.rowType === 'calc') {
+                          <!-- Calc row: row-ID formula -->
+                          <input
+                            type="text"
+                            [(ngModel)]="row.source"
+                            (ngModelChange)="triggerValidationDebounced()"
+                            placeholder="e.g. R2 / R3"
+                            class="cell-input code"
+                          />
+                        } @else {
+                          <span class="cell-na">—</span>
                         }
-                      </div>
-                    </td>
+                      </td>
 
-                    <td style="text-align:center">
-                      <button (click)="deleteRow(idx)" class="remove-btn" title="Delete Row">🗑️</button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+                      <!-- ── Row Conditions / Filters column ───────────── -->
+                      <td class="filter-td">
+                        @if (row.rowType === 'data') {
+                          <div class="row-filter-wrapper">
+
+                            <!-- Legacy filter badge (backward compat) -->
+                            @if (row.legacyFilterExpr) {
+                              <div class="legacy-filter-badge" title="Legacy SQL filter — add structured conditions above to replace">
+                                <span class="legacy-icon">⚠️</span>
+                                <code>{{ row.legacyFilterExpr }}</code>
+                              </div>
+                            }
+
+                            <!-- Structured filter chips -->
+                            <div class="filter-chips-mini">
+                              @for (f of row.rowFilters; track $index; let fi = $index) {
+                                <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f, row.sourceTable)">
+                                  @if (f.dimTable) {
+                                    <span class="ft-dim">{{ f.dimTable }}.</span>
+                                  }
+                                  <span class="ft-attr">{{ f.attribute }}</span>
+                                  <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
+                                  <span class="ft-val">{{ f.value }}</span>
+                                  <button (click)="removeRowFilter(row, fi)" class="ft-remove">✕</button>
+                                </span>
+                              }
+                            </div>
+
+                            <!-- Builder panel (active for this row) -->
+                            @if (activeRowFilterId === row.rowId) {
+                              <div class="row-filter-builder animate-fade-in">
+                                <div class="rfb-row">
+                                  <!-- Table selector: fact or any linked dim -->
+                                  <select
+                                    [(ngModel)]="pendingRowFilter.dimTable"
+                                    (change)="onPendingFilterTableChange(row)"
+                                    class="form-select sm rfb-table"
+                                  >
+                                    @if (row.sourceTable) {
+                                      <option [value]="''">{{ row.sourceTable.replace('analytics.', '') }} (Fact)</option>
+                                    } @else {
+                                      <option value="">Fact Table</option>
+                                    }
+                                    @for (dim of linkedDimensions; track dim) {
+                                      <option [value]="dim">{{ dim }}</option>
+                                    }
+                                  </select>
+
+                                  <!-- Column selector -->
+                                  <select
+                                    [(ngModel)]="pendingRowFilter.attribute"
+                                    (change)="onPendingFilterAttrChange(row)"
+                                    class="form-select sm rfb-attr"
+                                  >
+                                    <option value="">-- column --</option>
+                                    @for (col of pendingFilterColumns; track col) {
+                                      <option [value]="col">{{ col }}</option>
+                                    }
+                                  </select>
+
+                                  <!-- Operator -->
+                                  <select [(ngModel)]="pendingRowFilter.operator" class="form-select sm rfb-op">
+                                    @for (op of operators; track op.value) {
+                                      <option [value]="op.value">{{ op.label }}</option>
+                                    }
+                                  </select>
+
+                                  <!-- Value with distinct suggestions -->
+                                  <input
+                                    type="text"
+                                    [(ngModel)]="pendingRowFilter.value"
+                                    placeholder="value…"
+                                    list="rfb-val-list"
+                                    class="form-input sm rfb-val"
+                                    [class.invalid-input]="isFilterValueInvalid(pendingRowFilter, row.sourceTable)"
+                                    [title]="isFilterValueInvalid(pendingRowFilter, row.sourceTable) ? 'Value does not match the column type' : ''"
+                                  />
+                                  <datalist id="rfb-val-list">
+                                    @for (v of pendingRowFilterValues; track v) {
+                                      <option [value]="v">{{ v }}</option>
+                                    }
+                                  </datalist>
+                                </div>
+
+                                <div class="rfb-actions">
+                                  <button (click)="confirmRowFilter(row)" class="rfb-confirm-btn">✓ Add Condition</button>
+                                  <button (click)="cancelRowFilter()" class="rfb-cancel-btn">Cancel</button>
+                                </div>
+                              </div>
+                            } @else {
+                              <button (click)="openRowFilterBuilder(row)" class="add-row-filter-btn" [disabled]="!row.sourceTable">
+                                + Add Condition
+                              </button>
+                            }
+                          </div>
+                        } @else if (row.rowType === 'calc') {
+                          <span class="cell-na">n/a for calc rows</span>
+                        } @else {
+                          <span class="cell-na">—</span>
+                        }
+                      </td>
+
+                      <!-- Active Columns toggles -->
+                      <td>
+                        <div class="col-enable-toggles">
+                          @for (col of columns; track col.colId) {
+                            <span
+                              class="col-badge"
+                              [class.active]="row.activeCols.includes(col.colId.toUpperCase())"
+                              (click)="toggleColForRow(row, col.colId)"
+                            >{{ col.colId }}</span>
+                          }
+                        </div>
+                      </td>
+
+                      <td style="text-align:center">
+                        <button (click)="deleteRow(idx)" class="remove-btn" title="Delete Row">🗑️</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -976,19 +1080,51 @@ interface RowFilterCondition {
       padding: 24px;
       gap: 32px;
       flex-shrink: 0;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), gap 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
     }
 
-    .sidebar-brand { display: flex; align-items: center; gap: 12px; }
-    .brand-icon { font-size: 28px; }
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1), flex-direction 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .brand-icon { font-size: 28px; transition: transform 0.3s ease-in-out; }
     .brand-text {
       font-size: 20px;
       font-weight: 700;
       background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+      transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: 180px;
+      opacity: 1;
+      overflow: hidden;
     }
 
-    .sidebar-menu { display: flex; flex-direction: column; gap: 8px; flex-grow: 1; }
+    .menu-collapse-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      border-radius: 6px;
+    }
+    .menu-collapse-btn:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-menu { display: flex; flex-direction: column; gap: 8px; flex-grow: 1; width: 100%; }
 
     .menu-item {
       display: flex;
@@ -1003,6 +1139,15 @@ interface RowFilterCondition {
     }
     .menu-item:hover { color: #f8fafc; background: rgba(255,255,255,0.05); }
     .menu-icon { font-size: 18px; }
+    .menu-text {
+      white-space: nowrap;
+      transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: 180px;
+      opacity: 1;
+      overflow: hidden;
+    }
+
+    .sidebar-user { width: 100%; display: flex; justify-content: center; }
 
     .back-btn {
       width: 100%;
@@ -1014,11 +1159,56 @@ interface RowFilterCondition {
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
     .back-btn:hover {
       background: rgba(239,68,68,0.15);
       border-color: rgba(239,68,68,0.3);
       color: #fca5a5;
+    }
+
+    @media (min-width: 1024px) {
+      .sidebar.collapsed {
+        width: 64px;
+        padding: 24px 8px;
+        align-items: center;
+        gap: 20px;
+      }
+      .sidebar.collapsed .sidebar-brand {
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+      }
+      .sidebar.collapsed .brand-text {
+        opacity: 0;
+        max-width: 0;
+        pointer-events: none;
+      }
+      .sidebar.collapsed .menu-collapse-btn {
+        margin-left: 0;
+      }
+      .sidebar.collapsed .menu-text {
+        opacity: 0;
+        max-width: 0;
+        pointer-events: none;
+      }
+      .sidebar.collapsed .menu-item {
+        justify-content: center;
+        padding: 12px;
+      }
+      .sidebar.collapsed .back-btn {
+        padding: 10px;
+        font-size: 14px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sidebar.collapsed + .main-content {
+        max-width: calc(100vw - 64px);
+      }
     }
 
     /* ── Main Content ───────────────────────────────── */
@@ -1029,6 +1219,7 @@ interface RowFilterCondition {
       display: flex;
       flex-direction: column;
       gap: 32px;
+      transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       max-width: calc(100vw - 260px);
     }
 
@@ -1317,23 +1508,29 @@ interface RowFilterCondition {
       background: rgba(15,23,42,0.4);
     }
 
-    .rows-table-wrapper { overflow-x: auto; }
+    .rows-table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: 100%;
+      position: relative;
+    }
 
     .grid-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       font-size: 13px;
       text-align: left;
     }
 
     .grid-table th {
-      background: rgba(15,23,42,0.8);
+      background: rgba(15,23,42,0.9);
       color: #94a3b8;
       font-weight: 600;
       text-transform: uppercase;
       font-size: 10px;
       letter-spacing: 0.5px;
-      padding: 12px 12px;
+      padding: 12px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       white-space: nowrap;
     }
@@ -1341,10 +1538,145 @@ interface RowFilterCondition {
     .grid-table td {
       padding: 8px 10px;
       border-bottom: 1px solid rgba(255,255,255,0.03);
-      vertical-align: top;
+      vertical-align: middle;
     }
 
     .grid-table tr.selected { background: rgba(99,102,241,0.05); }
+
+    /* CSS Grid Layout for the Rows Setup Table */
+    .rows-table-wrapper .grid-table thead tr,
+    .rows-table-wrapper .grid-table tbody tr {
+      display: grid;
+      grid-template-columns: var(--grid-template-cols);
+    }
+
+    .rows-table-wrapper .grid-table th,
+    .rows-table-wrapper .grid-table td {
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      min-width: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Sticky Left Columns for Rows Grid Table */
+    .rows-table-wrapper .grid-table th.sticky-col-1,
+    .rows-table-wrapper .grid-table td.sticky-col-1 {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      background: #1e293b;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      justify-content: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .rows-table-wrapper .grid-table th.sticky-col-2,
+    .rows-table-wrapper .grid-table td.sticky-col-2 {
+      position: sticky;
+      left: var(--col-width-0, 40px);
+      z-index: 10;
+      background: #1e293b;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .rows-table-wrapper .grid-table th.sticky-col-3,
+    .rows-table-wrapper .grid-table td.sticky-col-3 {
+      position: sticky;
+      left: calc(var(--col-width-0, 40px) + var(--col-width-1, 80px));
+      z-index: 10;
+      background: #1e293b;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.55);
+    }
+    
+    .rows-table-wrapper .grid-table th.sticky-col-1,
+    .rows-table-wrapper .grid-table th.sticky-col-2,
+    .rows-table-wrapper .grid-table th.sticky-col-3 {
+      z-index: 12;
+      background: #0f172a;
+    }
+    
+    .grid-table tr:hover td.sticky-col-1,
+    .grid-table tr:hover td.sticky-col-2,
+    .grid-table tr:hover td.sticky-col-3 {
+      background: #25334c !important;
+    }
+    
+    .grid-table tr.selected td.sticky-col-1,
+    .grid-table tr.selected td.sticky-col-2,
+    .grid-table tr.selected td.sticky-col-3 {
+      background: #2d3b55 !important;
+    }
+
+    /* Column Width constraints overridden for Step 1 rows layout */
+    .rows-table-wrapper .style-col-hdr, .rows-table-wrapper .grid-table td:nth-child(4) {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+    .rows-table-wrapper .measure-col-hdr, .rows-table-wrapper .grid-table td.measure-td {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+    .rows-table-wrapper .filter-col-hdr, .rows-table-wrapper .grid-table td.filter-td {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+    .rows-table-wrapper .active-col-hdr, .rows-table-wrapper .grid-table td:nth-child(7) {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+    .rows-table-wrapper .actions-col-hdr, .rows-table-wrapper .grid-table td:nth-child(8) {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      justify-content: center;
+    }
+
+    /* Standard column constraints (preserved for Step 2) */
+    .style-col-hdr, .grid-table td:nth-child(4) {
+      width: 170px;
+      min-width: 170px;
+    }
+    .measure-col-hdr, .grid-table td.measure-td {
+      width: 320px;
+      min-width: 300px;
+    }
+    .filter-col-hdr, .grid-table td.filter-td {
+      width: 340px;
+      min-width: 320px;
+    }
+    .active-col-hdr, .grid-table td:nth-child(7) {
+      width: 200px;
+      min-width: 160px;
+    }
+    .actions-col-hdr, .grid-table td:nth-child(8) {
+      width: 60px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* Global drag cursors and body override */
+    body.col-resizing,
+    body.col-resizing * {
+      cursor: col-resize !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
 
     .cell-input, .cell-select {
       width: 100%;
@@ -1357,13 +1689,19 @@ interface RowFilterCondition {
       font-size: 12px;
       font-family: inherit;
       box-sizing: border-box;
+      transition: all 0.15s ease;
     }
     .cell-input:focus, .cell-select:focus {
       border-color: #6366f1;
       background: rgba(15,23,42,0.8);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
     }
     .cell-input.center { text-align: center; }
     .cell-input.code   { font-family: 'Fira Code', monospace; color: #38bdf8; }
+
+    .grid-table .sticky-col-2 .cell-input {
+      min-width: 60px;
+    }
 
     .indent-wrapper { display: flex; align-items: center; gap: 5px; }
     .indent-btn {
@@ -1379,32 +1717,37 @@ interface RowFilterCondition {
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      transition: all 0.15s ease;
     }
-    .indent-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+    .indent-btn:hover { color: white; background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4); }
 
-    .style-cell { display: flex; gap: 5px; }
+    .style-cell { display: flex; gap: 6px; }
+    .style-cell .cell-select {
+      flex: 1 1 80px;
+      min-width: 75px;
+    }
 
-    .cell-na { font-size: 12px; color: #334155; }
+    .cell-na { font-size: 12px; color: #475569; font-style: italic; }
 
     /* ── Measure builder ────────────────────────────── */
-    .measure-td { min-width: 230px; }
+    .measure-td { min-width: 300px; }
 
     .measure-builder-row {
       display: flex;
       align-items: center;
-      gap: 5px;
-      flex-wrap: wrap;
+      gap: 6px;
+      width: 100%;
     }
 
     .measure-custom-row {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      width: 100%;
     }
 
     .agg-select {
-      flex: 0 0 auto;
-      width: 90px;
+      flex: 0 0 85px;
       font-weight: 700;
       color: #34d399;
       background: rgba(16,185,129,0.08);
@@ -1416,12 +1759,15 @@ interface RowFilterCondition {
       color: #475569;
       font-style: italic;
       flex-shrink: 0;
+      margin: 0 2px;
     }
 
     .col-select {
-      flex: 1 1 auto;
-      min-width: 90px;
+      flex: 1 1 140px;
+      min-width: 110px;
       color: #38bdf8;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
 
     .mode-toggle-btn {
@@ -1540,26 +1886,27 @@ interface RowFilterCondition {
 
     /* Inline row filter builder */
     .row-filter-builder {
-      background: rgba(15,23,42,0.7);
+      background: rgba(15,23,42,0.85);
       border: 1px solid rgba(99,102,241,0.25);
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
 
     .rfb-row {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
     }
 
-    .rfb-table { flex: 0 0 130px; color: #d8b4fe; font-weight: 600; }
-    .rfb-attr  { flex: 1 1 100px; }
-    .rfb-op    { flex: 0 0 180px; color: #a5b4fc; font-weight: 600; }
-    .rfb-val   { flex: 1 1 80px; }
+    .rfb-table { grid-column: span 1; color: #d8b4fe; font-weight: 600; }
+    .rfb-attr  { grid-column: span 1; }
+    .rfb-op    { grid-column: span 1; color: #a5b4fc; font-weight: 600; }
+    .rfb-val   { grid-column: span 1; }
 
     .rfb-actions { display: flex; gap: 6px; }
 
@@ -2221,6 +2568,237 @@ interface RowFilterCondition {
       from { transform: scale(0.95); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
+
+    /* ── Rows layout ── */
+    .rows-container-layout {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+      position: relative;
+      transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .rows-container-layout.picker-closed {
+      gap: 0px;
+    }
+    @media (max-width: 1024px) {
+      .rows-container-layout {
+        flex-direction: column;
+      }
+    }
+    
+    /* ── Catalog Panel ── */
+    .catalog-panel {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 700px;
+      max-height: calc(100vh - 340px);
+      min-height: 400px;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 1;
+      width: 280px;
+      flex-shrink: 0;
+    }
+    .catalog-panel.collapsed {
+      width: 0;
+      padding: 0;
+      border: none;
+      opacity: 0;
+      pointer-events: none;
+      margin: 0;
+    }
+    @media (max-width: 1024px) {
+      .catalog-panel {
+        width: 100%;
+        max-height: 400px;
+      }
+      .catalog-panel.collapsed {
+        display: none;
+      }
+    }
+
+    /* Collapsible DWH Catalog Toggle Handle */
+    .picker-toggle-handle {
+      position: absolute;
+      left: 290px; /* Centered on the divider line between 280px catalog and 20px gap */
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 50px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      display: none; /* Only display on desktop layout */
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 100;
+      color: #94a3b8;
+      font-size: 14px;
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      user-select: none;
+      backdrop-filter: blur(8px);
+    }
+    @media (min-width: 1025px) {
+      .picker-toggle-handle {
+        display: flex;
+      }
+    }
+    .picker-toggle-handle:hover {
+      color: white;
+      background: #6366f1;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .rows-container-layout.picker-closed .picker-toggle-handle {
+      left: 0px;
+    }
+    .catalog-search-box {
+      position: relative;
+    }
+    .catalog-search-box .search-input {
+      width: 100%;
+      padding-left: 12px;
+      box-sizing: border-box;
+    }
+    .catalog-tree {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 4px;
+      overscroll-behavior: contain;
+    }
+    .category-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .category-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      user-select: none;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .category-title:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(99, 102, 241, 0.2);
+    }
+    .cat-name {
+      font-weight: 700;
+      color: #f8fafc;
+      flex-grow: 1;
+    }
+    .table-badge {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+    .fields-list-mini {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-left: 14px;
+      margin-top: 4px;
+      border-left: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    .field-item-draggable {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: rgba(15, 23, 42, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 6px;
+      cursor: grab;
+      font-size: 11px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .field-item-draggable:hover {
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.25);
+      color: #a5b4fc;
+      transform: translateX(2px);
+    }
+    .field-item-draggable:active {
+      cursor: grabbing;
+    }
+    .field-name {
+      flex-grow: 1;
+      color: #cbd5e1;
+    }
+    .field-type {
+      font-size: 9px;
+      color: #475569;
+      font-family: monospace;
+    }
+    .catalog-empty {
+      font-size: 12px;
+      color: #475569;
+      text-align: center;
+      padding: 20px 0;
+      font-style: italic;
+    }
+    .source-table-indicator {
+      font-size: 9px;
+      color: #818cf8;
+      margin-top: 4px;
+    }
+    .dim-chip.conformed {
+      border-color: rgba(34, 197, 94, 0.4);
+      background: rgba(34, 197, 94, 0.08);
+      color: #86efac;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+    }
+    .dim-chip.conformed.active {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: rgba(34, 197, 94, 0.6);
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.4);
+    }
+    .dim-chip.mismatched {
+      opacity: 0.45;
+      border-color: rgba(239, 68, 68, 0.25);
+      background: rgba(239, 68, 68, 0.03);
+      color: #fca5a5;
+    }
+    .dim-chip.mismatched:hover {
+      opacity: 0.8;
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    .dim-chip-status {
+      font-size: 8px;
+      font-weight: 800;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-left: 6px;
+      text-transform: uppercase;
+    }
+    .conformed-badge {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+    .mismatched-badge {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
   `]
 })
 export class ReportBuilderComponent implements OnInit {
@@ -2230,6 +2808,31 @@ export class ReportBuilderComponent implements OnInit {
   successMessage = signal<string | null>(null);
   errorMessage   = signal<string | null>(null);
   sidebarOpen    = signal(false);
+  isMainMenuCollapsed = signal(false);
+  isFieldPickerOpen = signal(true);
+  
+  // Resizable columns width state (Step 1 Rows Setup)
+  columnWidths = signal<number[]>([40, 80, 280, 140, 320, 340, 220, 50]);
+
+  computedWidthsString = computed(() => {
+    return this.columnWidths().map(w => `${w}px`).join(' ');
+  });
+
+  onColumnWidthChanged(index: number, newWidth: number): void {
+    this.columnWidths.update(widths => {
+      const updated = [...widths];
+      updated[index] = newWidth;
+      return updated;
+    });
+  }
+
+  toggleMainMenu(): void {
+    this.isMainMenuCollapsed.set(!this.isMainMenuCollapsed());
+  }
+
+  toggleFieldPicker(): void {
+    this.isFieldPickerOpen.set(!this.isFieldPickerOpen());
+  }
 
   // SQL Preview State
   activePreviewTab = signal<'grid' | 'sql'>('grid');
@@ -2278,7 +2881,6 @@ export class ReportBuilderComponent implements OnInit {
       version:         this.reportVersion,
       exploreId:       1,
       status:          this.status,
-      sourceTable:     this.sourceTable,
       granularity:     this.granularity,
       reportingDate:   this.reportingDate,
       timeframeStart:  this.timeframeStart,
@@ -2333,7 +2935,6 @@ export class ReportBuilderComponent implements OnInit {
       version:         this.reportVersion,
       exploreId:       1,
       status:          this.status,
-      sourceTable:     this.sourceTable,
       granularity:     this.granularity,
       reportingDate:   this.reportingDate,
       timeframeStart:  this.timeframeStart,
@@ -2394,7 +2995,6 @@ export class ReportBuilderComponent implements OnInit {
       version:         this.reportVersion,
       exploreId:       1,
       status:          this.status,
-      sourceTable:     this.sourceTable,
       granularity:     this.granularity,
       reportingDate:   this.reportingDate,
       timeframeStart:  this.timeframeStart,
@@ -2462,6 +3062,51 @@ export class ReportBuilderComponent implements OnInit {
   dbTables: string[]     = [];
   tableColumns: string[] = [];
   distinctValues: { [key: string]: string[] } = {};
+  readonly conformedKeys = ['customer_id', 'location_id', 'reporting_date'];
+
+  // Searchable DWH Catalog signals
+  dwhFieldsTree = signal<FieldGroup[]>([]);
+  fieldsSearchQuery = signal<string>('');
+  filteredSchemaTree = computed(() => {
+    const query = this.fieldsSearchQuery().trim();
+    const tree = this.dwhFieldsTree();
+    if (!query) return tree;
+
+    const normalize = (str: string) => {
+      if (!str) return '';
+      return str.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    };
+
+    const normalizedQuery = normalize(query);
+
+    return tree.map(group => {
+      const normalizedTable = normalize(group.sourceTable);
+      const normalizedCategory = normalize(group.category);
+
+      const tableMatches = normalizedTable.includes(normalizedQuery) || normalizedCategory.includes(normalizedQuery);
+
+      if (tableMatches) {
+        // Table-level matching cascade: display ALL columns
+        return { ...group, fields: group.fields };
+      } else {
+        // Column-level matching filter: display only matching columns
+        const matchedFields = group.fields.filter(f => {
+          const normalizedFieldName = normalize(f.name);
+          const normalizedDisplayName = normalize(f.displayName);
+          return normalizedFieldName.includes(normalizedQuery) || normalizedDisplayName.includes(normalizedQuery);
+        });
+        return { ...group, fields: matchedFields };
+      }
+    }).filter(group => group.fields.length > 0);
+  });
+  
+  expandedCategories = signal<string[]>([]);
+  
+  // Context-aware conformed/mismatched dimensions signals
+  factToDimensionsMap: { [factTable: string]: string[] } = {};
+  conformedDimensions = signal<string[]>([]);
+  mismatchedDimensions = signal<string[]>([]);
+  allAvailableDimensions = signal<string[]>([]);
 
   // ── Dimension joins & linked dimensions ─────────────────────────────────
   dimensionJoins: any[]  = [];          // all joins available for the selected fact table
@@ -2582,7 +3227,7 @@ export class ReportBuilderComponent implements OnInit {
       if (id && id !== 'new') {
         this.isNewReport = false;
         this.reportId = id;
-        // Fire both fetches in parallel — total wait = max(t_tables, t_config)
+        // Fire both fetches in parallel
         forkJoin({
           tables: this.reportService.getTables(),
           config: this.reportService.getReportConfig(id, '2025-12-31')
@@ -2600,7 +3245,10 @@ export class ReportBuilderComponent implements OnInit {
         this.reportService.getTables().pipe(
           takeUntilDestroyed(this.destroyRef)
         ).subscribe({
-          next: (tbls) => { this.dbTables = tbls; }
+          next: (tbls) => {
+            this.dbTables = tbls;
+            this.loadDwhFieldsTree();
+          }
         });
         this.initializeDefaultCatalog();
       }
@@ -2689,10 +3337,10 @@ export class ReportBuilderComponent implements OnInit {
       if (typeof r.source === 'string') {
         sourceStr = r.source;
       } else if (r.source && typeof r.source === 'object') {
-        sourceStr = r.source.rawSql || '';
+        sourceStr = r.source.rawSql || r.source.rawExpression || '';
       }
 
-      return {
+      const row = {
         rowId:           r.rowId,
         label:           r.label,
         rowType:         r.rowType,
@@ -2706,18 +3354,18 @@ export class ReportBuilderComponent implements OnInit {
         // Measure builder
         measureAgg:      measure.aggFunction,
         measureCol:      measure.measureCol,
+        sourceTable:     measure.sourceTable,
         customSqlMode:   measure.customSqlMode,
         // Row filters
         rowFilters,
         legacyFilterExpr
       };
+      return this.initRowSignals(row);
     });
 
-    // Load columns & joins for the source table
-    if (this.sourceTable) {
-      this.loadTableMetadata(this.sourceTable);
-      this.loadDimensionJoins(this.sourceTable);
-    }
+    // Load catalog fields tree and dimensions
+    this.loadDwhFieldsTree();
+
     // Eagerly load cached columns for already-linked dimensions
     this.linkedDimensions.forEach(dim => this.loadDimensionColumns(dim));
     this.runValidation();
@@ -2747,18 +3395,61 @@ export class ReportBuilderComponent implements OnInit {
     // Default rows
     this.rows = [
       this.makeDefaultRow('R1', 'Report Header',  'section', 'section', 0),
-      this.makeDefaultRow('R2', 'GBS gross',       'data',    'normal',  1, { agg: 'SUM', col: 'amount', filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '2' }] }),
-      this.makeDefaultRow('R3', 'GBS net',         'data',    'normal',  1, { agg: 'SUM', col: 'amount', filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '10' }] })
+      this.makeDefaultRow('R2', 'GBS gross',       'data',    'normal',  1, { agg: 'SUM', col: 'amount', table: 'analytics.fact_sales', filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '2' }] }),
+      this.makeDefaultRow('R3', 'GBS net',         'data',    'normal',  1, { agg: 'SUM', col: 'amount', table: 'analytics.fact_sales', filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '10' }] })
     ];
     this.runValidation();
+  }
+
+  private initRowSignals(row: any): any {
+    const sourceTableSignal = signal<string>(row.sourceTable || '');
+    const targetColumnSignal = signal<string>(row.measureCol || '');
+    const aggregationSignal = signal<string>(row.measureAgg || 'SUM');
+    const rawExpressionSignal = signal<string>(row.source || '');
+
+    row.measureDefinition = {
+      sourceTable: sourceTableSignal,
+      targetColumn: targetColumnSignal,
+      aggregation: aggregationSignal,
+      rawExpression: rawExpressionSignal
+    };
+
+    Object.defineProperty(row, 'sourceTable', {
+      get: () => sourceTableSignal(),
+      set: (val: string) => {
+        sourceTableSignal.set(val);
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    Object.defineProperty(row, 'measureCol', {
+      get: () => targetColumnSignal(),
+      set: (val: string) => {
+        targetColumnSignal.set(val);
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    Object.defineProperty(row, 'measureAgg', {
+      get: () => aggregationSignal(),
+      set: (val: string) => {
+        aggregationSignal.set(val);
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    return row;
   }
 
   private makeDefaultRow(
     rowId: string, label: string, rowType: string, style: string,
     indentLevel: number,
-    measure?: { agg: string; col: string; filters?: RowFilterCondition[] }
+    measure?: { agg: string; col: string; table?: string; filters?: RowFilterCondition[] }
   ): any {
-    return {
+    const row = {
       rowId, label, rowType,
       source: measure ? `${measure.agg}(${measure.col})` : '',
       parentRowId: '', style, indentLevel,
@@ -2767,10 +3458,12 @@ export class ReportBuilderComponent implements OnInit {
       selected: false,
       measureAgg:      measure?.agg  || 'SUM',
       measureCol:      measure?.col  || '',
+      sourceTable:     measure?.table || '',
       customSqlMode:   false,
       rowFilters:      measure?.filters || [],
       legacyFilterExpr: ''
     };
+    return this.initRowSignals(row);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2800,7 +3493,9 @@ export class ReportBuilderComponent implements OnInit {
     this.reportService.getColumnTypes(table).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (types) => { this.columnTypesCache = { ...this.columnTypesCache, [table]: types }; }
+      next: (types) => { 
+        this.columnTypesCache = { ...this.columnTypesCache, [table]: types };
+      }
     });
   }
 
@@ -2845,6 +3540,11 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   toggleLinkedDimension(dimView: string): void {
+    if (this.mismatchedDimensions().includes(dimView)) {
+      this.errorMessage.set(`Cannot link mismatched dimension "${dimView}": it is not supported by all active fact tables.`);
+      setTimeout(() => this.errorMessage.set(null), 4000);
+      return;
+    }
     const idx = this.linkedDimensions.indexOf(dimView);
     if (idx === -1) {
       this.linkedDimensions.push(dimView);
@@ -2935,7 +3635,7 @@ export class ReportBuilderComponent implements OnInit {
     this.activeRowFilterId   = row.rowId;
     this.pendingRowFilter    = { dimTable: '', attribute: '', operator: '=', value: '' };
     this.pendingRowFilterValues = [];
-    this.pendingFilterColumns   = [...this.tableColumns];
+    this.pendingFilterColumns   = row.sourceTable ? (this.columnTypesCache[row.sourceTable] ? Object.keys(this.columnTypesCache[row.sourceTable]) : []) : [];
   }
 
   cancelRowFilter(): void {
@@ -2945,25 +3645,27 @@ export class ReportBuilderComponent implements OnInit {
     this.pendingFilterColumns   = [];
   }
 
-  onPendingFilterTableChange(): void {
+  onPendingFilterTableChange(row: any): void {
     this.pendingRowFilter.attribute = '';
     this.pendingRowFilter.value     = '';
     this.pendingRowFilterValues     = [];
-    const table = this.pendingRowFilter.dimTable || this.sourceTable;
+    const table = this.pendingRowFilter.dimTable || row.sourceTable;
     if (this.pendingRowFilter.dimTable) {
       this.loadDimensionColumns(this.pendingRowFilter.dimTable);
       // Give the cache update a moment to propagate, then refresh columns
       setTimeout(() => {
         this.pendingFilterColumns = this.getDimColumns(this.pendingRowFilter.dimTable) || [];
       }, 100);
+    } else if (row.sourceTable) {
+      this.pendingFilterColumns = this.columnTypesCache[row.sourceTable] ? Object.keys(this.columnTypesCache[row.sourceTable]) : [];
     } else {
-      this.pendingFilterColumns = [...this.tableColumns];
+      this.pendingFilterColumns = [];
     }
   }
 
-  onPendingFilterAttrChange(): void {
+  onPendingFilterAttrChange(row: any): void {
     this.pendingRowFilter.value = '';
-    const table = this.pendingRowFilter.dimTable || this.sourceTable;
+    const table = this.pendingRowFilter.dimTable || row.sourceTable;
     const attr  = this.pendingRowFilter.attribute;
     if (!table || !attr) return;
     const key = `${table}.${attr}`;
@@ -2984,7 +3686,7 @@ export class ReportBuilderComponent implements OnInit {
   confirmRowFilter(row: any): void {
     if (!this.pendingRowFilter.attribute) return;
 
-    const table = this.pendingRowFilter.dimTable || this.sourceTable;
+    const table = this.pendingRowFilter.dimTable || row.sourceTable;
     const colTypes = this.columnTypesCache[table];
     if (colTypes && this.pendingRowFilter.value && this.pendingRowFilter.value.trim() !== '') {
       const type = colTypes[this.pendingRowFilter.attribute];
@@ -3036,9 +3738,10 @@ export class ReportBuilderComponent implements OnInit {
     return true;
   }
 
-  isFilterValueInvalid(filter: any): boolean {
+  isFilterValueInvalid(filter: any, defaultTable: string = this.sourceTable): boolean {
     if (!filter.attribute || !filter.value || filter.value.trim() === '') return false;
-    const table = filter.dimTable || this.sourceTable;
+    const table = filter.dimTable || defaultTable;
+    if (!table) return false;
     const colTypes = this.columnTypesCache[table];
     if (!colTypes) return false;
     const type = colTypes[filter.attribute];
@@ -3058,18 +3761,258 @@ export class ReportBuilderComponent implements OnInit {
     if (row.rowType !== 'data') {
       row.rowFilters     = [];
       row.legacyFilterExpr = '';
+      row.sourceTable    = '';
     }
     if (row.rowType === 'section' || row.rowType === 'blank') {
       row.source         = '';
       row.customSqlMode  = false;
     }
+    this.updateDimensionStates();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DWH CATALOG & CROSS-FACT DRAG-AND-DROP METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  formatCategory(tableName: string): string {
+    const name = tableName.replace(/^analytics\./, '').toLowerCase();
+    if (name.includes('sales')) return 'Sales Performance';
+    if (name.includes('loan')) return 'Credit Operations';
+    if (name.includes('investment')) return 'Investment & Equity Balances';
+    if (name.includes('banking_transaction') || name.includes('transaction')) return 'Banking Transactions';
+    if (name.includes('reconciliation') || name.includes('reconcile')) return 'Financial Reconciliation';
+    return name.split('_')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
+  loadDwhFieldsTree(): void {
+    if (this.dbTables.length === 0) return;
+    
+    const tableFetches = this.dbTables.reduce((acc, table) => {
+      acc[table] = forkJoin({
+        cols: this.reportService.getTableColumns(table),
+        types: this.reportService.getColumnTypes(table),
+        joins: this.reportService.getDimensionJoins(table)
+      });
+      return acc;
+    }, {} as { [table: string]: any });
+
+    forkJoin(tableFetches).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (res: any) => {
+        const fieldGroups: FieldGroup[] = [];
+        this.factToDimensionsMap = {};
+        
+        for (const table of this.dbTables) {
+          const cols = res[table]?.cols || [];
+          const types = res[table]?.types || {};
+          const joins = res[table]?.joins || [];
+          
+          this.columnTypesCache = { ...this.columnTypesCache, [table]: types };
+          this.factToDimensionsMap[table] = joins.map((j: any) => j.dimView);
+          
+          const fields = cols.map((col: string) => ({
+            name: col,
+            displayName: col.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            sourceTable: table,
+            type: types[col] || 'varchar'
+          }));
+          
+          fieldGroups.push({
+            category: this.formatCategory(table),
+            sourceTable: table,
+            fields
+          });
+        }
+        
+        this.dwhFieldsTree.set(fieldGroups);
+        this.expandedCategories.set(this.dbTables);
+        this.updateDimensionStates();
+      },
+      error: (err) => {
+        console.warn('Error loading DWH Fields Tree:', err);
+      }
+    });
+  }
+
+  isCategoryExpanded(table: string): boolean {
+    const query = this.fieldsSearchQuery().trim();
+    if (query) {
+      const group = this.dwhFieldsTree().find(g => g.sourceTable === table);
+      if (group) {
+        const normalize = (str: string) => {
+          if (!str) return '';
+          return str.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+        };
+        const normalizedQuery = normalize(query);
+        const normalizedTable = normalize(group.sourceTable);
+        const normalizedCategory = normalize(group.category);
+        if (normalizedTable.includes(normalizedQuery) || normalizedCategory.includes(normalizedQuery)) {
+          return true; // Force expanded
+        }
+      }
+    }
+    return this.expandedCategories().includes(table);
+  }
+
+  toggleCategoryExpanded(table: string): void {
+    const current = this.expandedCategories();
+    if (current.includes(table)) {
+      this.expandedCategories.set(current.filter(t => t !== table));
+    } else {
+      this.expandedCategories.set([...current, table]);
+    }
+  }
+
+  onFieldDragStart(event: DragEvent, field: DwhField): void {
+    event.dataTransfer?.setData('application/json', JSON.stringify(field));
+  }
+
+  onRowDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  onRowDrop(event: DragEvent, row: any): void {
+    event.preventDefault();
+    if (row.rowType !== 'data') return;
+    const data = event.dataTransfer?.getData('application/json');
+    if (data) {
+      try {
+        const field = JSON.parse(data);
+        this.assignFieldToRow(row, field);
+      } catch (e) {
+        console.error('Failed to parse dropped field data', e);
+      }
+    }
+  }
+
+  onFieldClick(field: DwhField): void {
+    const selectedRow = this.rows.find(r => r.selected && r.rowType === 'data');
+    if (selectedRow) {
+      this.assignFieldToRow(selectedRow, field);
+      this.successMessage.set(`Assigned ${field.name} to row ${selectedRow.rowId}`);
+      setTimeout(() => this.successMessage.set(null), 2000);
+    } else {
+      this.errorMessage.set('Please select a data row in the canvas first, then click a field to assign.');
+      setTimeout(() => this.errorMessage.set(null), 3000);
+    }
+  }
+
+  assignFieldToRow(row: any, field: DwhField): void {
+    if (row.measureDefinition) {
+      row.measureDefinition.sourceTable.set(field.sourceTable);
+      row.measureDefinition.targetColumn.set(field.name);
+    } else {
+      row.sourceTable = field.sourceTable;
+      row.measureCol = field.name;
+    }
+    row.customSqlMode = false;
+    row.source = `${row.measureAgg || 'SUM'}(${field.name})`;
+    this.triggerValidationDebounced();
+    this.updateDimensionStates();
+  }
+
+  getMeasureColPath(row: any): string {
+    if (row.measureDefinition) {
+      const tbl = row.measureDefinition.sourceTable();
+      const col = row.measureDefinition.targetColumn();
+      if (tbl && col) {
+        return `${tbl}.${col}`;
+      }
+    } else if (row.sourceTable && row.measureCol) {
+      return `${row.sourceTable}.${row.measureCol}`;
+    }
+    return '';
+  }
+
+  setMeasureColPath(row: any, path: string): void {
+    if (path && path.includes('.')) {
+      const idx = path.lastIndexOf('.');
+      const tbl = path.substring(0, idx);
+      const col = path.substring(idx + 1);
+      if (row.measureDefinition) {
+        row.measureDefinition.sourceTable.set(tbl);
+        row.measureDefinition.targetColumn.set(col);
+      } else {
+        row.sourceTable = tbl;
+        row.measureCol = col;
+      }
+    } else {
+      if (row.measureDefinition) {
+        row.measureDefinition.sourceTable.set('');
+        row.measureDefinition.targetColumn.set('');
+      } else {
+        row.sourceTable = '';
+        row.measureCol = '';
+      }
+    }
+    row.source = `${row.measureAgg || 'SUM'}(${row.measureCol || ''})`;
+    this.triggerValidationDebounced();
+    this.updateDimensionStates();
+  }
+
+  updateDimensionStates(): void {
+    const activeFactTables = this.rows
+      .filter(r => r.rowType === 'data' && r.sourceTable)
+      .map(r => r.sourceTable);
+    const uniqueFacts = Array.from(new Set(activeFactTables));
+
+    if (uniqueFacts.length === 0) {
+      this.conformedDimensions.set([]);
+      this.mismatchedDimensions.set([]);
+      this.allAvailableDimensions.set([]);
+      this.linkedDimensions = [];
+      return;
+    }
+
+    const allDims = new Set<string>();
+    uniqueFacts.forEach(fact => {
+      const dims = this.factToDimensionsMap[fact] || [];
+      dims.forEach(d => allDims.add(d));
+    });
+    
+    const allDimsArray = Array.from(allDims);
+    this.allAvailableDimensions.set(allDimsArray);
+
+    const conformed = allDimsArray.filter(dim => 
+      uniqueFacts.every(fact => {
+        const dims = this.factToDimensionsMap[fact] || [];
+        return dims.includes(dim);
+      })
+    );
+    this.conformedDimensions.set(conformed);
+
+    const mismatched = allDimsArray.filter(dim => !conformed.includes(dim));
+    this.mismatchedDimensions.set(mismatched);
+
+    // Auto-unlink mismatched dimensions to ensure catalog configuration safety
+    this.linkedDimensions = this.linkedDimensions.filter(dim => conformed.includes(dim));
+
+    // Eagerly load columns/types for conformed dimensions to ensure dropdowns are populated
+    conformed.forEach(dim => this.loadDimensionColumns(dim));
+  }
+
+  getActiveFactTables(): string[] {
+    const active = this.rows
+      .filter(r => r.rowType === 'data' && r.sourceTable)
+      .map(r => r.sourceTable);
+    return Array.from(new Set(active));
+  }
+
+  onRowMeasureChange(row: any): void {
+    row.source = `${row.measureAgg || 'SUM'}(${row.measureCol || ''})`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MEASURE SERIALIZATION HELPERS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  private parseMeasure(source: any): { aggFunction: string; measureCol: string; customSqlMode: boolean } {
+  private parseMeasure(source: any): { aggFunction: string; measureCol: string; sourceTable: string; customSqlMode: boolean; rawExpression: string } {
     return parseMeasure(source);
   }
 
@@ -3093,31 +4036,48 @@ export class ReportBuilderComponent implements OnInit {
     const n = this.rows.length + 1;
     this.rows.push(this.makeDefaultRow(
       `R${n}`, `New Row ${n}`, 'data', 'normal', 0,
-      { agg: 'SUM', col: this.tableColumns[0] || 'amount', filters: [] }
+      { agg: 'SUM', col: '', table: '', filters: [] }
     ));
+    this.updateDimensionStates();
   }
 
   resetRows(): void {
-    if (confirm('Are you sure you want to reset all rows?')) this.rows = [];
+    if (confirm('Are you sure you want to reset all rows?')) {
+      this.rows = [];
+      this.updateDimensionStates();
+    }
   }
 
   deleteRow(index: number): void {
     const r = this.rows[index];
-    if (confirm(`Delete row "${r.label || r.rowId}"?`)) this.rows.splice(index, 1);
+    if (confirm(`Delete row "${r.label || r.rowId}"?`)) {
+      this.rows.splice(index, 1);
+      this.updateDimensionStates();
+    }
   }
 
   deleteSelectedRows(): void {
     const n = this.rows.filter(r => r.selected).length;
     if (!n) { alert('Select at least one row to delete.'); return; }
-    if (confirm(`Delete ${n} selected row(s)?`)) this.rows = this.rows.filter(r => !r.selected);
+    if (confirm(`Delete ${n} selected row(s)?`)) {
+      this.rows = this.rows.filter(r => !r.selected);
+      this.updateDimensionStates();
+    }
   }
 
   duplicateSelectedRow(): void {
     const sel = this.rows.filter(r => r.selected);
     if (!sel.length) { alert('Select at least one row to duplicate.'); return; }
     sel.forEach(sr => {
-      this.rows.push({ ...sr, rowId: `R${this.rows.length + 1}`, label: `${sr.label} (Copy)`, selected: false, rowFilters: [...(sr.rowFilters || [])] });
+      this.rows.push({ 
+        ...sr, 
+        rowId: `R${this.rows.length + 1}`, 
+        label: `${sr.label} (Copy)`, 
+        selected: false, 
+        rowFilters: [...(sr.rowFilters || [])] 
+      });
     });
+    this.updateDimensionStates();
   }
 
   reorderRows(): void {
@@ -3219,8 +4179,9 @@ export class ReportBuilderComponent implements OnInit {
       this.errorMessage.set('Report ID and Report Title are mandatory fields.');
       return;
     }
-    if (!this.sourceTable) {
-      this.errorMessage.set('Source Table is required.');
+    const activeFacts = this.getActiveFactTables();
+    if (activeFacts.length === 0) {
+      this.errorMessage.set('At least one data row with a valid catalog source field is required.');
       return;
     }
 
@@ -3228,12 +4189,14 @@ export class ReportBuilderComponent implements OnInit {
     for (const filter of this.quickFilters) {
       if (filter.attribute && filter.value && filter.value.trim() !== '') {
         const table = filter.dimTable || this.sourceTable;
-        const colTypes = this.columnTypesCache[table];
-        if (colTypes) {
-          const type = colTypes[filter.attribute];
-          if (type && !this.validateFilterValue(type, filter.value)) {
-            this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in table "${table}".`);
-            return;
+        if (table) {
+          const colTypes = this.columnTypesCache[table];
+          if (colTypes) {
+            const type = colTypes[filter.attribute];
+            if (type && !this.validateFilterValue(type, filter.value)) {
+              this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in table "${table}".`);
+              return;
+            }
           }
         }
       }
@@ -3243,12 +4206,14 @@ export class ReportBuilderComponent implements OnInit {
     for (const filter of this.generalFilters) {
       if (filter.attribute && filter.value && filter.value.trim() !== '') {
         const table = filter.dimTable || this.sourceTable;
-        const colTypes = this.columnTypesCache[table];
-        if (colTypes) {
-          const type = colTypes[filter.attribute];
-          if (type && !this.validateFilterValue(type, filter.value)) {
-            this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in table "${table}".`);
-            return;
+        if (table) {
+          const colTypes = this.columnTypesCache[table];
+          if (colTypes) {
+            const type = colTypes[filter.attribute];
+            if (type && !this.validateFilterValue(type, filter.value)) {
+              this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in table "${table}".`);
+              return;
+            }
           }
         }
       }
@@ -3259,13 +4224,15 @@ export class ReportBuilderComponent implements OnInit {
       if (row.rowFilters) {
         for (const filter of row.rowFilters) {
           if (filter.attribute && filter.value && filter.value.trim() !== '') {
-            const table = filter.dimTable || this.sourceTable;
-            const colTypes = this.columnTypesCache[table];
-            if (colTypes) {
-              const type = colTypes[filter.attribute];
-              if (type && !this.validateFilterValue(type, filter.value)) {
-                this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in row "${row.label || row.rowId}".`);
-                return;
+            const table = filter.dimTable || row.sourceTable;
+            if (table) {
+              const colTypes = this.columnTypesCache[table];
+              if (colTypes) {
+                const type = colTypes[filter.attribute];
+                if (type && !this.validateFilterValue(type, filter.value)) {
+                  this.errorMessage.set(`Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in row "${row.label || row.rowId}".`);
+                  return;
+                }
               }
             }
           }
@@ -3283,7 +4250,6 @@ export class ReportBuilderComponent implements OnInit {
       version:         this.reportVersion,
       exploreId:       1,
       status:          this.status,
-      sourceTable:     this.sourceTable,
       granularity:     this.granularity,
       reportingDate:   this.reportingDate,
       timeframeStart:  this.timeframeStart,

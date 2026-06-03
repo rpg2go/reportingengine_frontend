@@ -34,7 +34,20 @@ describe('ReportBuilderComponent', () => {
     quickFilters: 'col1',
     generalFilters: '[]',
     columns: [],
-    rows: []
+    rows: [
+      {
+        rowId: 'R1',
+        label: 'Metric 1',
+        rowType: 'data',
+        source: {
+          sourceTable: 'analytics.fact_sales',
+          targetColumn: 'amount',
+          aggregation: 'SUM'
+        },
+        sourceTable: 'analytics.fact_sales',
+        activeCols: ['C1']
+      }
+    ]
   };
 
   beforeEach(() => {
@@ -140,12 +153,13 @@ describe('ReportBuilderComponent', () => {
     expect(component.errorMessage()).toBe('Report ID and Report Title are mandatory fields.');
     expect(component.saving()).toBe(false);
 
-    // empty source table
+    // no active data rows with catalog source
     component.reportId = 'R2';
     component.reportName = 'Test Report';
-    component.sourceTable = '';
+    component.rows = []; // empty rows
     component.saveConfig();
-    expect(component.errorMessage()).toBe('Source Table is required.');
+    expect(component.errorMessage()).toBe('At least one data row with a valid catalog source field is required.');
+    expect(component.saving()).toBe(false);
   });
 
   it('should call createReport when saving a new report', () => {
@@ -293,14 +307,14 @@ describe('ReportBuilderComponent', () => {
 
     // 9. Invalid row filter
     component.rows = [
-      { rowId: 'R1', label: 'Row 1', rowType: 'data', rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: 'abc' }], activeCols: [] } as any
+      { rowId: 'R1', label: 'Row 1', rowType: 'data', sourceTable: 'table1', rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: 'abc' }], activeCols: [] } as any
     ];
     component.saveConfig();
     expect(component.errorMessage()).toContain('Value "abc" is not valid for column "age" of type "integer" in row "Row 1"');
 
     // 10. Valid row filter
     component.rows = [
-      { rowId: 'R1', label: 'Row 1', rowType: 'data', rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: '25' }], activeCols: [] } as any
+      { rowId: 'R1', label: 'Row 1', rowType: 'data', sourceTable: 'table1', rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: '25' }], activeCols: [] } as any
     ];
     component.errorMessage.set(null);
     component.saveConfig();
@@ -477,13 +491,12 @@ describe('ReportBuilderComponent', () => {
     expect(prf.rowFilters[0].attribute).toBe('age');
 
     // serializeMeasure
-    const sm = component['serializeMeasure']({ rowType: 'data', customSqlMode: false, measureAgg: 'SUM', measureCol: 'amount' });
+    const sm = component['serializeMeasure']({ rowType: 'data', customSqlMode: false, measureAgg: 'SUM', measureCol: 'amount', sourceTable: null });
     expect(sm).toEqual({
-      mode: 'visual',
       aggregation: 'SUM',
       targetColumn: 'amount',
-      table: null,
-      rawSql: null
+      sourceTable: null,
+      rawExpression: null
     });
 
     // serializeRowFilters
@@ -632,6 +645,99 @@ describe('ReportBuilderComponent', () => {
     // Trigger closeSqlModal
     component.closeSqlModal();
     expect(component.isSqlModalOpen()).toBe(false);
+  });
+
+  it('should filter schema tree with Table-Level Matching Cascade and Column-Level Matching Filter', () => {
+    createComponent({ id: 'new' });
+
+    const mockTree = [
+      {
+        category: 'Customer Dims',
+        sourceTable: 'analytics.dim_customers',
+        fields: [
+          { name: 'id', displayName: 'ID', sourceTable: 'analytics.dim_customers', type: 'integer' },
+          { name: 'name', displayName: 'Customer Name', sourceTable: 'analytics.dim_customers', type: 'varchar' }
+        ]
+      },
+      {
+        category: 'Investment Strategy Dims',
+        sourceTable: 'analytics.dim_investment_hierarchy',
+        fields: [
+          { name: 'strategy_id', displayName: 'Strategy ID', sourceTable: 'analytics.dim_investment_hierarchy', type: 'integer' },
+          { name: 'strategy_code', displayName: 'Strategy Code', sourceTable: 'analytics.dim_investment_hierarchy', type: 'varchar' }
+        ]
+      }
+    ];
+
+    component.dwhFieldsTree.set(mockTree);
+
+    // Case 1: Search term matches table name ("customer") -> Table-Level Matching Cascade (display all columns, force expand)
+    component.fieldsSearchQuery.set('customer');
+    let filtered = component.filteredSchemaTree();
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].sourceTable).toBe('analytics.dim_customers');
+    expect(filtered[0].fields.length).toBe(2); // Displays ALL fields
+    expect(component.isCategoryExpanded('analytics.dim_customers')).toBe(true);
+
+    // Case 2: Search term matches column name with underscore fuzzy matching ("investment hierarchy") -> Table-Level Matching Cascade
+    component.fieldsSearchQuery.set('investment hierarchy');
+    filtered = component.filteredSchemaTree();
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].sourceTable).toBe('analytics.dim_investment_hierarchy');
+    expect(filtered[0].fields.length).toBe(2);
+    expect(component.isCategoryExpanded('analytics.dim_investment_hierarchy')).toBe(true);
+
+    // Case 3: Search term matches individual column attribute ("code") -> Column-Level Matching Filter (only matches code field)
+    component.fieldsSearchQuery.set('code');
+    filtered = component.filteredSchemaTree();
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].sourceTable).toBe('analytics.dim_investment_hierarchy');
+    expect(filtered[0].fields.length).toBe(1);
+    expect(filtered[0].fields[0].name).toBe('strategy_code');
+    // For column match without table match, it uses standard expansion behavior
+    expect(component.isCategoryExpanded('analytics.dim_investment_hierarchy')).toBe(false); // Since it wasn't expanded previously
+
+    // Case 4: No matches -> Empty state (filtered length is 0)
+    component.fieldsSearchQuery.set('non_existent');
+    filtered = component.filteredSchemaTree();
+    expect(filtered.length).toBe(0);
+  });
+
+  it('should support collapsible sidebars for main menu navigation and DWH field picker', () => {
+    createComponent({ id: 'new' });
+
+    // Initial states
+    expect(component.isMainMenuCollapsed()).toBe(false);
+    expect(component.isFieldPickerOpen()).toBe(true);
+
+    // Toggle Main Menu
+    component.toggleMainMenu();
+    expect(component.isMainMenuCollapsed()).toBe(true);
+    component.toggleMainMenu();
+    expect(component.isMainMenuCollapsed()).toBe(false);
+
+    // Toggle Field Picker
+    component.toggleFieldPicker();
+    expect(component.isFieldPickerOpen()).toBe(false);
+    component.toggleFieldPicker();
+    expect(component.isFieldPickerOpen()).toBe(true);
+  });
+
+  it('should initialize columnWidths and update them on width changes', () => {
+    createComponent({ id: 'new' });
+
+    // Verify initial columnWidths signal values
+    expect(component.columnWidths()).toEqual([40, 80, 280, 140, 320, 340, 220, 50]);
+
+    // Verify computed styles
+    expect(component.computedWidthsString()).toBe('40px 80px 280px 140px 320px 340px 220px 50px');
+
+    // Trigger width change on Column index 2 (Row Name Label)
+    component.onColumnWidthChanged(2, 350);
+    expect(component.columnWidths()[2]).toBe(350);
+
+    // Verify computed styles recalculate reactively
+    expect(component.computedWidthsString()).toBe('40px 80px 350px 140px 320px 340px 220px 50px');
   });
 });
 

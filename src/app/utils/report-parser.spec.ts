@@ -15,25 +15,33 @@ describe('Report Parser Utilities', () => {
       expect(parseMeasure('SUM(amount)')).toEqual({
         aggFunction: 'SUM',
         measureCol: 'amount',
-        customSqlMode: false
+        sourceTable: '',
+        customSqlMode: false,
+        rawExpression: ''
       });
       expect(parseMeasure('count_distinct(user_id)')).toEqual({
         aggFunction: 'COUNT_DISTINCT',
         measureCol: 'user_id',
-        customSqlMode: false
+        sourceTable: '',
+        customSqlMode: false,
+        rawExpression: ''
       });
     });
 
     it('should parse MeasureDefinition objects correctly', () => {
-      expect(parseMeasure({ mode: 'visual', aggregation: 'SUM', targetColumn: 'amount' })).toEqual({
+      expect(parseMeasure({ mode: 'visual', aggregation: 'SUM', targetColumn: 'amount', sourceTable: 'analytics.fact_sales' })).toEqual({
         aggFunction: 'SUM',
         measureCol: 'amount',
-        customSqlMode: false
+        sourceTable: 'analytics.fact_sales',
+        customSqlMode: false,
+        rawExpression: ''
       });
-      expect(parseMeasure({ mode: 'raw', rawSql: 'SUM(amount) / 100' })).toEqual({
+      expect(parseMeasure({ mode: 'raw', rawSql: 'SUM(amount) / 100', sourceTable: 'analytics.fact_sales' })).toEqual({
         aggFunction: 'SUM',
         measureCol: '',
-        customSqlMode: true
+        sourceTable: 'analytics.fact_sales',
+        customSqlMode: true,
+        rawExpression: 'SUM(amount) / 100'
       });
     });
 
@@ -41,25 +49,28 @@ describe('Report Parser Utilities', () => {
       expect(parseMeasure('SUM(amount) / 100')).toEqual({
         aggFunction: 'SUM',
         measureCol: '',
-        customSqlMode: true
+        sourceTable: '',
+        customSqlMode: true,
+        rawExpression: 'SUM(amount) / 100'
       });
       expect(parseMeasure('')).toEqual({
         aggFunction: 'SUM',
         measureCol: '',
-        customSqlMode: false
+        sourceTable: '',
+        customSqlMode: false,
+        rawExpression: ''
       });
     });
   });
 
   describe('serializeMeasure', () => {
     it('should return object if customSqlMode is true or calculation row', () => {
-      const row = { rowType: 'data', customSqlMode: true, source: 'SUM(amount) / 100' };
+      const row = { rowType: 'data', customSqlMode: true, source: 'SUM(amount) / 100', sourceTable: 'analytics.fact_sales' };
       expect(serializeMeasure(row)).toEqual({
-        mode: 'raw',
         aggregation: null,
         targetColumn: null,
-        table: null,
-        rawSql: 'SUM(amount) / 100'
+        sourceTable: 'analytics.fact_sales',
+        rawExpression: 'SUM(amount) / 100'
       });
 
       const nonDataRow = { rowType: 'section', source: 'Section title' };
@@ -67,13 +78,12 @@ describe('Report Parser Utilities', () => {
     });
 
     it('should build visual object if customSqlMode is false', () => {
-      const row = { rowType: 'data', customSqlMode: false, measureAgg: 'AVG', measureCol: 'price' };
+      const row = { rowType: 'data', customSqlMode: false, measureAgg: 'AVG', measureCol: 'price', sourceTable: 'analytics.fact_sales' };
       expect(serializeMeasure(row)).toEqual({
-        mode: 'visual',
         aggregation: 'AVG',
         targetColumn: 'price',
-        table: null,
-        rawSql: null
+        sourceTable: 'analytics.fact_sales',
+        rawExpression: null
       });
     });
   });
