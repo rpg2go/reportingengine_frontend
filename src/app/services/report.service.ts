@@ -83,4 +83,8 @@ export class ReportService {
   getReportingDates(): Observable<string[]> {
     return this.getDistinctValues('dim_date', 'reporting_date');
   }
+
+  executeReport(id: string, payload: { reportingDate: string; runtimeFilters: any[] }): Observable<any[]> {
+    return this.http.post<any[]>(`${this.apiUrl}/${id}/execute`, payload);
+  }
 }

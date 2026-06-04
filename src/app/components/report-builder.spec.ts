@@ -727,17 +727,17 @@ describe('ReportBuilderComponent', () => {
     createComponent({ id: 'new' });
 
     // Verify initial columnWidths signal values
-    expect(component.columnWidths()).toEqual([40, 80, 280, 140, 320, 340, 220, 50]);
+    expect(component.columnWidths()).toEqual([40, 80, 80, 320, 140, 360, 240, 200, 50]);
 
     // Verify computed styles
-    expect(component.computedWidthsString()).toBe('40px 80px 280px 140px 320px 340px 220px 50px');
+    expect(component.computedWidthsString()).toBe('40px 80px 80px 320px 140px 360px 240px 200px 50px');
 
     // Trigger width change on Column index 2 (Row Name Label)
     component.onColumnWidthChanged(2, 350);
     expect(component.columnWidths()[2]).toBe(350);
 
     // Verify computed styles recalculate reactively
-    expect(component.computedWidthsString()).toBe('40px 80px 350px 140px 320px 340px 220px 50px');
+    expect(component.computedWidthsString()).toBe('40px 80px 350px 320px 140px 360px 240px 200px 50px');
   });
 });
 

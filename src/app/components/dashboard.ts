@@ -36,6 +36,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
             <span class="menu-icon">📁</span>
             <span>Reports</span>
           </a>
+          <a routerLink="/viewer" class="menu-item">
+            <span class="menu-icon">👁️</span>
+            <span>Reports Execution Hub</span>
+          </a>
           <a routerLink="/semantic" class="menu-item">
             <span class="menu-icon">🧠</span>
             <span>Semantic Layer</span>

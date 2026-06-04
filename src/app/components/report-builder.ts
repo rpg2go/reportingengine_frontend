@@ -14,6 +14,7 @@ import {
   formatDateForInput,
   dateOffsetString
 } from '../utils/report-parser';
+import { DateFormatter } from '../utils/date-formatter';
 
 export interface ValidationError {
   elementId: string;
@@ -94,6 +95,10 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
           <a routerLink="/dashboard" class="menu-item" [title]="isMainMenuCollapsed() ? 'Reports Catalog' : ''">
             <span class="menu-icon">📁</span>
             <span class="menu-text">Reports Catalog</span>
+          </a>
+          <a routerLink="/viewer" class="menu-item" [title]="isMainMenuCollapsed() ? 'Reports Execution Hub' : ''">
+            <span class="menu-icon">👁️</span>
+            <span class="menu-text">Reports Execution Hub</span>
           </a>
           <a routerLink="/semantic" class="menu-item" [title]="isMainMenuCollapsed() ? 'Semantic Layer' : ''">
             <span class="menu-icon">🧠</span>
@@ -202,7 +207,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       <th class="sticky-col">Label</th>
                       <th>ID</th>
                       <th>Type</th>
-                      @for (col of columns; track col.colId) {
+                      @for (col of expandedColumns(); track col.colId) {
                         <th class="col-flag-header">
                           <div><code>{{ col.colId }}</code></div>
                           <div class="preview-col-label">{{ col.label }}</div>
@@ -226,9 +231,9 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                         </td>
                         <td><code>{{ row.rowId }}</code></td>
                         <td><span class="row-type-badge" [class]="row.rowType">{{ row.rowType }}</span></td>
-                        @for (col of columns; track col.colId) {
+                        @for (col of expandedColumns(); track col.colId) {
                           <td class="col-flag-cell">
-                            @if (row.activeCols && row.activeCols.includes(col.colId.toUpperCase())) {
+                            @if (row.activeCols && (row.activeCols.includes(col.colId.toUpperCase()) || (col.parentColId && row.activeCols.includes(col.parentColId.toUpperCase())))) {
                               <span class="flag-dot">✓</span>
                             } @else {
                               <span class="flag-dash">-</span>
@@ -644,48 +649,54 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
             </button>
 
             <!-- Right Side: Grid Table Canvas -->
-            <div class="table-wrapper rows-table-wrapper">
-              <table class="grid-table" [style.--grid-template-cols]="computedWidthsString()" [style.--col-width-0]="columnWidths()[0] + 'px'" [style.--col-width-1]="columnWidths()[1] + 'px'">
+            <!-- Stable Fixed-Width Worksheet Layout -->
+            <div class="table-wrapper rows-table-wrapper" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+              <table class="grid-table rows-grid">
                 <thead>
-                  <tr>
-                    <th class="sticky-col-1" appColResizer [minWidth]="40" (widthChanged)="onColumnWidthChanged(0, $event)">
-                      <input type="checkbox" (change)="toggleAllRowsSelect($event)" />
+                  <tr class="worksheet-fixed-row">
+                    <!-- Track 1: Checkbox -->
+                    <th class="col-checkbox sticky-col-1">
+                      <div class="col-checkbox">
+                        <input type="checkbox" (change)="toggleAllRowsSelect($event)" />
+                      </div>
                     </th>
-                    <th class="sticky-col-2" appColResizer [minWidth]="60" (widthChanged)="onColumnWidthChanged(1, $event)">
-                      Row ID
+                    <!-- Track 2: Row ID -->
+                    <th class="col-row-id sticky-col-2">Row ID</th>
+                    <!-- Track 3: Hierarchy Spacer -->
+                    <th class="col-hierarchy">
+                      <div class="col-hierarchy"></div>
                     </th>
-                    <th class="sticky-col-3" appColResizer [minWidth]="100" (widthChanged)="onColumnWidthChanged(2, $event)">
-                      Row Name (Label)*
-                    </th>
-                    <th class="style-col-hdr" appColResizer [minWidth]="120" (widthChanged)="onColumnWidthChanged(3, $event)">
-                      Style / Layout
-                    </th>
-                    <th class="measure-col-hdr" appColResizer [minWidth]="150" (widthChanged)="onColumnWidthChanged(4, $event)">
-                      Measure Definition
-                    </th>
-                    <th class="filter-col-hdr" appColResizer [minWidth]="150" (widthChanged)="onColumnWidthChanged(5, $event)">
-                      Row Conditions / Filters
-                    </th>
-                    <th class="active-col-hdr" appColResizer [minWidth]="100" (widthChanged)="onColumnWidthChanged(6, $event)">
-                      Active Columns
-                    </th>
-                    <th class="actions-col-hdr" appColResizer [minWidth]="50" (widthChanged)="onColumnWidthChanged(7, $event)">
-                      Actions
-                    </th>
+                    <!-- Track 4: Row Name (Label)* -->
+                    <th class="col-row-name">Row Name (Label)*</th>
+                    <!-- Track 5: Style / Layout -->
+                    <th class="col-style-layout">Style / Layout</th>
+                    <!-- Track 6: Measure Definition -->
+                    <th class="col-measure-def">Measure Definition</th>
+                    <!-- Track 7: Row Conditions / Filters -->
+                    <th class="col-conditions">Row Conditions / Filters</th>
+                    <!-- Track 8: Active Columns -->
+                    <th class="col-active-cols">Active Columns</th>
+                    <!-- Track 9: Actions -->
+                    <th class="col-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (row of rows; track row.rowId; let idx = $index) {
-                    <tr [class.selected]="row.selected"
+                    <tr class="worksheet-fixed-row"
+                        [class.selected]="row.selected"
                         [class.has-critical]="hasError(row.rowId, 'CRITICAL')"
                         [class.has-warning]="hasError(row.rowId, 'WARNING')"
                         [title]="hasError(row.rowId) ? getErrorMessage(row.rowId) : ''"
                         (dragover)="onRowDragOver($event)"
                         (drop)="onRowDrop($event, row)">
-                      <td class="sticky-col-1"><input type="checkbox" [(ngModel)]="row.selected" /></td>
 
-                      <!-- Row ID -->
-                      <td class="sticky-col-2">
+                      <!-- Track 1: Checkbox -->
+                      <td class="col-checkbox sticky-col-1">
+                        <input type="checkbox" [(ngModel)]="row.selected" />
+                      </td>
+
+                      <!-- Track 2: Row ID -->
+                      <td class="col-row-id sticky-col-2">
                         <div class="row-id-cell">
                           <input type="text" [(ngModel)]="row.rowId" (ngModelChange)="triggerValidationDebounced()" placeholder="R1" class="cell-input center" />
                           @if (hasError(row.rowId, 'CRITICAL')) {
@@ -697,17 +708,23 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                         </div>
                       </td>
 
-                      <!-- Row Label with indent controls -->
-                      <td class="sticky-col-3">
-                        <div class="indent-wrapper" [style.padding-left.px]="row.indentLevel * 12">
+                      <!-- Track 3: Hierarchy/Indent -->
+                      <td class="col-hierarchy">
+                        <div class="indent-btns-cell">
                           <button (click)="changeIndent(row, -1); triggerValidationDebounced()" class="indent-btn" title="Decrease indent">«</button>
                           <button (click)="changeIndent(row, 1); triggerValidationDebounced()" class="indent-btn" title="Increase indent">»</button>
+                        </div>
+                      </td>
+
+                      <!-- Track 4: Row Name (Label) -->
+                      <td class="col-row-name">
+                        <div class="label-cell-inner" [style.padding-left.px]="row.indentLevel * 12">
                           <input type="text" [(ngModel)]="row.label" (ngModelChange)="triggerValidationDebounced()" placeholder="Row Label" class="cell-input" />
                         </div>
                       </td>
 
-                      <!-- Style / Type -->
-                      <td>
+                      <!-- Track 5: Style / Layout -->
+                      <td class="col-style-layout">
                         <div class="style-cell">
                           <select [(ngModel)]="row.rowType" (change)="onRowTypeChange(row); triggerValidationDebounced()" class="cell-select">
                             <option value="data">📊 data</option>
@@ -726,8 +743,8 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                         </div>
                       </td>
 
-                      <!-- ── Measure Definition column ─────────────────── -->
-                      <td class="measure-td">
+                      <!-- Track 6: Measure Definition -->
+                      <td class="col-measure-def measure-td">
                         @if (row.rowType === 'data') {
                           @if (row.customSqlMode) {
                             <!-- Custom SQL mode -->
@@ -800,7 +817,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       </td>
 
                       <!-- ── Row Conditions / Filters column ───────────── -->
-                      <td class="filter-td">
+                      <td class="col-conditions filter-td">
                         @if (row.rowType === 'data') {
                           <div class="row-filter-wrapper">
 
@@ -902,7 +919,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       </td>
 
                       <!-- Active Columns toggles -->
-                      <td>
+                      <td class="col-active-cols">
                         <div class="col-enable-toggles">
                           @for (col of columns; track col.colId) {
                             <span
@@ -914,7 +931,8 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                         </div>
                       </td>
 
-                      <td style="text-align:center">
+                      <!-- Actions -->
+                      <td class="col-actions" style="text-align:center">
                         <button (click)="deleteRow(idx)" class="remove-btn" title="Delete Row">🗑️</button>
                       </td>
                     </tr>
@@ -999,7 +1017,31 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       <input type="number" [(ngModel)]="col.periodOffset" (ngModelChange)="triggerValidationDebounced()" [disabled]="col.colType === 'CALC'" class="cell-input center" />
                     </td>
                     <td>
-                      <input type="number" [(ngModel)]="col.rollingN" (ngModelChange)="triggerValidationDebounced()" [disabled]="col.colType !== 'ROLLING'" placeholder="e.g. 10" class="cell-input center" />
+                      <!-- Rolling N + Grain selector — both active only for ROLLING columns -->
+                      <div class="rolling-cell">
+                        <input
+                          type="number"
+                          [(ngModel)]="col.rollingN"
+                          (ngModelChange)="triggerValidationDebounced()"
+                          [disabled]="col.colType !== 'ROLLING'"
+                          placeholder="e.g. 3"
+                          class="cell-input center rolling-n-input"
+                          title="Number of periods to look back"
+                        />
+                        @if (col.colType === 'ROLLING') {
+                          <!-- Grain selector: visible and required only when colType is ROLLING -->
+                          <select
+                            [(ngModel)]="col.rollingGrain"
+                            (ngModelChange)="triggerValidationDebounced()"
+                            class="cell-select rolling-grain-select"
+                            title="Time grain for this rolling window"
+                          >
+                            <option value="DAY">Days</option>
+                            <option value="WEEK">Weeks</option>
+                            <option value="MONTH">Months</option>
+                          </select>
+                        }
+                      </div>
                     </td>
                     <td>
                       <input
@@ -1543,128 +1585,143 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
     .grid-table tr.selected { background: rgba(99,102,241,0.05); }
 
-    /* CSS Grid Layout for the Rows Setup Table */
-    .rows-table-wrapper .grid-table thead tr,
-    .rows-table-wrapper .grid-table tbody tr {
-      display: grid;
-      grid-template-columns: var(--grid-template-cols);
+    /* ═══════════════════════════════════════════════════════════════════════
+       Static-Width Layout Pattern for Rows Setup worksheet.
+       Uses exact, unyielding pixel dimensions across all headers and rows
+       via the .worksheet-fixed-row class to enforce absolute vertical alignment.
+
+       Track layout:
+         1  32px   — Checkbox (.col-checkbox)
+         2  64px   — Row ID (.col-row-id)
+         3  64px   — Hierarchy (.col-hierarchy)
+         4  240px  — Row Name (.col-row-name)
+         5  190px  — Style / Layout (.col-style-layout)
+         6  460px  — Measure Definition (.col-measure-def)
+         7  340px  — Conditions (.col-conditions)
+         8  200px  — Active Columns (.col-active-cols)
+         9  42px   — Actions (.col-actions)
+    ═══════════════════════════════════════════════════════════════════════ */
+    .rows-grid { width: 100%; border-collapse: collapse; }
+
+    .worksheet-fixed-row {
+      display: flex;
+      width: max-content; /* Guarantees the row container never snaps or compresses prematurely */
+      align-items: center;
+      gap: 16px;          /* Clean, uniform horizontal separation between inputs */
     }
 
-    .rows-table-wrapper .grid-table th,
-    .rows-table-wrapper .grid-table td {
+    .col-checkbox     { width: 32px;  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    .col-row-id       { width: 64px;  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    .col-hierarchy    { width: 64px;  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    .col-row-name     { width: 240px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-style-layout { width: 190px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-measure-def  { width: 460px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-conditions   { width: 340px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-active-cols  { width: 200px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-actions      { width: 42px;  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+
+    /* All th/td inside the rows grid: flex, min-width:0, overflow hidden */
+    .rows-grid .worksheet-fixed-row > th,
+    .rows-grid .worksheet-fixed-row > td {
       display: flex;
       align-items: center;
       box-sizing: border-box;
-      min-width: 0;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      min-width: 0;          /* critical: prevents cells from overflowing their track */
       overflow: hidden;
+      padding: 0 2px;
     }
 
-    /* Sticky Left Columns for Rows Grid Table */
-    .rows-table-wrapper .grid-table th.sticky-col-1,
-    .rows-table-wrapper .grid-table td.sticky-col-1 {
+    /* Enforce strict containment on every column cell wrapper div container */
+    .row-id-cell,
+    .indent-btns-cell,
+    .label-cell-inner,
+    .style-cell,
+    .measure-custom-row,
+    .measure-builder-row,
+    .row-filter-wrapper,
+    .col-enable-toggles {
+      min-width: 0 !important;
+      overflow: hidden !important;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Sticky left columns — Tracks 1, 2 (checkbox, row-id) */
+    .rows-grid .sticky-col-1 {
       position: sticky;
       left: 0;
       z-index: 10;
       background: #1e293b;
-      width: 100%;
-      min-width: 0;
-      max-width: none;
       justify-content: center;
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      border-right: 1px solid rgba(255,255,255,0.05);
     }
-    
-    .rows-table-wrapper .grid-table th.sticky-col-2,
-    .rows-table-wrapper .grid-table td.sticky-col-2 {
+    .rows-grid .sticky-col-2 {
       position: sticky;
-      left: var(--col-width-0, 40px);
+      left: 48px; /* col-checkbox (32px) + gap (16px) */
       z-index: 10;
       background: #1e293b;
-      width: 100%;
-      min-width: 0;
-      max-width: none;
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      border-right: 1px solid rgba(255,255,255,0.05);
     }
-    
-    .rows-table-wrapper .grid-table th.sticky-col-3,
-    .rows-table-wrapper .grid-table td.sticky-col-3 {
-      position: sticky;
-      left: calc(var(--col-width-0, 40px) + var(--col-width-1, 80px));
-      z-index: 10;
-      background: #1e293b;
-      width: 100%;
-      min-width: 0;
-      max-width: none;
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.55);
-    }
-    
-    .rows-table-wrapper .grid-table th.sticky-col-1,
-    .rows-table-wrapper .grid-table th.sticky-col-2,
-    .rows-table-wrapper .grid-table th.sticky-col-3 {
+    /* Elevate header sticky cells above body sticky cells and align background */
+    .rows-grid thead .sticky-col-1,
+    .rows-grid thead .sticky-col-2 {
       z-index: 12;
-      background: #0f172a;
+      background: #1e293b !important;
     }
-    
-    .grid-table tr:hover td.sticky-col-1,
-    .grid-table tr:hover td.sticky-col-2,
-    .grid-table tr:hover td.sticky-col-3 {
-      background: #25334c !important;
+    .rows-grid tr:hover td.sticky-col-1,
+    .rows-grid tr:hover td.sticky-col-2 { background: #25334c !important; }
+    .rows-grid tr.selected td.sticky-col-1,
+    .rows-grid tr.selected td.sticky-col-2 { background: #2d3b55 !important; }
+
+    /* Enhanced Header Row Prominence Styling */
+    .rows-grid thead tr.worksheet-fixed-row {
+      background: #1e293b;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.15);
     }
-    
-    .grid-table tr.selected td.sticky-col-1,
-    .grid-table tr.selected td.sticky-col-2,
-    .grid-table tr.selected td.sticky-col-3 {
-      background: #2d3b55 !important;
+    .rows-grid thead tr.worksheet-fixed-row th {
+      color: #f1f5f9;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
-    /* Column Width constraints overridden for Step 1 rows layout */
-    .rows-table-wrapper .style-col-hdr, .rows-table-wrapper .grid-table td:nth-child(4) {
+    /* Bug fix #4: label inner wrapper fills its track and lets input grow */
+    .label-cell-inner {
+      display: flex;
+      align-items: center;
       width: 100%;
       min-width: 0;
-      max-width: none;
     }
-    .rows-table-wrapper .measure-col-hdr, .rows-table-wrapper .grid-table td.measure-td {
-      width: 100%;
+    .label-cell-inner .cell-input {
+      flex: 1 1 0;
       min-width: 0;
-      max-width: none;
+      width: 100%;
     }
-    .rows-table-wrapper .filter-col-hdr, .rows-table-wrapper .grid-table td.filter-td {
-      width: 100%;
-      min-width: 0;
-      max-width: none;
-    }
-    .rows-table-wrapper .active-col-hdr, .rows-table-wrapper .grid-table td:nth-child(7) {
-      width: 100%;
-      min-width: 0;
-      max-width: none;
-    }
-    .rows-table-wrapper .actions-col-hdr, .rows-table-wrapper .grid-table td:nth-child(8) {
-      width: 100%;
-      min-width: 0;
-      max-width: none;
+
+    /* Indent buttons cell: centered, does not grow */
+    .indent-btns-cell {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       justify-content: center;
     }
+
+    /* Track-specific alignment overrides */
+    .rows-grid .rg-col-check  { justify-content: center; }
+    .rows-grid .rg-col-actions { justify-content: center; }
+    .rows-grid .rg-col-active  { flex-wrap: wrap; gap: 4px; }
 
     /* Standard column constraints (preserved for Step 2) */
-    .style-col-hdr, .grid-table td:nth-child(4) {
+    .columns-section .grid-table td:nth-child(4) {
       width: 170px;
       min-width: 170px;
     }
-    .measure-col-hdr, .grid-table td.measure-td {
-      width: 320px;
-      min-width: 300px;
-    }
-    .filter-col-hdr, .grid-table td.filter-td {
-      width: 340px;
-      min-width: 320px;
-    }
-    .active-col-hdr, .grid-table td:nth-child(7) {
+    .columns-section .grid-table td:nth-child(7) {
       width: 200px;
       min-width: 160px;
     }
-    .actions-col-hdr, .grid-table td:nth-child(8) {
+    .columns-section .grid-table td:nth-child(8) {
       width: 60px;
       min-width: 60px;
       text-align: center;
@@ -2805,6 +2862,26 @@ export class ReportBuilderComponent implements OnInit {
   isNewReport = true;
   saving        = signal(false);
   showPreview   = signal(false);
+  previewTrigger = signal<number>(0);
+  expandedColumns = computed(() => {
+    this.previewTrigger(); // subscribe to updates
+    const refDate = this.reportingDate || new Date().toISOString().split('T')[0];
+    const expanded: any[] = [];
+    for (const col of this.columns) {
+      if (col.colType === 'ROLLING') {
+        const rollingN = col.rollingN || 1;
+        const rollingGrain = col.rollingGrain || 'WEEK';
+        const subCols = DateFormatter.getRollingSubColumns(refDate, col, rollingN, rollingGrain);
+        expanded.push(...subCols);
+      } else {
+        expanded.push({
+          ...col,
+          isExpandedSubCol: false
+        });
+      }
+    }
+    return expanded;
+  });
   successMessage = signal<string | null>(null);
   errorMessage   = signal<string | null>(null);
   sidebarOpen    = signal(false);
@@ -2812,7 +2889,10 @@ export class ReportBuilderComponent implements OnInit {
   isFieldPickerOpen = signal(true);
   
   // Resizable columns width state (Step 1 Rows Setup)
-  columnWidths = signal<number[]>([40, 80, 280, 140, 320, 340, 220, 50]);
+  // Bug fix #2: columnWidths and computedWidthsString are kept for the
+  // col-resizer directive on Step 2 (Columns Setup) but are no longer used
+  // by the Rows Setup grid, which now uses the .worksheet-fixed-row CSS class.
+  columnWidths = signal<number[]>([40, 80, 80, 320, 140, 360, 240, 200, 50]);
 
   computedWidthsString = computed(() => {
     return this.columnWidths().map(w => `${w}px`).join(' ');
@@ -2862,6 +2942,7 @@ export class ReportBuilderComponent implements OnInit {
   private validationTimeout: any;
 
   triggerValidationDebounced(): void {
+    this.previewTrigger.update(v => v + 1);
     if (this.validationTimeout) {
       clearTimeout(this.validationTimeout);
     }
@@ -2874,6 +2955,7 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   runValidation(): void {
+    this.previewTrigger.update(v => v + 1);
     if (!this.reportId) return;
     const payload = {
       reportId:        this.reportId,
@@ -3323,6 +3405,7 @@ export class ReportBuilderComponent implements OnInit {
       headerLayout: c.headerLayout || 'border',
       periodOffset: c.periodOffset,
       rollingN:     c.rollingN,
+      rollingGrain: c.rollingGrain ?? null,  // null for reports saved before this field existed
       formulaExpr:  c.formulaExpr,
       selected:     false
     }));
@@ -3828,7 +3911,8 @@ export class ReportBuilderComponent implements OnInit {
         }
         
         this.dwhFieldsTree.set(fieldGroups);
-        this.expandedCategories.set(this.dbTables);
+        // Bug fix #1: Boot fully collapsed. Drawers expand only when a search query matches.
+        this.expandedCategories.set([]);
         this.updateDimensionStates();
       },
       error: (err) => {
@@ -4110,7 +4194,17 @@ export class ReportBuilderComponent implements OnInit {
 
   addColumn(): void {
     const n = this.columns.length + 1;
-    this.columns.push({ colId: `C${n}`, label: `Column ${n}`, colType: 'WEEK', headerLayout: 'border', periodOffset: 0, rollingN: null, formulaExpr: '', selected: false });
+    this.columns.push({
+      colId:        `C${n}`,
+      label:        `Column ${n}`,
+      colType:      'WEEK',
+      headerLayout: 'border',
+      periodOffset: 0,
+      rollingN:     null,
+      rollingGrain: null,   // populated when user picks ROLLING grain
+      formulaExpr:  '',
+      selected:     false
+    });
   }
 
   resetColumns(): void {
@@ -4130,7 +4224,8 @@ export class ReportBuilderComponent implements OnInit {
 
   onColTypeChange(col: any): void {
     if (col.colType !== 'ROLLING') {
-      col.rollingN = null;
+      col.rollingN    = null;
+      col.rollingGrain = null;  // clear grain when leaving ROLLING
     }
     if (col.colType !== 'CALC') {
       col.formulaExpr = '';
@@ -4268,8 +4363,9 @@ export class ReportBuilderComponent implements OnInit {
         label:        c.label,
         colType:      c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN:     c.colType === 'ROLLING' ? c.rollingN : null,
-        formulaExpr:  c.colType === 'CALC' ? c.formulaExpr : '',
+        rollingN:     c.colType === 'ROLLING' ? c.rollingN    : null,
+        rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
+        formulaExpr:  c.colType === 'CALC'    ? c.formulaExpr  : '',
         displayOrder: i + 1
       })),
       rows: this.rows.map((r, i) => ({

@@ -27,6 +27,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'viewer',
+    loadComponent: () => import('./components/report-viewer').then(m => m.ReportViewerComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'viewer/:id',
+    loadComponent: () => import('./components/report-viewer').then(m => m.ReportViewerComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'semantic',
     loadComponent: () => import('./components/semantic').then(m => m.SemanticViewerComponent),
     canActivate: [authGuard]

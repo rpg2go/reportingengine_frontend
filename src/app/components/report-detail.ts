@@ -32,9 +32,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </div>
 
         <nav class="sidebar-menu">
-          <a routerLink="/dashboard" class="menu-item active">
+          <a routerLink="/dashboard" class="menu-item">
             <span class="menu-icon">📁</span>
             <span>Reports</span>
+          </a>
+          <a routerLink="/viewer" class="menu-item">
+            <span class="menu-icon">👁️</span>
+            <span>Reports Execution Hub</span>
           </a>
           <a routerLink="/semantic" class="menu-item">
             <span class="menu-icon">🧠</span>
