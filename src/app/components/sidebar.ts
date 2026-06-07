@@ -14,9 +14,13 @@ import { AuthService } from '../services/auth.service';
   },
   template: `
     <!-- Mobile overlay backdrop -->
-    <div class="sidebar-overlay" [class.visible]="mobileOpen()" (click)="closeMobileSidebar()"></div>
+    <div
+      class="sidebar-overlay"
+      [class.visible]="mobileOpen()"
+      (click)="closeMobileSidebar()"
+    ></div>
 
-    <aside 
+    <aside
       class="sidebar transition-all duration-300 ease-in-out"
       [class.collapsed]="!isSidebarExpanded()"
       [class.expanded]="isSidebarExpanded()"
@@ -24,33 +28,139 @@ import { AuthService } from '../services/auth.service';
       (mouseenter)="onMouseEnter()"
       (mouseleave)="onMouseLeave()"
     >
-      <button class="sidebar-close-btn" (click)="closeMobileSidebar()" aria-label="Close navigation">✕</button>
-      
+      <button
+        class="sidebar-close-btn"
+        (click)="closeMobileSidebar()"
+        aria-label="Close navigation"
+      >
+        ✕
+      </button>
+
       <div class="sidebar-brand">
-        <span class="brand-icon">{{ brandIcon() }}</span>
+        <span class="brand-icon">
+          @if (brandIcon() === '🛠️') {
+            <svg
+              class="icon-svg brand-logo-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+              />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          } @else {
+            <svg
+              class="icon-svg brand-logo-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+              />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+          }
+        </span>
         @if (isSidebarExpanded()) {
           <span class="brand-text animate-fade-in">{{ brandText() }}</span>
         }
-        <button class="menu-collapse-btn" (click)="toggleExpand()" [title]="isSidebarExpanded() ? 'Collapse Menu' : 'Expand Menu'">
+        <button
+          class="menu-collapse-btn"
+          (click)="toggleExpand()"
+          [title]="isSidebarExpanded() ? 'Collapse Menu' : 'Expand Menu'"
+        >
           {{ isSidebarExpanded() ? '«' : '➔' }}
         </button>
       </div>
 
       <nav class="sidebar-menu">
-        <a routerLink="/dashboard" routerLinkActive="active" class="menu-item" [title]="!isSidebarExpanded() ? 'Reports Catalog' : ''">
-          <span class="menu-icon">📁</span>
+        <a
+          routerLink="/dashboard"
+          routerLinkActive="active"
+          class="menu-item"
+          [title]="!isSidebarExpanded() ? 'Reports Catalog' : ''"
+        >
+          <span class="menu-icon">
+            <svg
+              class="icon-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M2 10h20" />
+              <path
+                d="M22 14v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2 3h10a2 2 0 0 1 2 2Z"
+              />
+            </svg>
+          </span>
           @if (isSidebarExpanded()) {
             <span class="menu-text animate-fade-in">Reports Catalog</span>
           }
         </a>
-        <a routerLink="/viewer" routerLinkActive="active" class="menu-item" [title]="!isSidebarExpanded() ? 'Reports Execution Hub' : ''">
-          <span class="menu-icon">👁️</span>
+        <a
+          routerLink="/viewer"
+          routerLinkActive="active"
+          class="menu-item"
+          [title]="!isSidebarExpanded() ? 'Reports Execution Hub' : ''"
+        >
+          <span class="menu-icon">
+            <svg
+              class="icon-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+              <path d="M9 9h6v6H9z" />
+              <path d="M9 1v3" />
+              <path d="M15 1v3" />
+              <path d="M9 20v3" />
+              <path d="M15 20v3" />
+              <path d="M20 9h3" />
+              <path d="M20 15h3" />
+              <path d="M1 9h3" />
+              <path d="M1 15h3" />
+            </svg>
+          </span>
           @if (isSidebarExpanded()) {
             <span class="menu-text animate-fade-in">Reports Execution Hub</span>
           }
         </a>
-        <a routerLink="/semantic" routerLinkActive="active" class="menu-item" [title]="!isSidebarExpanded() ? 'Semantic Layer' : ''">
-          <span class="menu-icon">🧠</span>
+        <a
+          routerLink="/semantic"
+          routerLinkActive="active"
+          class="menu-item"
+          [title]="!isSidebarExpanded() ? 'Semantic Layer' : ''"
+        >
+          <span class="menu-icon">
+            <svg
+              class="icon-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="16" y="16" width="6" height="6" rx="1" />
+              <rect x="2" y="16" width="6" height="6" rx="1" />
+              <rect x="9" y="2" width="6" height="6" rx="1" />
+              <path d="M12 8v4" />
+              <path d="M12 12H5v4" />
+              <path d="M12 12h7v4" />
+            </svg>
+          </span>
           @if (isSidebarExpanded()) {
             <span class="menu-text animate-fade-in">Semantic Layer</span>
           }
@@ -146,7 +256,7 @@ import { AuthService } from '../services/auth.service';
       width: 100%;
       height: 40px;
     }
-    
+
     .sidebar.collapsed .sidebar-brand {
       justify-content: center;
       gap: 0;
@@ -230,11 +340,29 @@ import { AuthService } from '../services/auth.service';
     }
 
     .menu-icon {
-      font-size: 20px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+    }
+
+    .icon-svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 2;
+      transition:
+        stroke 0.2s ease,
+        transform 0.2s ease;
+    }
+    .menu-item:hover .icon-svg {
+      transform: scale(1.05);
+    }
+
+    .brand-logo-icon {
+      width: 22px;
+      height: 22px;
+      color: #818cf8;
+      stroke-width: 2;
     }
 
     .menu-text {
@@ -369,8 +497,14 @@ import { AuthService } from '../services/auth.service';
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateX(-4px); }
-      to { opacity: 1; transform: translateX(0); }
+      from {
+        opacity: 0;
+        transform: translateX(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     @media (max-width: 1023px) {
@@ -423,7 +557,7 @@ import { AuthService } from '../services/auth.service';
         display: block;
       }
     }
-  `
+  `,
 })
 export class SidebarComponent {
   brandIcon = input<string>('📊');
@@ -444,7 +578,10 @@ export class SidebarComponent {
     return this.isManuallyExpanded() || this.isHovered();
   });
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
 
   username = computed(() => this.authService.getUsername());
 
@@ -457,7 +594,7 @@ export class SidebarComponent {
   }
 
   toggleExpand() {
-    this.isManuallyExpanded.update(v => !v);
+    this.isManuallyExpanded.update((v) => !v);
   }
 
   closeMobileSidebar() {
