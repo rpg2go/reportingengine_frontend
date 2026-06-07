@@ -8,23 +8,33 @@ The interface features a **premium glassmorphic dark-mode design** with customiz
 
 ## 🎨 Key Features & Components
 
-The application is structured into standalone components routed dynamically under `src/app/app.routes.ts`:
+The application is structured into standalone components routed dynamically under [app.routes.ts](src/app/app.routes.ts):
 
-1. **Sign In (`/login`)** — [LoginComponent](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/login.ts):
-   - Secure interface validating user authentication.
-   - Leverages Basic Auth headers via [AuthService](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/services/auth.service.ts).
+1. **Sign In (`/login`)** — [LoginComponent](src/app/components/login.ts):
+   - Secure interface validating user credentials.
+   - Leverages Basic Auth headers via [AuthService](src/app/services/auth.service.ts).
 
-2. **Reports Catalog (`/dashboard`)** — [DashboardComponent](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/dashboard.ts):
+2. **Reports Catalog (`/dashboard`)** — [DashboardComponent](src/app/components/dashboard.ts):
    - Browse a catalog of active and draft report templates loaded in the database metadata tables.
    - Upload and ingest new Excel templates (`.xlsx`) directly using drag-and-drop or file selection.
    - Auto-refreshes the catalog dynamically upon template ingestion.
 
-3. **Template Visualizer (`/reports/:id`)** — [ReportDetailComponent](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/report-detail.ts):
-   - View full details of the columns (types: `DATE`, `DATA`, `CALC`) and rows (types: `label`, `data`, `calc`) for a specific report layout.
-   - Select a Reference Date (e.g., `2025-12-31`) and run the reporting engine.
-   - Downloads the compiled, calculated, and POI-styled spreadsheet directly to the user's local downloads folder.
+3. **Report Builder (`/reports/new/edit` or `/reports/:id/edit`)** — [ReportBuilderComponent](src/app/components/report-builder.ts):
+   - Interactive drag-and-drop template designer for configuring columns (`DATE`, `DATA`, `CALC`) and rows (`label`, `data`, `calc`).
+   - Integrates with [FieldPickerComponent](src/app/components/field-picker.ts) and [RowFilterComponent](src/app/components/row-filter.ts) to choose source fields and design query filter criteria.
+   - Dynamic real-time preview of the compiled SQL script.
 
-4. **Semantic Layer Browser (`/semantic`)** — [SemanticViewerComponent](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/semantic.ts):
+4. **Template Visualizer (`/reports/:id`)** — [ReportDetailComponent](src/app/components/report-detail.ts):
+   - View details of columns and rows for a specific report layout configuration.
+   - Select a Reference Date and run the reporting engine.
+   - Direct download of compiled and POI-styled spreadsheet binaries.
+
+5. **Reports Execution Hub (`/viewer` or `/viewer/:id`)** — [ReportViewerComponent](src/app/components/report-viewer.ts):
+   - Select a report template, override filters, choose a reporting date, and run execution in real-time.
+   - Render calculated report models as interactive datagrids with resizable columns via [ColResizerDirective](src/app/directives/col-resizer.directive.ts).
+   - Export calculated grids directly to CSV formats with built-in formula injection sanitization.
+
+6. **Semantic Layer Browser (`/semantic`)** — [SemanticViewerComponent](src/app/components/semantic.ts):
    - Inspect the logical metadata definitions in the semantic registry.
    - Browse **Explores & Joins** to see how fact and dimension tables are logically mapped together (e.g., join conditions).
    - Browse **Views & Schema Mapping** to inspect defined **Dimensions** (with physical column names) and **Measures** (with SQL aggregation expressions and types).
@@ -131,27 +141,45 @@ npm install -g @angular/cli
 ## 📂 Project Structure
 
 ```
-ReportTemplate_FrontEnd/
+reportingengine_frontend/
 ├── .agents/             # ADK validation agents configuration & code
 │   ├── agents/          # Validator specifications
 │   └── validation/      # Executable validation agent (agent.py, tools.py)
 ├── src/app/
-│   ├── components/      # Standalone view components
-│   │   ├── login.ts     # User auth view
+│   ├── components/      # Standalone view components and subcomponents
 │   │   ├── dashboard.ts # Main catalog page & spreadsheet uploader
+│   │   ├── field-picker.ts # Modal selector for fact & dimension fields
+│   │   ├── login.ts     # User auth view
+│   │   ├── report-builder.ts # Interactive drag-and-drop report layout builder
 │   │   ├── report-detail.ts # In-depth layout visualizer & run executor
-│   │   └── semantic.ts  # LookML-equivalent metadata registry browser
+│   │   ├── report-viewer.ts # Reports Execution Hub for running reports
+│   │   ├── row-filter.ts # Advanced filter group builder component
+│   │   ├── semantic.ts  # LookML-equivalent metadata registry browser
+│   │   ├── sidebar.ts   # Collapsible responsive sidebar component
+│   │   └── value-picker.ts # Autocomplete fuzzy search dropdown component
+│   ├── directives/
+│   │   └── col-resizer.directive.ts # Visual column resizing directive
 │   ├── guards/
 │   │   └── auth.guard.ts# Route guard to block unauthenticated access
+│   ├── interceptors/
+│   │   └── auth.interceptor.ts # Attaches Authorization header to HTTP calls
 │   ├── services/
 │   │   ├── auth.service.ts # Session storage & authorization header manager
 │   │   └── report.service.ts # HTTP REST client mapping to the Spring Boot API
+│   ├── utils/
+│   │   ├── date-formatter.ts # Date utilities and helpers
+│   │   ├── report-parser.ts # Serializes and deserializes report data
+│   │   └── search-analyzer.ts # Utility for query parsing and analyzer
 │   ├── app.config.ts    # Application providers (HttpClient, Router, etc.)
+│   ├── app.css          # Global and design token styles
 │   ├── app.html         # Shell containing <router-outlet>
 │   ├── app.routes.ts    # Standalone routing table definition
 │   └── app.ts           # Core app component bootloader
 ├── angular.json         # Angular CLI configuration
 ├── Dockerfile           # Serves built files via Nginx
 ├── package.json         # Node.js dependencies configuration
+├── proxy.conf.json      # Development server backend proxy configuration
+├── run.sh               # Bootstrap script for Nginx container startup
+├── vitest.config.ts     # Vitest runner configuration
 └── GEMINI.md            # Frontend architecture reference and guide
 ```

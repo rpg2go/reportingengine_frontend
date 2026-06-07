@@ -8,7 +8,7 @@ This document serves as the UI/UX architecture reference, implementation state, 
 
 - **Objective**: Build a premium, metadata-driven visual report layout builder.
 - **Phase 1 (Completed)**: Standalone components, responsive CSS dark-theme layout, drag-and-drop row reordering, and step-based wizards.
-- **Phase 2 (Pending)**: Real-time execution status badges and run spinner integration for Phase 2 engine compilation.
+- **Phase 2 (Completed)**: Real-time execution status badges (draft, published, running status tags) and run spinner integration (visual loading feedback during ingestion, layout compilation, and database execution queries).
 
 ---
 
@@ -32,23 +32,42 @@ This document serves as the UI/UX architecture reference, implementation state, 
    - The `ngOnInit` routine in `report-builder.ts` fires backend fetches concurrently via RxJS `forkJoin` (getting table schema metadata and report details in parallel). The UI perceived load equals `max(t_tables, t_config)` rather than `t_tables + t_config`.
 4. **Decoupled API Paths**:
    - Service calls use relative paths (`/api/auth` and `/api/reports`) instead of hardcoded backend domain names, allowing the same build artifact to be deployed transparently behind an Nginx proxy or gateway (e.g. Cloud Run).
+5. **Signal-Based Reactive State**:
+   - The frontend leverages modern Angular signals (`signal`, `computed`, `model`, `input`, `output`) and `ChangeDetectionStrategy.OnPush` to manage application state reactively. This avoids unnecessary ZoneJS change detection cycles and drastically improves UI responsiveness.
+6. **Formula Injection Sanitization & Validation**:
+   - The UI blocks layout configurations (saving columns or rows) where labels start with formula triggers (`=`, `+`, `-`, `@`). Additionally, the datagrid export to CSV sanitizes pivoted cell metrics to prevent client-side formula execution inside spreadsheet programs.
 
 ---
 
 ## 📂 Codebase Tour
 
-Use the links below to navigate directly to the primary frontend components:
+Use the links below to navigate directly to the frontend source files:
 
 ### Frontend Component Views (`src/app/components/`)
-- [login.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/login.ts) — Secure login viewport with credential validation.
-- [dashboard.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/dashboard.ts) — Catalog overview and multipart spreadsheet uploader.
-- [report-builder.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/report-builder.ts) — Interactive drag-and-drop report layout builder.
-- [report-detail.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/report-detail.ts) — Configuration inspector and execution download panel.
-- [semantic.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/components/semantic.ts) — Interactive DWH logical explore/join metadata browser.
+- [login.ts](src/app/components/login.ts) — Secure login viewport with credential validation.
+- [dashboard.ts](src/app/components/dashboard.ts) — Catalog overview and multipart spreadsheet uploader.
+- [report-builder.ts](src/app/components/report-builder.ts) — Interactive drag-and-drop report layout builder with live SQL preview.
+- [report-detail.ts](src/app/components/report-detail.ts) — Configuration inspector and execution download panel.
+- [report-viewer.ts](src/app/components/report-viewer.ts) — Reports Execution Hub to run reports and view calculated datagrids.
+- [semantic.ts](src/app/components/semantic.ts) — Interactive DWH logical explore/join metadata browser.
+- [sidebar.ts](src/app/components/sidebar.ts) — Collapsible responsive navigation bar.
+- [field-picker.ts](src/app/components/field-picker.ts) — Fact and dimension field picker modal.
+- [row-filter.ts](src/app/components/row-filter.ts) — Query condition filter configuration component.
+- [value-picker.ts](src/app/components/value-picker.ts) — Autocomplete lookup dropdown component.
+
+### Directives & Guards & Interceptors
+- [col-resizer.directive.ts](src/app/directives/col-resizer.directive.ts) — Directive for adjusting datagrid column widths.
+- [auth.guard.ts](src/app/guards/auth.guard.ts) — Router guard to secure authenticated routes.
+- [auth.interceptor.ts](src/app/interceptors/auth.interceptor.ts) — Automatically injects Basic Auth header into API requests.
 
 ### Data & State Services (`src/app/services/`)
-- [auth.service.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/services/auth.service.ts) — Handles user sessions, local storage, and Auth header interceptor logic.
-- [report.service.ts](file:///G:/workspace/ReportTemplate_FrontEnd/src/app/services/report.service.ts) — Manages DTO mutations, file uploads, and schema fetching.
+- [auth.service.ts](src/app/services/auth.service.ts) — Handles user sessions, local storage, and Auth header interceptor logic.
+- [report.service.ts](src/app/services/report.service.ts) — Manages DTO mutations, file uploads, schema fetching, and report execution.
+
+### Utilities (`src/app/utils/`)
+- [date-formatter.ts](src/app/utils/date-formatter.ts) — Safe date parsing, normalization, and formatting helpers.
+- [report-parser.ts](src/app/utils/report-parser.ts) — Expression parser/serializer for filters and measures.
+- [search-analyzer.ts](src/app/utils/search-analyzer.ts) — Fuzzy matcher and token weight analyzer for searches.
 
 ---
 
@@ -79,6 +98,6 @@ npm run build
 
 ## 🌐 Production Nginx Deployment
 
-The Angular build is containerized using the [Dockerfile](file:///G:/workspace/ReportTemplate_FrontEnd/Dockerfile) which runs Nginx and serves static assets.
+The Angular build is containerized using the [Dockerfile](Dockerfile) which runs Nginx and serves static assets.
 - **Dynamic Proxying**: Nginx acts as a reverse proxy forwarding `/api` calls to the backend.
 - **Backend Host Configuration**: At startup, `run.sh` updates `nginx.conf.template` with the backend environment host `BACKEND_HOST`, resolving upstream gateway timeouts.
