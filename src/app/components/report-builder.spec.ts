@@ -42,12 +42,12 @@ describe('ReportBuilderComponent', () => {
         source: {
           sourceTable: 'analytics.fact_sales',
           targetColumn: 'amount',
-          aggregation: 'SUM'
+          aggregation: 'SUM',
         },
         sourceTable: 'analytics.fact_sales',
-        activeCols: ['C1']
-      }
-    ]
+        activeCols: ['C1'],
+      },
+    ],
   };
 
   beforeEach(() => {
@@ -65,19 +65,19 @@ describe('ReportBuilderComponent', () => {
       createReport: vi.fn(),
       saveReport: vi.fn(),
       validateReport: vi.fn().mockReturnValue(of({ errors: [] })),
-      previewSql: vi.fn().mockReturnValue(of({ sql: '' }))
+      previewSql: vi.fn().mockReturnValue(of({ sql: '' })),
     };
     mockAuthService = {
-      getUsername: vi.fn().mockReturnValue('admin')
+      getUsername: vi.fn().mockReturnValue('admin'),
     };
     mockRouter = {
-      navigate: vi.fn()
+      navigate: vi.fn(),
     };
     mockRoute = {
-      params: of({ id: 'new' })
+      params: of({ id: 'new' }),
     };
     mockDestroyRef = {
-      onDestroy: vi.fn().mockReturnValue(() => {})
+      onDestroy: vi.fn().mockReturnValue(() => {}),
     };
   });
 
@@ -93,8 +93,8 @@ describe('ReportBuilderComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: mockRoute },
-        { provide: DestroyRef, useValue: mockDestroyRef }
-      ]
+        { provide: DestroyRef, useValue: mockDestroyRef },
+      ],
     });
 
     runInInjectionContext(injector, () => {
@@ -145,7 +145,7 @@ describe('ReportBuilderComponent', () => {
 
   it('should validate inputs in saveConfig', () => {
     createComponent({ id: 'new' });
-    
+
     // empty reportId & name
     component.reportId = '';
     component.reportName = '';
@@ -158,7 +158,50 @@ describe('ReportBuilderComponent', () => {
     component.reportName = 'Test Report';
     component.rows = []; // empty rows
     component.saveConfig();
-    expect(component.errorMessage()).toBe('At least one data row with a valid catalog source field is required.');
+    expect(component.errorMessage()).toBe(
+      'At least one data row with a valid catalog source field is required.',
+    );
+    expect(component.saving()).toBe(false);
+  });
+
+  it('should block saveConfig if column or row labels start with formula triggers', () => {
+    createComponent({ id: 'R1' });
+    component.reportId = 'R1';
+    component.reportName = 'Test Report';
+
+    component.rows = [
+      {
+        rowId: 'row1',
+        label: 'Row Label',
+        rowType: 'data',
+        measureType: 'SUM',
+        factTable: 'f_sales',
+        factField: 'amount',
+      } as any,
+    ];
+    component.columns = [
+      {
+        colId: 'col1',
+        label: 'Col Label',
+        colType: 'DATE',
+      } as any,
+    ];
+
+    // Column label starting with '='
+    component.columns[0].label = '=unsafe';
+    component.saveConfig();
+    expect(component.errorMessage()).toContain(
+      'Column label "=unsafe" cannot start with formula triggers',
+    );
+    expect(component.saving()).toBe(false);
+
+    // Reset column label and set Row label starting with '+'
+    component.columns[0].label = 'Safe Col';
+    component.rows[0].label = '+unsafe_row';
+    component.saveConfig();
+    expect(component.errorMessage()).toContain(
+      'Row label "+unsafe_row" cannot start with formula triggers',
+    );
     expect(component.saving()).toBe(false);
   });
 
@@ -189,7 +232,7 @@ describe('ReportBuilderComponent', () => {
 
   it('should call saveReport when saving an existing report', () => {
     createComponent({ id: 'R1' });
-    
+
     const saveSubject = new Subject<any>();
     mockReportService.saveReport.mockReturnValue(saveSubject);
 
@@ -212,9 +255,11 @@ describe('ReportBuilderComponent', () => {
 
   it('should handle save error gracefully', () => {
     createComponent({ id: 'R1' });
-    mockReportService.saveReport.mockReturnValue(throwError(() => ({
-      error: { message: 'Persistence failed' }
-    })));
+    mockReportService.saveReport.mockReturnValue(
+      throwError(() => ({
+        error: { message: 'Persistence failed' },
+      })),
+    );
 
     component.saveConfig();
 
@@ -240,25 +285,27 @@ describe('ReportBuilderComponent', () => {
 
     // Populate column types cache manually for the test
     component.columnTypesCache = {
-      'table1': {
-        'age': 'integer',
-        'salary': 'numeric',
-        'active': 'boolean',
-        'created_at': 'date'
-      }
+      table1: {
+        age: 'integer',
+        salary: 'numeric',
+        active: 'boolean',
+        created_at: 'date',
+      },
     };
 
     // 1. Invalid integer
     component.quickFilters = [
-      { dimTable: '', attribute: 'age', operator: '=', value: 'abc', conjunction: 'AND' }
+      { dimTable: '', attribute: 'age', operator: '=', value: 'abc', conjunction: 'AND' },
     ];
     component.saveConfig();
-    expect(component.errorMessage()).toContain('Value "abc" is not valid for column "age" of type "integer"');
+    expect(component.errorMessage()).toContain(
+      'Value "abc" is not valid for column "age" of type "integer"',
+    );
     expect(component.saving()).toBe(false);
 
     // 2. Valid integer
     component.quickFilters = [
-      { dimTable: '', attribute: 'age', operator: '=', value: '25', conjunction: 'AND' }
+      { dimTable: '', attribute: 'age', operator: '=', value: '25', conjunction: 'AND' },
     ];
     component.errorMessage.set(null);
     component.saveConfig();
@@ -266,29 +313,31 @@ describe('ReportBuilderComponent', () => {
 
     // 3. Invalid numeric
     component.generalFilters = [
-      { dimTable: '', attribute: 'salary', operator: '>', value: '123.45abc' }
+      { dimTable: '', attribute: 'salary', operator: '>', value: '123.45abc' },
     ];
     component.saveConfig();
-    expect(component.errorMessage()).toContain('Value "123.45abc" is not valid for column "salary" of type "numeric"');
+    expect(component.errorMessage()).toContain(
+      'Value "123.45abc" is not valid for column "salary" of type "numeric"',
+    );
 
     // 4. Valid numeric
     component.generalFilters = [
-      { dimTable: '', attribute: 'salary', operator: '>', value: '123.45' }
+      { dimTable: '', attribute: 'salary', operator: '>', value: '123.45' },
     ];
     component.errorMessage.set(null);
     component.saveConfig();
     expect(component.errorMessage()).toBeNull();
 
     // 5. Invalid boolean
-    component.generalFilters = [
-      { dimTable: '', attribute: 'active', operator: '=', value: 'yes' }
-    ];
+    component.generalFilters = [{ dimTable: '', attribute: 'active', operator: '=', value: 'yes' }];
     component.saveConfig();
-    expect(component.errorMessage()).toContain('Value "yes" is not valid for column "active" of type "boolean"');
+    expect(component.errorMessage()).toContain(
+      'Value "yes" is not valid for column "active" of type "boolean"',
+    );
 
     // 6. Valid boolean
     component.generalFilters = [
-      { dimTable: '', attribute: 'active', operator: '=', value: 'true' }
+      { dimTable: '', attribute: 'active', operator: '=', value: 'true' },
     ];
     component.errorMessage.set(null);
     component.saveConfig();
@@ -296,14 +345,16 @@ describe('ReportBuilderComponent', () => {
 
     // 7. Invalid date
     component.generalFilters = [
-      { dimTable: '', attribute: 'created_at', operator: '>', value: 'not-a-date' }
+      { dimTable: '', attribute: 'created_at', operator: '>', value: 'not-a-date' },
     ];
     component.saveConfig();
-    expect(component.errorMessage()).toContain('Value "not-a-date" is not valid for column "created_at" of type "date"');
+    expect(component.errorMessage()).toContain(
+      'Value "not-a-date" is not valid for column "created_at" of type "date"',
+    );
 
     // 8. Valid date
     component.generalFilters = [
-      { dimTable: '', attribute: 'created_at', operator: '>', value: '2025-12-31' }
+      { dimTable: '', attribute: 'created_at', operator: '>', value: '2025-12-31' },
     ];
     component.errorMessage.set(null);
     component.saveConfig();
@@ -311,14 +362,30 @@ describe('ReportBuilderComponent', () => {
 
     // 9. Invalid row filter
     component.rows = [
-      { rowId: 'R1', label: 'Row 1', rowType: 'data', sourceTable: 'table1', rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: 'abc' }], activeCols: [] } as any
+      {
+        rowId: 'R1',
+        label: 'Row 1',
+        rowType: 'data',
+        sourceTable: 'table1',
+        rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: 'abc' }],
+        activeCols: [],
+      } as any,
     ];
     component.saveConfig();
-    expect(component.errorMessage()).toContain('Value "abc" is not valid for column "age" of type "integer" in row "Row 1"');
+    expect(component.errorMessage()).toContain(
+      'Value "abc" is not valid for column "age" of type "integer" in row "Row 1"',
+    );
 
     // 10. Valid row filter
     component.rows = [
-      { rowId: 'R1', label: 'Row 1', rowType: 'data', sourceTable: 'table1', rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: '25' }], activeCols: [] } as any
+      {
+        rowId: 'R1',
+        label: 'Row 1',
+        rowType: 'data',
+        sourceTable: 'table1',
+        rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: '25' }],
+        activeCols: [],
+      } as any,
     ];
     component.errorMessage.set(null);
     component.saveConfig();
@@ -327,7 +394,12 @@ describe('ReportBuilderComponent', () => {
 
   it('should clear value when pending row filter attribute changes', () => {
     createComponent({ id: 'new' });
-    component.pendingRowFilter = { dimTable: 'table1', attribute: 'age', operator: '=', value: '25' };
+    component.pendingRowFilter = {
+      dimTable: 'table1',
+      attribute: 'age',
+      operator: '=',
+      value: '25',
+    };
     component.onPendingFilterAttrChange();
     expect(component.pendingRowFilter.value).toBe('');
   });
@@ -341,7 +413,13 @@ describe('ReportBuilderComponent', () => {
 
   it('should reset row filters and legacy expr on row type change to non-data', () => {
     createComponent({ id: 'new' });
-    const row = { rowType: 'calc', rowFilters: [{ attribute: 'age' }], legacyFilterExpr: 'age = 25', source: 'sum', customSqlMode: true };
+    const row = {
+      rowType: 'calc',
+      rowFilters: [{ attribute: 'age' }],
+      legacyFilterExpr: 'age = 25',
+      source: 'sum',
+      customSqlMode: true,
+    };
     component.onRowTypeChange(row);
     expect(row.rowFilters).toEqual([]);
     expect(row.legacyFilterExpr).toBe('');
@@ -483,30 +561,38 @@ describe('ReportBuilderComponent', () => {
 
   it('should call parsing, serialization and utility helpers', () => {
     createComponent({ id: 'new' });
-    
+
     // parseMeasure
-    const pm = component['parseMeasure']("SUM(amount)");
+    const pm = component['parseMeasure']('SUM(amount)');
     expect(pm.aggFunction).toBe('SUM');
     expect(pm.measureCol).toBe('amount');
 
     // parseRowFilterExpr
-    const prf = component['parseRowFilterExpr']('[{"dimTable":"","attribute":"age","operator":"=","value":"25"}]');
+    const prf = component['parseRowFilterExpr'](
+      '[{"dimTable":"","attribute":"age","operator":"=","value":"25"}]',
+    );
     expect(prf.rowFilters.length).toBe(1);
     expect(prf.rowFilters[0].attribute).toBe('age');
 
     // serializeMeasure
-    const sm = component['serializeMeasure']({ rowType: 'data', customSqlMode: false, measureAgg: 'SUM', measureCol: 'amount', sourceTable: null });
+    const sm = component['serializeMeasure']({
+      rowType: 'data',
+      customSqlMode: false,
+      measureAgg: 'SUM',
+      measureCol: 'amount',
+      sourceTable: null,
+    });
     expect(sm).toEqual({
       aggregation: 'SUM',
       targetColumn: 'amount',
       sourceTable: null,
-      rawExpression: null
+      rawExpression: null,
     });
 
     // serializeRowFilters
     const srf = component['serializeRowFilters']({
       rowType: 'data',
-      rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: '25' }]
+      rowFilters: [{ dimTable: '', attribute: 'age', operator: '=', value: '25' }],
     });
     expect(srf).toContain('"attribute":"age"');
 
@@ -516,7 +602,7 @@ describe('ReportBuilderComponent', () => {
 
     // isFilterValueInvalid
     component.columnTypesCache = {
-      'table1': { 'age': 'integer' }
+      table1: { age: 'integer' },
     };
     component.sourceTable = 'table1';
     expect(component.isFilterValueInvalid({ attribute: 'age', value: '25' })).toBe(false);
@@ -527,9 +613,14 @@ describe('ReportBuilderComponent', () => {
 
   it('should manage pending row filters and fetch distinct values', () => {
     createComponent({ id: 'new' });
-    
+
     // 1. onPendingFilterAttrChange with cached distinct values
-    component.pendingRowFilter = { dimTable: 'table1', attribute: 'age', operator: '=', value: '25' };
+    component.pendingRowFilter = {
+      dimTable: 'table1',
+      attribute: 'age',
+      operator: '=',
+      value: '25',
+    };
     component.distinctValues = { 'table1.age': ['20', '30'] };
     component.onPendingFilterAttrChange();
     expect(component.pendingRowFilterValues).toEqual(['20', '30']);
@@ -537,7 +628,12 @@ describe('ReportBuilderComponent', () => {
 
     // 2. onPendingFilterAttrChange with non-cached distinct values (calls service)
     mockReportService.getDistinctValues.mockReturnValue(of(['40', '50']));
-    component.pendingRowFilter = { dimTable: 'table1', attribute: 'age', operator: '=', value: '25' };
+    component.pendingRowFilter = {
+      dimTable: 'table1',
+      attribute: 'age',
+      operator: '=',
+      value: '25',
+    };
     component.distinctValues = {};
     component.onPendingFilterAttrChange();
     expect(mockReportService.getDistinctValues).toHaveBeenCalledWith('table1', 'age');
@@ -545,16 +641,26 @@ describe('ReportBuilderComponent', () => {
 
     // 3. confirmRowFilter with invalid value
     globalThis.alert = vi.fn();
-    component.columnTypesCache = { 'table1': { 'age': 'integer' } };
+    component.columnTypesCache = { table1: { age: 'integer' } };
     component.sourceTable = 'table1';
-    component.pendingRowFilter = { dimTable: 'table1', attribute: 'age', operator: '=', value: 'abc' };
+    component.pendingRowFilter = {
+      dimTable: 'table1',
+      attribute: 'age',
+      operator: '=',
+      value: 'abc',
+    };
     const row = { rowFilters: [] } as any;
     component.confirmRowFilter(row);
     expect(globalThis.alert).toHaveBeenCalled();
     expect(row.rowFilters.length).toBe(0);
 
     // 4. confirmRowFilter with valid value
-    component.pendingRowFilter = { dimTable: 'table1', attribute: 'age', operator: '=', value: '25' };
+    component.pendingRowFilter = {
+      dimTable: 'table1',
+      attribute: 'age',
+      operator: '=',
+      value: '25',
+    };
     component.confirmRowFilter(row);
     expect(row.rowFilters.length).toBe(1);
     expect(row.rowFilters[0].value).toBe('25');
@@ -562,7 +668,7 @@ describe('ReportBuilderComponent', () => {
 
   it('should switch preview tabs and manage loading state', () => {
     createComponent({ id: 'new' });
-    
+
     // Switch to grid by default
     component.activePreviewTab.set('grid');
     expect(component.activePreviewTab()).toBe('grid');
@@ -587,10 +693,23 @@ describe('ReportBuilderComponent', () => {
     component.reportName = 'Sales Report';
     component.sourceTable = 'analytics.fact_sales';
     component.columns = [
-      { colId: 'C1', label: 'WTD no.', colType: 'WEEK', periodOffset: 0, rollingN: null, formulaExpr: null }
+      {
+        colId: 'C1',
+        label: 'WTD no.',
+        colType: 'WEEK',
+        periodOffset: 0,
+        rollingN: null,
+        formulaExpr: null,
+      },
     ];
     component.rows = [
-      { rowId: 'R1', label: 'GBS gross', rowType: 'data', source: 'SUM(amount)', activeCols: ['C1'] }
+      {
+        rowId: 'R1',
+        label: 'GBS gross',
+        rowType: 'data',
+        source: 'SUM(amount)',
+        activeCols: ['C1'],
+      },
     ];
 
     component.runSqlPreview();
@@ -602,9 +721,14 @@ describe('ReportBuilderComponent', () => {
 
   it('should highlight error cells and return true for element warning state', () => {
     createComponent({ id: 'new' });
-    
+
     component.validationErrors.set([
-      { elementId: 'R5', fieldContext: 'filterExpr', errorSeverity: 'WARNING', displayMessage: 'Row warning details' }
+      {
+        elementId: 'R5',
+        fieldContext: 'filterExpr',
+        errorSeverity: 'WARNING',
+        displayMessage: 'Row warning details',
+      },
     ]);
 
     expect(component.hasError('R5', 'WARNING')).toBe(true);
@@ -620,12 +744,14 @@ describe('ReportBuilderComponent', () => {
     if (!navigator.clipboard) {
       Object.defineProperty(navigator, 'clipboard', {
         value: {
-          writeText: () => Promise.resolve()
+          writeText: () => Promise.resolve(),
         },
-        configurable: true
+        configurable: true,
       });
     }
-    const clipboardSpy = vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => Promise.resolve());
+    const clipboardSpy = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockImplementation(() => Promise.resolve());
 
     component.reportId = 'R1';
     component.reportName = 'Sales Report';
@@ -659,18 +785,38 @@ describe('ReportBuilderComponent', () => {
         category: 'Customer Dims',
         sourceTable: 'analytics.dim_customers',
         fields: [
-          { name: 'id', displayName: 'ID', sourceTable: 'analytics.dim_customers', type: 'integer' },
-          { name: 'name', displayName: 'Customer Name', sourceTable: 'analytics.dim_customers', type: 'varchar' }
-        ]
+          {
+            name: 'id',
+            displayName: 'ID',
+            sourceTable: 'analytics.dim_customers',
+            type: 'integer',
+          },
+          {
+            name: 'name',
+            displayName: 'Customer Name',
+            sourceTable: 'analytics.dim_customers',
+            type: 'varchar',
+          },
+        ],
       },
       {
         category: 'Investment Strategy Dims',
         sourceTable: 'analytics.dim_investment_hierarchy',
         fields: [
-          { name: 'strategy_id', displayName: 'Strategy ID', sourceTable: 'analytics.dim_investment_hierarchy', type: 'integer' },
-          { name: 'strategy_code', displayName: 'Strategy Code', sourceTable: 'analytics.dim_investment_hierarchy', type: 'varchar' }
-        ]
-      }
+          {
+            name: 'strategy_id',
+            displayName: 'Strategy ID',
+            sourceTable: 'analytics.dim_investment_hierarchy',
+            type: 'integer',
+          },
+          {
+            name: 'strategy_code',
+            displayName: 'Strategy Code',
+            sourceTable: 'analytics.dim_investment_hierarchy',
+            type: 'varchar',
+          },
+        ],
+      },
     ];
 
     component.dwhFieldsTree.set(mockTree);
@@ -734,14 +880,17 @@ describe('ReportBuilderComponent', () => {
     expect(component.columnWidths()).toEqual([40, 80, 80, 320, 140, 360, 240, 200, 50]);
 
     // Verify computed styles
-    expect(component.computedWidthsString()).toBe('40px 80px 80px 320px 140px 360px 240px 200px 50px');
+    expect(component.computedWidthsString()).toBe(
+      '40px 80px 80px 320px 140px 360px 240px 200px 50px',
+    );
 
     // Trigger width change on Column index 2 (Row Name Label)
     component.onColumnWidthChanged(2, 350);
     expect(component.columnWidths()[2]).toBe(350);
 
     // Verify computed styles recalculate reactively
-    expect(component.computedWidthsString()).toBe('40px 80px 350px 320px 140px 360px 240px 200px 50px');
+    expect(component.computedWidthsString()).toBe(
+      '40px 80px 350px 320px 140px 360px 240px 200px 50px',
+    );
   });
 });
-
