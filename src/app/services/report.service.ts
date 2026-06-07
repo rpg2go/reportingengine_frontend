@@ -67,6 +67,10 @@ export class ReportService {
     return this.http.get<string[]>(`${this.apiUrl}/dimensions/values?table=${table}&column=${column}`);
   }
 
+  getMetadataDistinctValues(table: string, column: string): Observable<string[]> {
+    return this.http.get<string[]>(`/api/metadata/distinct-values?table=${table}&column=${column}`);
+  }
+
   /**
    * Fetches dimension view joins available for a given fact table.
    * Backend endpoint: GET /api/reports/dimension-joins?factTable=<table>

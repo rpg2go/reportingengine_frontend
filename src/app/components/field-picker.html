@@ -1,0 +1,79 @@
+<div class="field-picker-container">
+  <div class="input-wrapper">
+    @if (!isOpen()) {
+      <div 
+        class="picker-input cursor-pointer flex items-center justify-between" 
+        (click)="$event.stopPropagation(); onInputFocus()"
+        tabindex="0"
+        (keydown.enter)="onInputFocus()"
+        (keydown.space)="onInputFocus()"
+      >
+        <span class="truncate font-medium flex items-center gap-1.5" [class.text-slate-500]="!value()" [class.text-sky-400]="value()">
+          @if (value()) {
+            <span class="selected-field-chip">
+              {{ displayLabel() }}
+            </span>
+          } @else {
+            {{ placeholder() }}
+          }
+        </span>
+      </div>
+    } @else {
+      <input
+        #comboboxInput
+        type="text"
+        [(ngModel)]="localSearchQuery"
+        (ngModelChange)="onInputChange($event)"
+        (focus)="onInputFocus()"
+        (click)="$event.stopPropagation()"
+        (keydown)="handleKeyDown($event)"
+        [placeholder]="placeholder()"
+        class="picker-input"
+        role="combobox"
+        [attr.aria-expanded]="isOpen()"
+        aria-autocomplete="list"
+      />
+    }
+    <button type="button" class="arrow-btn" (click)="toggleDropdown($event)" aria-label="Toggle dropdown options">
+      <span class="arrow-icon">▾</span>
+    </button>
+  </div>
+  
+  @if (isOpen()) {
+    <div class="picker-popover-panel" (click)="$event.stopPropagation()">
+      <div class="picker-options-list" #optionsList role="listbox">
+        @if (visibleTree().length === 0) {
+          <div class="picker-no-results">No tables or fields found</div>
+        } @else {
+          @for (group of visibleTree(); track group.sourceTable) {
+            <div class="picker-group-header" (click)="toggleTable(group.sourceTable, $event)">
+              <span class="folder-indicator transition-transform duration-200" [class.rotate-90]="group.isExpanded">▶</span>
+              <span class="folder-name">{{ group.category }}</span>
+              <span class="table-badge-mini">{{ group.sourceTable.replace('analytics.', '') }}</span>
+            </div>
+            
+            @if (group.isExpanded) {
+              <div class="picker-group-fields-container">
+                @for (field of group.fields; track field.name) {
+                  <div
+                    class="picker-option-item"
+                    [class.active]="isFieldActive(group.sourceTable, field.name)"
+                    [class.selected]="isSelected(group.sourceTable, field.name)"
+                    (click)="selectField(group, field, $event)"
+                    (mouseenter)="onFieldHover(group.sourceTable, field.name)"
+                    role="option"
+                    [attr.aria-selected]="isSelected(group.sourceTable, field.name)"
+                  >
+                    <span class="picker-option-category-muted">{{ group.category }} -> </span>
+                    <span class="picker-option-name">{{ field.name }}</span>
+                    <span class="picker-option-type">{{ field.type || 'varchar' }}</span>
+                  </div>
+                }
+              </div>
+            }
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

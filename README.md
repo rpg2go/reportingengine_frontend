@@ -35,57 +35,96 @@ The application is structured into standalone components routed dynamically unde
 
 ### Prerequisites
 
-- **Node.js**: v18+ / v20+ recommended
-- **NPM**: v9+ (uses package manager NPM v11.8.0)
-- **Python (v3.10+)**: Required for running the ADK validation agent
+To build, test, and run the frontend, ensure your development environment has the following installed:
 
-### Setup & Installation
+*   **Node.js (LTS v24.x):** Runtimes for Angular compiling.
+*   **npm:** Package manager (specifically tested and packaged with `npm@11.8.0`).
+*   **Angular CLI:** (Installed globally or run via local project scripts).
+*   **Python v3.10+ & Pip:** Required for running the ADK validation agent.
 
-1. Install dependencies from the repository root:
+---
+
+### Step-by-Step Multi-OS Environment Setup
+
+#### 🍎 macOS Setup (using Homebrew & NVM)
+1. **Install Homebrew** (if not installed):
    ```bash
-   npm install
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. **Install NVM & Node.js v24**:
+   ```bash
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+   source ~/.zshrc # or ~/.bashrc depending on shell
+   nvm install 24
+   nvm use 24
+   ```
+3. **Install Angular CLI Globally (Optional)**:
+   ```bash
+   npm install -g @angular/cli
    ```
 
-### Running Locally
+#### 🐧 Ubuntu / Debian Setup (using apt & NodeSource)
+1. **Configure NodeSource and Install Node.js**:
+   ```bash
+   sudo apt update
+   sudo apt install -y curl git
+   curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+   sudo apt install -y nodejs
+   ```
+2. **Install Angular CLI Globally (Optional)**:
+   ```bash
+   sudo npm install -g @angular/cli
+   ```
 
-To launch the Angular development server:
+#### 🪟 Windows Setup (using winget via PowerShell Admin)
+```powershell
+# Install Node.js LTS
+winget install --id OpenJS.NodeJS.LTS -e --source winget
 
-```bash
-npm start
+# Install Angular CLI globally
+npm install -g @angular/cli
 ```
 
-The server will start at **[http://localhost:4200/](http://localhost:4200/)**. The page will automatically reload if you change any of the source files.
+---
 
-### Backend Connection
+### Setup & Installation (Local Development)
 
-The application connects to the Spring Boot REST API at **`http://localhost:8101/api/reports`**.
-Ensure the backend server is running in parallel.
+1. **Install Dependencies**:
+   Because of a peer dependency conflict between the legacy `vitest` dependency (`^3.0.0`) and `@angular/build` (`^4.0.8` peer requirements), you **must** use the `--legacy-peer-deps` flag:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
 
-### Building
+2. **Start Angular Dev Server**:
+   Run the local server with backend proxy integration:
+   ```bash
+   npm start
+   ```
+   *This runs `ng serve --proxy-config proxy.conf.json`. The application will be available at [http://127.0.0.1:4200/](http://127.0.0.1:4200/).*
 
-To build the optimized production package:
+3. **Backend Connection**:
+   The application connects to the Spring Boot REST API at **`http://127.0.0.1:8101/api`**. Ensure the backend server is running in parallel.
 
-```bash
-npm run build
-```
+4. **Building**:
+   To build the optimized production package:
+   ```bash
+   npm run build
+   ```
+   *Build artifacts will be written to `dist/frontend/browser/`.*
 
-Build artifacts will be written to `dist/frontend/browser/`.
+5. **Run ADK Validation Agent**:
+   To validate the frontend build, styling guidelines, and accessibility rules:
+   ```bash
+   adk run .agents/validation
+   ```
+   *Prompt the agent with: `"Validate the Angular build and UI components"` or `"Audit CSS templates and lints"`.*
 
-### Run ADK Validation Agent
-
-To validate the frontend build, styling guidelines, and accessibility rules:
-```bash
-adk run .agents/validation
-```
-Prompt the agent with: `"Validate the Angular build and UI components"` or `"Audit CSS templates and lints"`.
-
-### Unit Testing
-
-To run tests using Angular test utility tools:
-
-```bash
-npm test
-```
+6. **Unit Testing**:
+   Run the unit test suite using Vitest:
+   ```bash
+   npm test
+   ```
+   *This executes `vitest run` in the terminal.*
 
 ---
 

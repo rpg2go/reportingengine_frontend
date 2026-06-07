@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SidebarComponent } from './sidebar';
 
 @Component({
   selector: 'app-report-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent],
   template: `
     <div class="dashboard-container">
       <!-- Mobile topbar -->
@@ -21,35 +22,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </button>
         <span class="topbar-brand">Reporting Engine</span>
       </div>
-      <!-- Sidebar overlay backdrop -->
-      <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="closeSidebar()"></div>
-      <!-- Sidebar -->
-      <aside class="sidebar" [class.open]="sidebarOpen()">
-        <button class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close navigation">✕</button>
-        <div class="sidebar-brand">
-          <span class="brand-icon">📊</span>
-          <span class="brand-text">Reporting Engine</span>
-        </div>
-
-        <nav class="sidebar-menu">
-          <a routerLink="/dashboard" class="menu-item">
-            <span class="menu-icon">📁</span>
-            <span>Reports</span>
-          </a>
-          <a routerLink="/viewer" class="menu-item">
-            <span class="menu-icon">👁️</span>
-            <span>Reports Execution Hub</span>
-          </a>
-          <a routerLink="/semantic" class="menu-item">
-            <span class="menu-icon">🧠</span>
-            <span>Semantic Layer</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-user">
-          <button (click)="goBack()" class="back-btn">← Back to Catalog</button>
-        </div>
-      </aside>
+      <app-sidebar
+        brandIcon="📊"
+        brandText="Reporting Engine"
+        [showBackButton]="true"
+        backButtonText="← Back to Catalog"
+        collapsedBackButtonText="←"
+        [mobileOpen]="sidebarOpen()"
+        (mobileOpenChange)="sidebarOpen.set($event)"
+        (backClick)="goBack()"
+      ></app-sidebar>
 
       <!-- Main Content -->
       <main class="main-content">

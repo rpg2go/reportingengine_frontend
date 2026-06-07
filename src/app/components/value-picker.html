@@ -1,0 +1,68 @@
+<div class="value-picker-container" (click)="$event.stopPropagation()">
+  <!-- Tagged Chip Input Housing Grid Layout -->
+  <div 
+    class="picker-input-housing" 
+    [class.is-focused]="isOpen()" 
+    (click)="isOpen.set(!isOpen())"
+  >
+    <div class="chips-container">
+      @for (val of selectedValues(); track val) {
+        <span class="value-chip" (click)="$event.stopPropagation()">
+          {{ val }}
+          <button 
+            type="button" 
+            class="chip-delete-btn" 
+            (click)="removeValue(val, $event)" 
+            aria-label="Remove value"
+          >
+            ✕
+          </button>
+        </span>
+      }
+      @if (!selectedValues() || selectedValues().length === 0) {
+        <span class="placeholder-text">{{ placeholder() }}</span>
+      }
+    </div>
+    <div class="arrow-indicator">
+      <span class="arrow-icon">{{ isOpen() ? '▲' : '▼' }}</span>
+    </div>
+  </div>
+
+  <!-- Multi-Select Checkbox Overlay Template Layout -->
+  @if (isOpen()) {
+    <div class="picker-dropdown-overlay" (click)="$event.stopPropagation()">
+      <!-- Search Input inside Dropdown -->
+      <div class="dropdown-search-wrapper">
+        <input
+          type="text"
+          class="dropdown-search-input"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event)"
+          placeholder="Search distinct values..."
+          (click)="$event.stopPropagation()"
+          (keydown)="$event.stopPropagation()"
+        />
+      </div>
+
+      <!-- Scrollable list of distinct checkbox options -->
+      <div class="dropdown-options-list">
+        @for (val of filteredValues(); track val) {
+          <div 
+            class="dropdown-option-item" 
+            [class.is-selected]="selectedValues().includes(val)"
+            (click)="toggleValueSelection(val); $event.stopPropagation()"
+          >
+            <span class="checkbox-indicator">
+              @if (selectedValues().includes(val)) {
+                ✓
+              }
+            </span>
+            <span class="option-label" [title]="val">{{ val }}</span>
+          </div>
+        } @empty {
+          <div class="no-options-message">No matching values found</div>
+        }
+      </div>
+    </div>
+  }
+</div>
