@@ -8,6 +8,20 @@ export interface RowFilterCondition {
 export function parseMeasure(source: any): { aggFunction: string; measureCol: string; sourceTable: string; customSqlMode: boolean; rawExpression: string } {
   if (!source) return { aggFunction: 'SUM', measureCol: '', sourceTable: '', customSqlMode: false, rawExpression: '' };
   
+  if (typeof source === 'string') {
+    const trimmed = source.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          source = parsed;
+        }
+      } catch (e) {
+        // ignore and proceed
+      }
+    }
+  }
+
   if (typeof source === 'object') {
     const isRaw = (source.rawExpression != null && source.rawExpression !== '') || (source.rawSql != null && source.rawSql !== '') || source.mode === 'raw';
     if (isRaw) {
@@ -30,7 +44,7 @@ export function parseMeasure(source: any): { aggFunction: string; measureCol: st
   }
 
   if (typeof source === 'string') {
-    const m = source.match(/^(SUM|COUNT|COUNT_DISTINCT|AVG|MIN|MAX)\((.+)\)$/i);
+    const m = source.match(/^(SUM|COUNT|COUNT_DISTINCT|COUNTA|AVG|MIN|MAX)\((.+)\)$/i);
     if (m) return { aggFunction: m[1].toUpperCase(), measureCol: m[2], sourceTable: '', customSqlMode: false, rawExpression: '' };
     return { aggFunction: 'SUM', measureCol: '', sourceTable: '', customSqlMode: true, rawExpression: source };
   }
@@ -62,7 +76,7 @@ export function serializeMeasure(row: any): any {
     return {
       sourceTable: row.sourceTable || null,
       targetColumn: row.measureCol || '',
-      aggregation: row.measureAgg || 'SUM',
+      aggregation: row.measureAgg === 'COUNTA' ? 'COUNT' : (row.measureAgg || 'SUM'),
       rawExpression: null
     };
   }

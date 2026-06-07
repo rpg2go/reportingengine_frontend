@@ -15,6 +15,16 @@ import {
   dateOffsetString
 } from '../utils/report-parser';
 import { DateFormatter } from '../utils/date-formatter';
+import { FieldPickerComponent } from './field-picker';
+import { SidebarComponent } from './sidebar';
+import { RowFilterComponent } from './row-filter';
+interface CalendarDay {
+  date: Date;
+  dayNum: number;
+  isCurrentMonth: boolean;
+  formattedStr: string;
+  isEnabled: boolean;
+}
 
 export interface ValidationError {
   elementId: string;
@@ -29,6 +39,9 @@ interface FilterCondition {
   operator: string;
   value: string;
   dimTable?: string;    // empty → fact table; set → dimension view name
+  availableValues?: string[];
+  showDropdown?: boolean;
+  selectedValue?: string;
 }
 
 /** A runtime-exposed filter condition (shown to users at report run time). */
@@ -38,6 +51,9 @@ interface QuickFilterCondition {
   operator:    string;
   value:       string;
   conjunction: 'AND' | 'OR';    // how this condition joins the NEXT one (ignored for last)
+  availableValues?: string[];
+  showDropdown?: boolean;
+  selectedValue?: string;
 }
 
 /** Structured condition attached to a single row's measure definition. */
@@ -61,12 +77,10 @@ export interface FieldGroup {
   fields: DwhField[];
 }
 
-import { ColResizerDirective } from '../directives/col-resizer.directive';
-
 @Component({
   selector: 'app-report-builder',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ColResizerDirective],
+  imports: [CommonModule, RouterModule, FormsModule, FieldPickerComponent, SidebarComponent, RowFilterComponent],
   template: `
     <div class="builder-container">
       <!-- Mobile topbar -->
@@ -78,38 +92,17 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
         </button>
         <span class="topbar-brand">Report Builder</span>
       </div>
-      <!-- Sidebar overlay backdrop -->
-      <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="closeSidebar()"></div>
-      <!-- ════════════════════════════════════════════ SIDEBAR -->
-      <aside class="sidebar" [class.open]="sidebarOpen()" [class.collapsed]="isMainMenuCollapsed()">
-        <button class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close navigation">✕</button>
-        <div class="sidebar-brand">
-          <span class="brand-icon">🛠️</span>
-          <span class="brand-text">Report Builder</span>
-          <button class="menu-collapse-btn" (click)="toggleMainMenu()" [title]="isMainMenuCollapsed() ? 'Expand Menu' : 'Collapse Menu'">
-            {{ isMainMenuCollapsed() ? '➔' : '«' }}
-          </button>
-        </div>
-
-        <nav class="sidebar-menu">
-          <a routerLink="/dashboard" class="menu-item" [title]="isMainMenuCollapsed() ? 'Reports Catalog' : ''">
-            <span class="menu-icon">📁</span>
-            <span class="menu-text">Reports Catalog</span>
-          </a>
-          <a routerLink="/viewer" class="menu-item" [title]="isMainMenuCollapsed() ? 'Reports Execution Hub' : ''">
-            <span class="menu-icon">👁️</span>
-            <span class="menu-text">Reports Execution Hub</span>
-          </a>
-          <a routerLink="/semantic" class="menu-item" [title]="isMainMenuCollapsed() ? 'Semantic Layer' : ''">
-            <span class="menu-icon">🧠</span>
-            <span class="menu-text">Semantic Layer</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-user">
-          <button (click)="goBack()" class="back-btn">{{ isMainMenuCollapsed() ? '✕' : '← Cancel & Exit' }}</button>
-        </div>
-      </aside>
+      <!-- Sidebar / Header -->
+      <app-sidebar
+        brandIcon="🛠️"
+        brandText="Report Builder"
+        [showBackButton]="true"
+        backButtonText="← Cancel & Exit"
+        collapsedBackButtonText="✕"
+        [mobileOpen]="sidebarOpen()"
+        (mobileOpenChange)="sidebarOpen.set($event)"
+        (backClick)="goBack()"
+      ></app-sidebar>
 
       <!-- ══════════════════════════════════════════ MAIN CONTENT -->
       <main class="main-content animate-fade-in">
@@ -294,55 +287,106 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
             <div class="form-group">
               <label for="report-version">Version</label>
-              <input type="number" id="report-version" [(ngModel)]="reportVersion" class="form-input" />
+              <input
+                type="number"
+                id="report-version"
+                [(ngModel)]="reportVersion"
+                readonly
+                class="form-input bg-slate-900/50 cursor-not-allowed text-slate-400"
+                title="Automatically versioned on publishing"
+              />
             </div>
 
             <div class="form-group">
               <label for="report-status">Report Status</label>
-              <select id="report-status" [(ngModel)]="status" class="form-select">
+              <select
+                id="report-status"
+                [ngModel]="status"
+                (ngModelChange)="onStatusChange($event)"
+                class="form-select"
+              >
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
               </select>
             </div>
 
-            <!-- Granularity (bound to conformed keys) -->
+            <!-- Granularity (bound to conformed keys / dynamic granularity fields) -->
             <div class="form-group">
               <label for="granularity">Report Granularity*</label>
-              <select id="granularity" [(ngModel)]="granularity" class="form-select">
+              <select
+                id="granularity"
+                [(ngModel)]="granularity"
+                (ngModelChange)="triggerValidationDebounced()"
+                class="form-select"
+              >
                 <option value="">-- Select grouping column --</option>
-                @for (key of conformedKeys; track key) {
-                  <option [value]="key">{{ key }}</option>
+                @for (opt of dynamicGranularityOptions(); track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
                 }
               </select>
             </div>
 
-            <!-- Reporting Date (from dim_date.reporting_date) -->
+            <!-- Reporting Date (guarded database calendar picker) -->
             <div class="form-group">
               <label for="reporting-date">Reporting Date <span class="label-hint">(from dim_date)</span></label>
-              @if (availableReportingDates.length > 0) {
-                <!-- Populated from dim_date — single date value picker -->
-                <select
+              <div class="custom-datepicker-wrapper">
+                <!-- Trigger button showing current value or placeholder -->
+                <button
+                  type="button"
                   id="reporting-date"
-                  [(ngModel)]="reportingDate"
-                  class="form-select"
+                  class="datepicker-trigger-btn"
+                  [class.active]="showDatePicker()"
+                  (click)="toggleDatePicker()"
                 >
-                  <option value="">— select a reporting date —</option>
-                  @for (d of availableReportingDates; track d) {
-                    <option [value]="d">{{ d }}</option>
-                  }
-                </select>
-                <span class="field-hint">{{ availableReportingDates.length }} dates available in dim_date</span>
-              } @else {
-                <!-- Fallback while dim_date is still loading -->
-                <input
-                  type="date"
-                  id="reporting-date"
-                  [(ngModel)]="reportingDate"
-                  class="form-input"
-                  title="Type YYYY-MM-DD — dim_date list is loading"
-                />
-                <span class="field-hint">Loading available dates from dim_date…</span>
-              }
+                  <span>{{ reportingDate || '— select a reporting date —' }}</span>
+                  <span class="calendar-icon">📅</span>
+                </button>
+
+                <!-- Click-outside handler backdrop -->
+                @if (showDatePicker()) {
+                  <div class="datepicker-backdrop" (click)="showDatePicker.set(false)"></div>
+                }
+
+                <!-- Datepicker Dropdown Grid overlay -->
+                @if (showDatePicker()) {
+                  <div class="datepicker-dropdown animate-fade-in" (click)="$event.stopPropagation()">
+                    <div class="datepicker-header">
+                      <button type="button" class="datepicker-nav-btn" (click)="prevMonth()">◀</button>
+                      <span class="datepicker-title">{{ monthNames[calendarMonth()] }} {{ calendarYear() }}</span>
+                      <button type="button" class="datepicker-nav-btn" (click)="nextMonth()">▶</button>
+                    </div>
+
+                    <div class="datepicker-weekdays">
+                      <span class="datepicker-weekday">Su</span>
+                      <span class="datepicker-weekday">Mo</span>
+                      <span class="datepicker-weekday">Tu</span>
+                      <span class="datepicker-weekday">We</span>
+                      <span class="datepicker-weekday">Th</span>
+                      <span class="datepicker-weekday">Fr</span>
+                      <span class="datepicker-weekday">Sa</span>
+                    </div>
+
+                    <div class="datepicker-days">
+                      @for (day of calendarDays(); track day.formattedStr) {
+                        <div
+                          class="datepicker-day-cell"
+                          [class.other-month]="!day.isCurrentMonth"
+                          [class.enabled]="day.isEnabled"
+                          [class.disabled]="!day.isEnabled"
+                          [class.selected]="reportingDate === day.formattedStr"
+                          (click)="selectCalendarDay(day)"
+                        >
+                          {{ day.dayNum }}
+                        </div>
+                      }
+                    </div>
+
+                    <div class="text-[10px] text-slate-500 mt-3 text-center italic">
+                      {{ availableReportingDates.length }} dates available in dim_date catalog
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
 
             <!-- Timeframe Limit (redesigned with mode buttons) -->
@@ -461,7 +505,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                     <!-- Table selector -->
                     <select
                       [(ngModel)]="filter.dimTable"
-                      (change)="onQuickFilterTableChange(filter)"
+                      (change)="onQuickFilterTableChange(filter); onFilterFieldChanged(filter)"
                       class="form-select sm dim-select"
                     >
                       <option value="">-- Table --</option>
@@ -471,7 +515,11 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                     </select>
 
                     <!-- Column selector -->
-                    <select [(ngModel)]="filter.attribute" (change)="filter.value = ''" class="form-select sm">
+                    <select
+                      [(ngModel)]="filter.attribute"
+                      (change)="onFilterFieldChanged(filter)"
+                      class="form-select sm"
+                    >
                       <option value="">-- Column --</option>
                       @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
                         <option [value]="col">{{ col }}</option>
@@ -485,15 +533,46 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       }
                     </select>
 
-                    <!-- Value -->
-                    <input
-                      type="text"
-                      [(ngModel)]="filter.value"
-                      placeholder="Enter value…"
-                      class="form-input sm"
-                      [class.invalid-input]="isFilterValueInvalid(filter)"
-                      [title]="isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''"
-                    />
+                    <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
+                    <div class="custom-combobox-wrapper">
+                      <button
+                        type="button"
+                        class="combobox-trigger-btn"
+                        [class.active]="filter.showDropdown"
+                        (click)="filter.showDropdown = !filter.showDropdown"
+                        [title]="isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''"
+                        [class.invalid-input]="isFilterValueInvalid(filter)"
+                      >
+                        <span class="truncate">{{ filter.value || 'Select value…' }}</span>
+                        <span class="combobox-arrow">▼</span>
+                      </button>
+
+                      @if (filter.showDropdown) {
+                        <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
+                      }
+
+                      @if (filter.showDropdown) {
+                        <div class="combobox-dropdown z-50 animate-fade-in" (click)="$event.stopPropagation()">
+                          @if (filter.availableValues && filter.availableValues.length > 0) {
+                            <div class="combobox-options-list">
+                              @for (val of filter.availableValues; track val) {
+                                <div
+                                  class="combobox-option-item"
+                                  [class.selected]="filter.value === val"
+                                  (click)="filter.value = val; filter.selectedValue = val; filter.showDropdown = false; triggerValidationDebounced()"
+                                >
+                                  {{ val }}
+                                </div>
+                              }
+                            </div>
+                          } @else {
+                            <div class="combobox-empty-state">
+                              {{ (!filter.dimTable && !sourceTable) || !filter.attribute ? 'Select table and column first' : 'No distinct values found' }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
 
                     <button (click)="removeQuickFilter(idx)" class="remove-btn" title="Remove condition">✕</button>
                   </div>
@@ -536,7 +615,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                     <!-- Dimension table selector -->
                     <select
                       [(ngModel)]="filter.dimTable"
-                      (change)="onGeneralFilterTableChange(filter)"
+                      (change)="onGeneralFilterTableChange(filter); onFilterFieldChanged(filter)"
                       class="form-select sm dim-select"
                     >
                       <option value="">-- Table --</option>
@@ -546,7 +625,11 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                     </select>
 
                     <!-- Attribute column selector -->
-                    <select [(ngModel)]="filter.attribute" (change)="filter.value = ''" class="form-select sm">
+                    <select
+                      [(ngModel)]="filter.attribute"
+                      (change)="onFilterFieldChanged(filter)"
+                      class="form-select sm"
+                    >
                       <option value="">-- Column --</option>
                       @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
                         <option [value]="col">{{ col }}</option>
@@ -560,15 +643,46 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       }
                     </select>
 
-                    <!-- Value -->
-                    <input
-                      type="text"
-                      [(ngModel)]="filter.value"
-                      placeholder="Enter value…"
-                      class="form-input sm"
-                      [class.invalid-input]="isFilterValueInvalid(filter)"
-                      [title]="isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''"
-                    />
+                    <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
+                    <div class="custom-combobox-wrapper">
+                      <button
+                        type="button"
+                        class="combobox-trigger-btn"
+                        [class.active]="filter.showDropdown"
+                        (click)="filter.showDropdown = !filter.showDropdown"
+                        [title]="isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''"
+                        [class.invalid-input]="isFilterValueInvalid(filter)"
+                      >
+                        <span class="truncate">{{ filter.value || 'Select value…' }}</span>
+                        <span class="combobox-arrow">▼</span>
+                      </button>
+
+                      @if (filter.showDropdown) {
+                        <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
+                      }
+
+                      @if (filter.showDropdown) {
+                        <div class="combobox-dropdown z-50 animate-fade-in" (click)="$event.stopPropagation()">
+                          @if (filter.availableValues && filter.availableValues.length > 0) {
+                            <div class="combobox-options-list">
+                              @for (val of filter.availableValues; track val) {
+                                <div
+                                  class="combobox-option-item"
+                                  [class.selected]="filter.value === val"
+                                  (click)="filter.value = val; filter.selectedValue = val; filter.showDropdown = false; triggerValidationDebounced()"
+                                >
+                                  {{ val }}
+                                </div>
+                              }
+                            </div>
+                          } @else {
+                            <div class="combobox-empty-state">
+                              {{ (!filter.dimTable && !sourceTable) || !filter.attribute ? 'Select table and column first' : 'No distinct values found' }}
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
 
                     <button (click)="removeGeneralFilter(idx)" class="remove-btn" title="Remove condition">✕</button>
                   </div>
@@ -598,7 +712,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
           <div class="rows-container-layout" [class.picker-closed]="!isFieldPickerOpen()">
             <!-- Left Side: Searchable DWH Catalog Tree -->
-            <div class="catalog-panel" [class.collapsed]="!isFieldPickerOpen()">
+            <div class="catalog-panel worksheet-shared-height" [class.collapsed]="!isFieldPickerOpen()">
               <div class="catalog-search-box">
                 <input 
                   type="text" 
@@ -650,7 +764,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
             <!-- Right Side: Grid Table Canvas -->
             <!-- Stable Fixed-Width Worksheet Layout -->
-            <div class="table-wrapper rows-table-wrapper" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            <div class="w-full overflow-x-auto table-wrapper rows-table-wrapper worksheet-shared-height" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
               <table class="grid-table rows-grid">
                 <thead>
                   <tr class="worksheet-fixed-row">
@@ -745,72 +859,24 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
                       <!-- Track 6: Measure Definition -->
                       <td class="col-measure-def measure-td">
-                        @if (row.rowType === 'data') {
-                          @if (row.customSqlMode) {
-                            <!-- Custom SQL mode -->
-                            <div class="measure-custom-row">
-                              <input
-                                type="text"
-                                [(ngModel)]="row.source"
-                                (ngModelChange)="triggerValidationDebounced()"
-                                placeholder="e.g. SUM(amount)"
-                                class="cell-input code"
-                              />
-                              <button
-                                (click)="row.customSqlMode = false; triggerValidationDebounced()"
-                                class="mode-toggle-btn visual"
-                                title="Switch to visual builder"
-                              >⬡ Visual</button>
-                            </div>
-                          } @else {
-                            <!-- Visual measure builder -->
-                            <div class="measure-builder-row">
-                              <select [(ngModel)]="row.measureAgg" (ngModelChange)="onRowMeasureChange(row); triggerValidationDebounced()" class="cell-select agg-select">
-                                <option value="SUM">SUM</option>
-                                <option value="COUNT">COUNT</option>
-                                <option value="COUNT_DISTINCT">COUNT DIST</option>
-                                <option value="AVG">AVG</option>
-                                <option value="MIN">MIN</option>
-                                <option value="MAX">MAX</option>
-                              </select>
-                              <span class="measure-of">of</span>
-                              <select 
-                                [ngModel]="getMeasureColPath(row)" 
-                                (ngModelChange)="setMeasureColPath(row, $event)" 
-                                class="cell-select col-select"
-                              >
-                                <option value="">-- select field --</option>
-                                @for (group of dwhFieldsTree(); track group.sourceTable) {
-                                  <optgroup [label]="group.category">
-                                    @for (field of group.fields; track field.name) {
-                                      <option [value]="group.sourceTable + '.' + field.name">
-                                        {{ field.name }}
-                                      </option>
-                                    }
-                                  </optgroup>
-                                }
-                              </select>
-                              <button
-                                (click)="row.customSqlMode = true; triggerValidationDebounced()"
-                                class="mode-toggle-btn sql"
-                                title="Switch to raw SQL mode"
-                              >SQL</button>
-                            </div>
-                            @if (row.sourceTable) {
-                              <div class="source-table-indicator">
-                                Source: <code>{{ row.sourceTable.replace('analytics.', '') }}</code>
-                              </div>
-                            }
-                          }
-                        } @else if (row.rowType === 'calc') {
-                          <!-- Calc row: row-ID formula -->
-                          <input
-                            type="text"
-                            [(ngModel)]="row.source"
-                            (ngModelChange)="triggerValidationDebounced()"
-                            placeholder="e.g. R2 / R3"
-                            class="cell-input code"
-                          />
+                        @if (row.type === 'data') {
+                          <div class="flex items-center gap-2 w-full">
+                            <select [(ngModel)]="row.aggregation" class="w-[140px] border border-slate-700 rounded-lg bg-slate-950 px-2 py-1">
+                              @for (opt of aggregationOptions; track opt.value) {
+                                <option [value]="opt.value">{{ opt.label }}</option>
+                              }
+                            </select>
+                            
+                            <span class="text-xs text-slate-500">of</span>
+
+                            <app-field-picker 
+                              [dwhCatalog]="dwhCatalogCache()" 
+                              [selectedValue]="row.targetField"
+                              (onSelect)="updateRowField(row.rowId, $event)">
+                            </app-field-picker>
+                          </div>
+                        } @else if (row.type === 'calc') {
+                          <input type="text" [(ngModel)]="row.formulaExpr" class="w-full font-mono text-sm bg-slate-950 rounded-lg border border-slate-700 px-3 py-1 text-blue-400" />
                         } @else {
                           <span class="cell-na">—</span>
                         }
@@ -820,7 +886,6 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                       <td class="col-conditions filter-td">
                         @if (row.rowType === 'data') {
                           <div class="row-filter-wrapper">
-
                             <!-- Legacy filter badge (backward compat) -->
                             @if (row.legacyFilterExpr) {
                               <div class="legacy-filter-badge" title="Legacy SQL filter — add structured conditions above to replace">
@@ -828,88 +893,16 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
                                 <code>{{ row.legacyFilterExpr }}</code>
                               </div>
                             }
-
-                            <!-- Structured filter chips -->
-                            <div class="filter-chips-mini">
-                              @for (f of row.rowFilters; track $index; let fi = $index) {
-                                <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f, row.sourceTable)">
-                                  @if (f.dimTable) {
-                                    <span class="ft-dim">{{ f.dimTable }}.</span>
-                                  }
-                                  <span class="ft-attr">{{ f.attribute }}</span>
-                                  <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
-                                  <span class="ft-val">{{ f.value }}</span>
-                                  <button (click)="removeRowFilter(row, fi)" class="ft-remove">✕</button>
-                                </span>
-                              }
-                            </div>
-
-                            <!-- Builder panel (active for this row) -->
-                            @if (activeRowFilterId === row.rowId) {
-                              <div class="row-filter-builder animate-fade-in">
-                                <div class="rfb-row">
-                                  <!-- Table selector: fact or any linked dim -->
-                                  <select
-                                    [(ngModel)]="pendingRowFilter.dimTable"
-                                    (change)="onPendingFilterTableChange(row)"
-                                    class="form-select sm rfb-table"
-                                  >
-                                    @if (row.sourceTable) {
-                                      <option [value]="''">{{ row.sourceTable.replace('analytics.', '') }} (Fact)</option>
-                                    } @else {
-                                      <option value="">Fact Table</option>
-                                    }
-                                    @for (dim of linkedDimensions; track dim) {
-                                      <option [value]="dim">{{ dim }}</option>
-                                    }
-                                  </select>
-
-                                  <!-- Column selector -->
-                                  <select
-                                    [(ngModel)]="pendingRowFilter.attribute"
-                                    (change)="onPendingFilterAttrChange(row)"
-                                    class="form-select sm rfb-attr"
-                                  >
-                                    <option value="">-- column --</option>
-                                    @for (col of pendingFilterColumns; track col) {
-                                      <option [value]="col">{{ col }}</option>
-                                    }
-                                  </select>
-
-                                  <!-- Operator -->
-                                  <select [(ngModel)]="pendingRowFilter.operator" class="form-select sm rfb-op">
-                                    @for (op of operators; track op.value) {
-                                      <option [value]="op.value">{{ op.label }}</option>
-                                    }
-                                  </select>
-
-                                  <!-- Value with distinct suggestions -->
-                                  <input
-                                    type="text"
-                                    [(ngModel)]="pendingRowFilter.value"
-                                    placeholder="value…"
-                                    list="rfb-val-list"
-                                    class="form-input sm rfb-val"
-                                    [class.invalid-input]="isFilterValueInvalid(pendingRowFilter, row.sourceTable)"
-                                    [title]="isFilterValueInvalid(pendingRowFilter, row.sourceTable) ? 'Value does not match the column type' : ''"
-                                  />
-                                  <datalist id="rfb-val-list">
-                                    @for (v of pendingRowFilterValues; track v) {
-                                      <option [value]="v">{{ v }}</option>
-                                    }
-                                  </datalist>
-                                </div>
-
-                                <div class="rfb-actions">
-                                  <button (click)="confirmRowFilter(row)" class="rfb-confirm-btn">✓ Add Condition</button>
-                                  <button (click)="cancelRowFilter()" class="rfb-cancel-btn">Cancel</button>
-                                </div>
-                              </div>
-                            } @else {
-                              <button (click)="openRowFilterBuilder(row)" class="add-row-filter-btn" [disabled]="!row.sourceTable">
-                                + Add Condition
-                              </button>
-                            }
+                            
+                            <app-row-filter
+                              [activeMeasureTable]="row.measureDefinition.tableName"
+                              [dwhCatalog]="dwhCatalogCache()"
+                              [linkedDimensions]="linkedDimensions"
+                              [columnTypes]="columnTypesCache"
+                              [rowFilters]="row.rowFilters"
+                              (onChange)="row.rowFilters = $event; triggerValidationDebounced()"
+                            >
+                            </app-row-filter>
                           </div>
                         } @else if (row.rowType === 'calc') {
                           <span class="cell-na">n/a for calc rows</span>
@@ -1248,7 +1241,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
         align-items: center;
         justify-content: center;
       }
-      .sidebar.collapsed + .main-content {
+      app-sidebar.collapsed + .main-content {
         max-width: calc(100vw - 64px);
       }
     }
@@ -1552,6 +1545,7 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
     .rows-table-wrapper {
       overflow-x: auto;
+      overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       max-width: 100%;
       position: relative;
@@ -1615,8 +1609,8 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
     .col-hierarchy    { width: 64px;  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
     .col-row-name     { width: 240px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
     .col-style-layout { width: 190px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
-    .col-measure-def  { width: 460px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
-    .col-conditions   { width: 340px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-measure-def  { width: 480px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
+    .col-conditions   { width: 260px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
     .col-active-cols  { width: 200px; flex-shrink: 0; display: flex; align-items: center; box-sizing: border-box; }
     .col-actions      { width: 42px;  flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 
@@ -1675,15 +1669,53 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
 
     /* Enhanced Header Row Prominence Styling */
     .rows-grid thead tr.worksheet-fixed-row {
-      background: #1e293b;
-      border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+      background: #1e293b !important;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
     }
     .rows-grid thead tr.worksheet-fixed-row th {
-      color: #f1f5f9;
-      font-weight: 700;
+      background: #1e293b !important;
+      color: #f8fafc !important;
+      font-weight: 800 !important;
       font-size: 11px;
       letter-spacing: 0.5px;
       text-transform: uppercase;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    }
+    .rows-grid thead tr.worksheet-fixed-row th:last-child {
+      border-right: none;
+    }
+    
+    .w-full {
+      width: 100% !important;
+    }
+    
+    .overflow-x-auto {
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Allow dropdown popover to overflow cells when active or open */
+    .rows-grid td.col-measure-def:focus-within,
+    .rows-grid td.col-measure-def:has(app-field-picker.is-open),
+    .rows-grid td.col-conditions:focus-within,
+    .rows-grid td.col-conditions:has(app-row-filter.is-open) {
+      overflow: visible !important;
+      z-index: 100 !important;
+    }
+    .rows-grid td.col-conditions:has(app-row-filter.is-open) .row-filter-wrapper {
+      overflow: visible !important;
+    }
+    
+    .rows-grid tbody tr:focus-within,
+    .rows-grid tbody tr:has(app-field-picker.is-open),
+    .rows-grid tbody tr:has(app-row-filter.is-open),
+    .rows-grid .worksheet-fixed-row:focus-within,
+    .rows-grid .worksheet-fixed-row:has(app-field-picker.is-open),
+    .rows-grid .worksheet-fixed-row:has(app-row-filter.is-open) {
+      position: relative;
+      z-index: 50 !important;
+      overflow: visible !important;
     }
 
     /* Bug fix #4: label inner wrapper fills its track and lets input grow */
@@ -2643,6 +2675,35 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
       }
     }
     
+    /* ── Shared Worksheet Height scaling constraints ── */
+    .worksheet-shared-height {
+      min-height: 588px;
+      height: auto;
+      max-height: 860px;
+    }
+
+    /* Premium subtle scroll tracks */
+    .catalog-tree::-webkit-scrollbar,
+    .rows-table-wrapper::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .catalog-tree::-webkit-scrollbar-track,
+    .rows-table-wrapper::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.2);
+      border-radius: 3px;
+    }
+    .catalog-tree::-webkit-scrollbar-thumb,
+    .rows-table-wrapper::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      transition: background 0.2s ease;
+    }
+    .catalog-tree::-webkit-scrollbar-thumb:hover,
+    .rows-table-wrapper::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    
     /* ── Catalog Panel ── */
     .catalog-panel {
       background: rgba(15, 23, 42, 0.4);
@@ -2652,9 +2713,6 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-height: 700px;
-      max-height: calc(100vh - 340px);
-      min-height: 400px;
       overflow: hidden;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       opacity: 1;
@@ -2676,6 +2734,10 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
       }
       .catalog-panel.collapsed {
         display: none;
+      }
+      .worksheet-shared-height {
+        min-height: auto !important;
+        max-height: none !important;
       }
     }
 
@@ -2856,13 +2918,419 @@ import { ColResizerDirective } from '../directives/col-resizer.directive';
       background: rgba(239, 68, 68, 0.2);
       color: #fca5a5;
     }
+
+    /* Custom date picker widget styling */
+    .custom-datepicker-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .datepicker-trigger-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      box-sizing: border-box;
+      text-align: left;
+    }
+    .datepicker-trigger-btn:focus, .datepicker-trigger-btn.active {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    .datepicker-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: transparent;
+      cursor: default;
+    }
+    .datepicker-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 100;
+      width: 320px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      box-sizing: border-box;
+    }
+    .datepicker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .datepicker-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #f8fafc;
+    }
+    .datepicker-nav-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 12px;
+    }
+    .datepicker-nav-btn:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: white;
+    }
+    .datepicker-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .datepicker-weekday {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+    }
+    .datepicker-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .datepicker-day-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+      font-weight: 500;
+      box-sizing: border-box;
+    }
+    .datepicker-day-cell.other-month {
+      opacity: 0.35;
+    }
+    .datepicker-day-cell.enabled {
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .datepicker-day-cell.enabled:hover {
+      background: rgba(99, 102, 241, 0.2);
+      color: #c7d2fe;
+    }
+    .datepicker-day-cell.selected {
+      background: #6366f1 !important;
+      color: white !important;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+    }
+    .datepicker-day-cell.disabled {
+      color: #475569;
+      background: transparent;
+      cursor: not-allowed;
+      opacity: 0.25;
+      text-decoration: line-through;
+    }
+
+    /* Controlled distinct values combobox styles */
+    .custom-combobox-wrapper {
+      position: relative;
+      width: 180px;
+      display: inline-block;
+      box-sizing: border-box;
+    }
+    .combobox-trigger-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      box-sizing: border-box;
+      text-align: left;
+    }
+    .combobox-trigger-btn:focus, .combobox-trigger-btn.active {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    .combobox-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: transparent;
+      cursor: default;
+    }
+    .combobox-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 50;
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 4px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      box-sizing: border-box;
+    }
+    .combobox-options-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .combobox-option-item {
+      padding: 6px 10px;
+      font-size: 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #cbd5e1;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    .combobox-option-item:hover {
+      background: rgba(99, 102, 241, 0.2);
+      color: #c7d2fe;
+    }
+    .combobox-option-item.selected {
+      background: #6366f1;
+      color: white;
+      font-weight: 600;
+    }
+    .combobox-empty-state {
+      padding: 10px;
+      font-size: 11px;
+      color: #475569;
+      text-align: center;
+      font-style: italic;
+    }
   `]
 })
 export class ReportBuilderComponent implements OnInit {
   isNewReport = true;
+  aggregationOptions = [
+    { value: 'SUM', label: 'SUM (Total)' },
+    { value: 'AVG', label: 'AVG (Average)' },
+    { value: 'COUNT', label: 'COUNT (Total Rows)' },
+    { value: 'COUNT_DISTINCT', label: 'COUNT DISTINCT (Unique)' },
+    { value: 'MAX', label: 'MAX (Highest)' },
+    { value: 'MIN', label: 'MIN (Lowest)' }
+  ];
   saving        = signal(false);
   showPreview   = signal(false);
   previewTrigger = signal<number>(0);
+
+  // ── Date Picker signals & properties ──────────────────────────────
+  showDatePicker = signal<boolean>(false);
+  calendarYear = signal<number>(new Date().getFullYear());
+  calendarMonth = signal<number>(new Date().getMonth());
+  readonly monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  calendarDays = computed(() => {
+    this.previewTrigger(); // reacts to validation changes
+    const year = this.calendarYear();
+    const month = this.calendarMonth();
+    const datesCache = this.availableReportingDates || [];
+    
+    const days: CalendarDay[] = [];
+    
+    // First day of current month (0 = Sunday, 6 = Saturday)
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    // Number of days in current month
+    const numDays = new Date(year, month + 1, 0).getDate();
+    
+    // Prev month days to pad
+    const prevMonthYear = month === 0 ? year - 1 : year;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const numDaysPrevMonth = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+    
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = numDaysPrevMonth - i;
+      const d = new Date(prevMonthYear, prevMonth, dayNum);
+      const formattedStr = this.formatDateString(d);
+      days.push({
+        date: d,
+        dayNum,
+        isCurrentMonth: false,
+        formattedStr,
+        isEnabled: datesCache.includes(formattedStr)
+      });
+    }
+    
+    // Current month days
+    for (let dayNum = 1; dayNum <= numDays; dayNum++) {
+      const d = new Date(year, month, dayNum);
+      const formattedStr = this.formatDateString(d);
+      days.push({
+        date: d,
+        dayNum,
+        isCurrentMonth: true,
+        formattedStr,
+        isEnabled: datesCache.includes(formattedStr)
+      });
+    }
+    
+    // Next month days to pad to a multiple of 7 (or 42 for a perfect 6-row grid)
+    const totalCells = 42;
+    const nextMonthYear = month === 11 ? year + 1 : year;
+    const nextMonth = month === 11 ? 0 : month + 1;
+    let nextMonthDay = 1;
+    while (days.length < totalCells) {
+      const d = new Date(nextMonthYear, nextMonth, nextMonthDay);
+      const formattedStr = this.formatDateString(d);
+      days.push({
+        date: d,
+        dayNum: nextMonthDay,
+        isCurrentMonth: false,
+        formattedStr,
+        isEnabled: datesCache.includes(formattedStr)
+      });
+      nextMonthDay++;
+    }
+    
+    return days;
+  });
+
+  // ── Dynamic Granularity Options Signal ────────────────────────────
+  dynamicGranularityOptions = computed(() => {
+    this.previewTrigger(); // reacts to row or table changes
+    
+    const options: { value: string; label: string }[] = [];
+    
+    // Helper to determine if a DWH catalog column should be excluded from selection options
+    const shouldExcludeColumn = (col: string): boolean => {
+      const colLower = col.toLowerCase().trim();
+      
+      // Rule 1: ID Key Exclusion Rule (ends with or equals id, _id, key, _key)
+      if (
+        colLower === 'id' || 
+        colLower === 'key' || 
+        colLower === '_id' || 
+        colLower === '_key' || 
+        colLower.endsWith('_id') || 
+        colLower.endsWith('_key') || 
+        colLower.endsWith('id') || 
+        colLower.endsWith('key')
+      ) {
+        return true;
+      }
+      
+      // Rule 2: Financial Figures Exclusion Rule (numeric facts intended for aggregation)
+      const financials = new Set(['amount', 'interest_rate', 'principal_amount', 'cost', 'budget', 'price', 'revenue', 'expense', 'salary', 'balance']);
+      if (financials.has(colLower)) {
+        return true;
+      }
+      
+      return false;
+    };
+    
+    // 1. Scan rows to find active fact tables
+    const activeFactTables = new Set<string>();
+    this.rows.forEach(r => {
+      if (r.rowType === 'data' && r.sourceTable) {
+        activeFactTables.add(r.sourceTable);
+      }
+    });
+    
+    // 2. Conformed and Linked dimensions
+    const dimensions = Array.from(new Set([
+      ...(this.conformedDimensions() || []),
+      ...(this.linkedDimensions || [])
+    ]));
+    
+    // Extract from dimension tables first (prioritizing them)
+    dimensions.forEach(dimTable => {
+      const cols = this.dimensionColumnsCache[dimTable] || [];
+      cols.forEach(col => {
+        if (shouldExcludeColumn(col)) return;
+        const value = `${dimTable}.${col}`;
+        options.push({
+          value,
+          label: `${dimTable}.${col} (Dim)`
+        });
+      });
+    });
+    
+    // Extract from fact tables next
+    activeFactTables.forEach(factTable => {
+      const shortFact = factTable.replace(/^analytics\./, '');
+      const group = this.dwhFieldsTree().find(g => g.sourceTable === factTable);
+      if (group) {
+        group.fields.forEach(f => {
+          if (shouldExcludeColumn(f.name)) return;
+          const value = `${shortFact}.${f.name}`;
+          // Avoid duplicate options if already added via dimension
+          if (!options.some(o => o.value === value)) {
+            options.push({
+              value,
+              label: `${shortFact}.${f.name} (Fact)`
+            });
+          }
+        });
+      } else {
+        // Fallback to columnTypesCache
+        const cols = this.columnTypesCache[factTable] ? Object.keys(this.columnTypesCache[factTable]) : [];
+        cols.forEach(col => {
+          if (shouldExcludeColumn(col)) return;
+          const value = `${shortFact}.${col}`;
+          if (!options.some(o => o.value === value)) {
+            options.push({
+              value,
+              label: `${shortFact}.${col} (Fact)`
+            });
+          }
+        });
+      }
+    });
+    
+    // Include current granularity if not already present
+    if (this.granularity && !options.some(o => o.value === this.granularity)) {
+      options.unshift({
+        value: this.granularity,
+        label: `${this.granularity} (Current)`
+      });
+    }
+    
+    if (options.length === 0) {
+      return this.conformedKeys.map(k => ({ value: k, label: k }));
+    }
+    
+    return options;
+  });
   expandedColumns = computed(() => {
     this.previewTrigger(); // subscribe to updates
     const refDate = this.reportingDate || new Date().toISOString().split('T')[0];
@@ -3148,6 +3616,7 @@ export class ReportBuilderComponent implements OnInit {
 
   // Searchable DWH Catalog signals
   dwhFieldsTree = signal<FieldGroup[]>([]);
+  dwhCatalogCache = computed(() => this.dwhFieldsTree());
   fieldsSearchQuery = signal<string>('');
   filteredSchemaTree = computed(() => {
     const query = this.fieldsSearchQuery().trim();
@@ -3278,7 +3747,7 @@ export class ReportBuilderComponent implements OnInit {
         if (this.activePreviewTab() === 'sql' && this.showPreview()) {
           this.runSqlPreview();
         }
-      }, { allowSignalWrites: true });
+      });
     } catch (e) {
       console.warn('Reactivity/Effect context not available. Skipping effect creation.', e);
     }
@@ -3371,7 +3840,10 @@ export class ReportBuilderComponent implements OnInit {
     try {
       this.quickFilters = data.quickFilters ? JSON.parse(data.quickFilters) : [];
       if (!Array.isArray(this.quickFilters)) this.quickFilters = [];
-      this.quickFilters.forEach(f => f.operator = this.normalizeFilterOperator(f.operator));
+      this.quickFilters.forEach(f => {
+        f.operator = this.normalizeFilterOperator(f.operator);
+        this.onFilterFieldChanged(f);
+      });
     } catch {
       // Legacy: comma-separated column names — convert to stub conditions with no value
       this.quickFilters = data.quickFilters
@@ -3387,7 +3859,10 @@ export class ReportBuilderComponent implements OnInit {
 
     try {
       this.generalFilters = data.generalFilters ? JSON.parse(data.generalFilters) : [];
-      this.generalFilters.forEach(f => f.operator = this.normalizeFilterOperator(f.operator));
+      this.generalFilters.forEach(f => {
+        f.operator = this.normalizeFilterOperator(f.operator);
+        this.onFilterFieldChanged(f);
+      });
     } catch {
       this.generalFilters = [];
     }
@@ -3494,7 +3969,8 @@ export class ReportBuilderComponent implements OnInit {
       sourceTable: sourceTableSignal,
       targetColumn: targetColumnSignal,
       aggregation: aggregationSignal,
-      rawExpression: rawExpressionSignal
+      rawExpression: rawExpressionSignal,
+      get tableName() { return sourceTableSignal(); }
     };
 
     Object.defineProperty(row, 'sourceTable', {
@@ -3519,6 +3995,46 @@ export class ReportBuilderComponent implements OnInit {
       get: () => aggregationSignal(),
       set: (val: string) => {
         aggregationSignal.set(val);
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    Object.defineProperty(row, 'type', {
+      get: () => row.rowType,
+      set: (val: string) => {
+        row.rowType = val;
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    Object.defineProperty(row, 'aggregation', {
+      get: () => aggregationSignal(),
+      set: (val: string) => {
+        aggregationSignal.set(val);
+        this.onRowMeasureChange(row);
+        this.triggerValidationDebounced();
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    Object.defineProperty(row, 'targetField', {
+      get: () => this.getMeasureColPath(row),
+      set: (val: string) => {
+        this.setMeasureColPath(row, val);
+        this.triggerValidationDebounced();
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    Object.defineProperty(row, 'formulaExpr', {
+      get: () => row.source,
+      set: (val: string) => {
+        row.source = val;
+        this.triggerValidationDebounced();
       },
       configurable: true,
       enumerable: true
@@ -3660,16 +4176,91 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // REPORTING DATE
+  // REPORTING DATE & CUSTOM CALENDAR WIDGET
   // ═══════════════════════════════════════════════════════════════════════════
 
   loadReportingDates(): void {
     this.reportService.getReportingDates().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (dates) => { this.availableReportingDates = dates || []; },
+      next: (dates) => {
+        this.availableReportingDates = dates || [];
+        this.previewTrigger.update(v => v + 1);
+      },
       error: () => { /* fail silently — user can still type a date */ }
     });
+  }
+
+  formatDateString(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  toggleDatePicker(): void {
+    this.showDatePicker.set(!this.showDatePicker());
+    if (this.showDatePicker()) {
+      this.initializeCalendarView();
+    }
+  }
+
+  initializeCalendarView(): void {
+    let dateToUse = new Date();
+    const isReportingDateAvailable = this.reportingDate && this.availableReportingDates.includes(this.reportingDate);
+    
+    if (isReportingDateAvailable) {
+      const parsed = new Date(this.reportingDate);
+      if (!isNaN(parsed.getTime())) {
+        dateToUse = parsed;
+      }
+    } else if (this.availableReportingDates && this.availableReportingDates.length > 0) {
+      const sorted = [...this.availableReportingDates].sort();
+      const parsed = new Date(sorted[0]);
+      if (!isNaN(parsed.getTime())) {
+        dateToUse = parsed;
+      }
+    }
+    this.calendarYear.set(dateToUse.getFullYear());
+    this.calendarMonth.set(dateToUse.getMonth());
+  }
+
+  prevMonth(): void {
+    if (this.calendarMonth() === 0) {
+      this.calendarMonth.set(11);
+      this.calendarYear.update(y => y - 1);
+    } else {
+      this.calendarMonth.update(m => m - 1);
+    }
+  }
+
+  nextMonth(): void {
+    if (this.calendarMonth() === 11) {
+      this.calendarMonth.set(0);
+      this.calendarYear.update(y => y + 1);
+    } else {
+      this.calendarMonth.update(m => m + 1);
+    }
+  }
+
+  selectCalendarDay(day: CalendarDay): void {
+    if (!day.isEnabled) return;
+    this.reportingDate = day.formattedStr;
+    this.showDatePicker.set(false);
+    this.triggerValidationDebounced();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VERSIONING & LIFECYCLE STATE MACHINE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  onStatusChange(newStatus: string): void {
+    const prev = this.status;
+    this.status = newStatus;
+    if (prev === 'draft' && newStatus === 'published') {
+      this.reportVersion = (this.reportVersion || 0) + 1;
+    }
+    this.triggerValidationDebounced();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3687,6 +4278,8 @@ export class ReportBuilderComponent implements OnInit {
   onQuickFilterTableChange(filter: QuickFilterCondition): void {
     filter.attribute = '';
     filter.value     = '';
+    filter.availableValues = [];
+    filter.showDropdown = false;
   }
 
 
@@ -3706,6 +4299,30 @@ export class ReportBuilderComponent implements OnInit {
   onGeneralFilterTableChange(filter: FilterCondition): void {
     filter.attribute = '';
     filter.value     = '';
+    filter.availableValues = [];
+    filter.showDropdown = false;
+  }
+
+  onFilterFieldChanged(filter: any): void {
+    const table = filter.dimTable || this.sourceTable;
+    const column = filter.attribute;
+
+    filter.availableValues = [];
+    
+    if (!table || !column) {
+      return;
+    }
+
+    this.reportService.getMetadataDistinctValues(table, column)
+      .subscribe({
+        next: (values: string[]) => {
+          filter.availableValues = values || [];
+        },
+        error: (err) => {
+          console.warn('Failed to fetch metadata distinct values:', err);
+          filter.availableValues = [];
+        }
+      });
   }
 
 
@@ -4153,15 +4770,24 @@ export class ReportBuilderComponent implements OnInit {
     const sel = this.rows.filter(r => r.selected);
     if (!sel.length) { alert('Select at least one row to duplicate.'); return; }
     sel.forEach(sr => {
-      this.rows.push({ 
+      const copied = { 
         ...sr, 
         rowId: `R${this.rows.length + 1}`, 
         label: `${sr.label} (Copy)`, 
         selected: false, 
         rowFilters: [...(sr.rowFilters || [])] 
-      });
+      };
+      this.rows.push(this.initRowSignals(copied));
     });
     this.updateDimensionStates();
+  }
+
+  updateRowField(rowId: string, fieldPath: string): void {
+    const row = this.rows.find(r => r.rowId === rowId);
+    if (row) {
+      this.setMeasureColPath(row, fieldPath);
+      this.triggerValidationDebounced();
+    }
   }
 
   reorderRows(): void {
@@ -4393,7 +5019,12 @@ export class ReportBuilderComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.successMessage.set('Report definition successfully saved!');
-        setTimeout(() => this.router.navigate(['/reports', this.reportId]), 1200);
+        if (this.isNewReport) {
+          this.isNewReport = false;
+          setTimeout(() => this.router.navigate(['/reports', this.reportId, 'edit']), 1200);
+        } else {
+          setTimeout(() => this.successMessage.set(null), 2000);
+        }
       },
       error: (err) => {
         this.saving.set(false);

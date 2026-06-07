@@ -181,9 +181,10 @@ describe('ReportBuilderComponent', () => {
 
     expect(component.saving()).toBe(false);
     expect(component.successMessage()).toBe('Report definition successfully saved!');
+    expect(component.isNewReport).toBe(false);
 
     vi.advanceTimersByTime(1200);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/reports', 'R2']);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/reports', 'R2', 'edit']);
   });
 
   it('should call saveReport when saving an existing report', () => {
@@ -201,9 +202,12 @@ describe('ReportBuilderComponent', () => {
     saveSubject.complete();
 
     expect(component.saving()).toBe(false);
+    expect(component.successMessage()).toBe('Report definition successfully saved!');
 
-    vi.advanceTimersByTime(1200);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/reports', 'R1']);
+    mockRouter.navigate.mockClear();
+    vi.advanceTimersByTime(2000);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+    expect(component.successMessage()).toBeNull();
   });
 
   it('should handle save error gracefully', () => {

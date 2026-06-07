@@ -6,11 +6,12 @@ import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { DateFormatter } from '../utils/date-formatter';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SidebarComponent } from './sidebar';
 
 @Component({
   selector: 'app-report-viewer',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent],
   template: `
     <div class="builder-container">
       <!-- Mobile topbar -->
@@ -22,45 +23,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </button>
         <span class="topbar-brand">Reports Execution Hub</span>
       </div>
-      <!-- Sidebar overlay backdrop -->
-      <div class="sidebar-overlay" [class.visible]="sidebarOpen()" (click)="closeSidebar()"></div>
-
-      <!-- ════════════════════════════════════════════ SIDEBAR -->
-      <aside class="sidebar" [class.open]="sidebarOpen()" [class.collapsed]="isMainMenuCollapsed()">
-        <button class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close navigation">✕</button>
-        <div class="sidebar-brand">
-          <span class="brand-icon">👁️</span>
-          <span class="brand-text">Execution Hub</span>
-          <button class="menu-collapse-btn" (click)="toggleMainMenu()" [title]="isMainMenuCollapsed() ? 'Expand Menu' : 'Collapse Menu'">
-            {{ isMainMenuCollapsed() ? '➔' : '«' }}
-          </button>
-        </div>
-
-        <nav class="sidebar-menu">
-          <a routerLink="/dashboard" class="menu-item" [title]="isMainMenuCollapsed() ? 'Reports Catalog' : ''">
-            <span class="menu-icon">📁</span>
-            <span class="menu-text">Reports Catalog</span>
-          </a>
-          <a routerLink="/viewer" class="menu-item active" [title]="isMainMenuCollapsed() ? 'Reports Execution Hub' : ''">
-            <span class="menu-icon">👁️</span>
-            <span class="menu-text">Reports Execution Hub</span>
-          </a>
-          <a routerLink="/semantic" class="menu-item" [title]="isMainMenuCollapsed() ? 'Semantic Layer' : ''">
-            <span class="menu-icon">🧠</span>
-            <span class="menu-text">Semantic Layer</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-user">
-          <div class="user-info" *ngIf="!isMainMenuCollapsed()">
-            <span class="user-avatar">👤</span>
-            <div class="user-details">
-              <span class="user-name">{{ username }}</span>
-              <span class="user-role">Consumer</span>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <app-sidebar
+        brandIcon="👁️"
+        brandText="Execution Hub"
+        [showUser]="true"
+        [mobileOpen]="sidebarOpen()"
+        (mobileOpenChange)="sidebarOpen.set($event)"
+      ></app-sidebar>
 
       <!-- ══════════════════════════════════════════ MAIN CONTENT -->
       <main class="main-content animate-fade-in">
@@ -355,7 +324,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         justify-content: center;
         padding: 12px;
       }
-      .sidebar.collapsed + .main-content {
+      app-sidebar.collapsed + .main-content {
         max-width: calc(100vw - 64px);
       }
     }

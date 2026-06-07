@@ -26,6 +26,20 @@ describe('Report Parser Utilities', () => {
         customSqlMode: false,
         rawExpression: ''
       });
+      expect(parseMeasure('COUNTA(category_name)')).toEqual({
+        aggFunction: 'COUNTA',
+        measureCol: 'category_name',
+        sourceTable: '',
+        customSqlMode: false,
+        rawExpression: ''
+      });
+      expect(parseMeasure('COUNT(id)')).toEqual({
+        aggFunction: 'COUNT',
+        measureCol: 'id',
+        sourceTable: '',
+        customSqlMode: false,
+        rawExpression: ''
+      });
     });
 
     it('should parse MeasureDefinition objects correctly', () => {
@@ -42,6 +56,17 @@ describe('Report Parser Utilities', () => {
         sourceTable: 'analytics.fact_sales',
         customSqlMode: true,
         rawExpression: 'SUM(amount) / 100'
+      });
+    });
+
+    it('should parse JSON strings correctly', () => {
+      const jsonStr = '{"aggregation":"SUM","targetColumn":"amount","sourceTable":"analytics.fact_sales"}';
+      expect(parseMeasure(jsonStr)).toEqual({
+        aggFunction: 'SUM',
+        measureCol: 'amount',
+        sourceTable: 'analytics.fact_sales',
+        customSqlMode: false,
+        rawExpression: ''
       });
     });
 
@@ -82,6 +107,14 @@ describe('Report Parser Utilities', () => {
       expect(serializeMeasure(row)).toEqual({
         aggregation: 'AVG',
         targetColumn: 'price',
+        sourceTable: 'analytics.fact_sales',
+        rawExpression: null
+      });
+
+      const rowCountA = { rowType: 'data', customSqlMode: false, measureAgg: 'COUNTA', measureCol: 'name', sourceTable: 'analytics.fact_sales' };
+      expect(serializeMeasure(rowCountA)).toEqual({
+        aggregation: 'COUNT',
+        targetColumn: 'name',
         sourceTable: 'analytics.fact_sales',
         rawExpression: null
       });
