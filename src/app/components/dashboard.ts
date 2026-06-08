@@ -30,578 +30,960 @@ import { SidebarComponent } from './sidebar';
         (mobileOpenChange)="sidebarOpen.set($event)"
       ></app-sidebar>
 
-      <!-- Main Content -->
-      <main class="main-content">
-        <header class="content-header">
-          <div>
-            <h1>Report Templates Catalog</h1>
-            <p>Import and configure spreadsheet-first report layouts.</p>
-          </div>
+      <!-- Main Content Container with Split Layout -->
+      <main class="main-content no-scrollbar" style="padding: 0; overflow: hidden; display: flex; flex-grow: 1;">
+        <div class="dashboard-split-layout" style="display: flex; width: 100%; height: 100%; overflow: hidden;">
+          
+          <!-- Middle Pane: High-Density Catalog List -->
+          <div class="middle-pane">
+            <div class="pane-header">
+              <div class="pane-title-row">
+                <h1>Reports Catalog</h1>
+                <button routerLink="/reports/new/edit" class="create-btn" style="padding: 6px 12px; min-height: 32px; font-size: 11px; border-radius: 8px;">
+                  <span>+ Create</span>
+                </button>
+              </div>
 
-          <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
-            <button routerLink="/reports/new/edit" class="create-btn">
-              <span>➕ Create Report</span>
-            </button>
-            <div class="file-uploader">
-              <label for="template-file" class="upload-label" [class.uploading]="uploading()">
-                @if (uploading()) {
-                  <span class="spinner"></span> Ingesting...
-                } @else {
-                  <span>📥 Import Template (.xlsx)</span>
-                }
+              <!-- File Uploader -->
+              <div class="file-uploader" style="width: 100%;">
+                <label for="template-file" class="upload-label" [class.uploading]="uploading()" style="width: 100%; justify-content: center; min-height: 36px; padding: 8px 16px; border-radius: 8px; font-size: 12px; box-shadow: none;">
+                  @if (uploading()) {
+                    <span class="spinner" style="width: 14px; height: 14px;"></span>
+                    <span>Ingesting...</span>
+                  } @else {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import (.xlsx)</span>
+                  }
+                  <input 
+                    type="file" 
+                    id="template-file" 
+                    (change)="onFileSelected($event)" 
+                    accept=".xlsx" 
+                    [disabled]="uploading()"
+                    style="display: none;"
+                  />
+                </label>
+              </div>
+
+              <!-- Search input wrapper -->
+              <div class="search-input-wrapper" style="width: 100%;">
+                <span class="search-icon">🔍</span>
                 <input 
-                  type="file" 
-                  id="template-file" 
-                  (change)="onFileSelected($event)" 
-                  accept=".xlsx" 
-                  [disabled]="uploading()"
-                  style="display: none;"
+                  type="text" 
+                  [ngModel]="searchQuery()"
+                  (ngModelChange)="searchQuery.set($event); onSearchChange()"
+                  placeholder="Search templates..." 
+                  class="search-input"
+                  style="min-height: 36px; padding: 6px 12px 6px 32px; border-radius: 8px; font-size: 12px;"
                 />
-              </label>
+                @if (searchQuery()) {
+                  <button (click)="searchQuery.set(''); onSearchChange()" class="clear-search-btn" style="right: 8px;">✕</button>
+                }
+              </div>
+
+              <!-- Filter status chips -->
+              <div class="filter-chips" style="gap: 6px;">
+                <button 
+                  class="filter-chip-btn" 
+                  [class.active]="filterStatus() === 'all'" 
+                  (click)="setFilterStatus('all')"
+                  style="padding: 4px 10px; font-size: 11px;"
+                >
+                  All ({{ getReportsCountByStatus('all') }})
+                </button>
+                <button 
+                  class="filter-chip-btn" 
+                  [class.active]="filterStatus() === 'published'" 
+                  (click)="setFilterStatus('published')"
+                  style="padding: 4px 10px; font-size: 11px;"
+                >
+                  Published ({{ getReportsCountByStatus('published') }})
+                </button>
+                <button 
+                  class="filter-chip-btn" 
+                  [class.active]="filterStatus() === 'draft'" 
+                  (click)="setFilterStatus('draft')"
+                  style="padding: 4px 10px; font-size: 11px;"
+                >
+                  Drafts ({{ getReportsCountByStatus('draft') }})
+                </button>
+              </div>
             </div>
-          </div>
-        </header>
 
-        @if (successMessage()) {
-          <div class="alert success-alert animate-fade-in">
-            <span class="alert-icon">✓</span>
-            <span>{{ successMessage() }}</span>
-          </div>
-        }
-
-        @if (errorMessage()) {
-          <div class="alert error-alert animate-fade-in">
-            <span class="alert-icon">⚠️</span>
-            <span>{{ errorMessage() }}</span>
-          </div>
-        }
-
-        <!-- Search & Filter Bar -->
-        @if (!loading() && reports().length > 0) {
-          <div class="search-filter-bar mb-6 animate-fade-in">
-            <div class="search-input-wrapper">
-              <span class="search-icon">🔍</span>
-              <input 
-                type="text" 
-                [(ngModel)]="searchQuery" 
-                placeholder="Search templates by ID, title, details..." 
-                class="search-input"
-              />
-              @if (searchQuery()) {
-                <button (click)="searchQuery.set('')" class="clear-search-btn">✕</button>
+            <!-- Scrollable Card list -->
+            <div class="high-density-list no-scrollbar">
+              @if (loading()) {
+                <div class="loading-state" style="padding: 40px 20px; border: none; background: transparent;">
+                  <span class="spinner large" style="width: 28px; height: 28px;"></span>
+                  <p style="font-size: 12px; color: var(--color-apple-grey);">Loading templates...</p>
+                </div>
+              } @else if (filteredReports.length === 0) {
+                <div class="empty-state" style="padding: 40px 20px; border: none; background: transparent;">
+                  <span class="empty-icon" style="width: 40px; height: 40px; font-size: 18px;">🔍</span>
+                  <h3 style="font-size: 14px; margin-top: 8px;">No templates found</h3>
+                  <p style="font-size: 12px; color: var(--color-apple-grey);">Try adjusting your search query.</p>
+                </div>
+              } @else {
+                @for (report of filteredReports; track report.reportId || $index) {
+                  <div 
+                    class="hd-card" 
+                    [class.active]="selectedReportId() === report.reportId"
+                    (click)="viewReportCard(report.reportId)"
+                  >
+                    <div class="hd-card-header">
+                      <span class="hd-card-id">{{ report.reportId }}</span>
+                      <span class="hd-badge" [class.published]="report.status === 'published'" [class.draft]="report.status === 'draft'">
+                        {{ report.status }}
+                      </span>
+                    </div>
+                    <h3 class="hd-card-title">{{ report.name }}</h3>
+                    <p class="hd-card-desc">{{ report.description || 'No description provided.' }}</p>
+                    <div class="hd-card-footer">
+                      <span>Table: {{ report.sourceTable ? (report.sourceTable.includes('.') ? report.sourceTable.split('.')[1] : report.sourceTable) : 'N/A' }}</span>
+                      <span class="hd-card-version">v{{ report.version }}</span>
+                    </div>
+                  </div>
+                }
               }
             </div>
-            
-            <div class="filter-chips">
-              <button 
-                class="filter-chip-btn" 
-                [class.active]="filterStatus() === 'all'" 
-                (click)="filterStatus.set('all')"
-              >
-                All Templates ({{ getReportsCountByStatus('all') }})
-              </button>
-              <button 
-                class="filter-chip-btn" 
-                [class.active]="filterStatus() === 'published'" 
-                (click)="filterStatus.set('published')"
-              >
-                🟢 Published ({{ getReportsCountByStatus('published') }})
-              </button>
-              <button 
-                class="filter-chip-btn" 
-                [class.active]="filterStatus() === 'draft'" 
-                (click)="filterStatus.set('draft')"
-              >
-                🟡 Drafts ({{ getReportsCountByStatus('draft') }})
-              </button>
-            </div>
           </div>
-        }
 
-        <!-- Grid of Report Cards -->
-        @if (loading()) {
-          <div class="loading-state">
-            <span class="spinner large"></span>
-            <p>Loading report catalog...</p>
-          </div>
-        } @else if (reports().length === 0) {
-          <div class="empty-state">
-            <span class="empty-icon">📭</span>
-            <h3>No Reports Loaded</h3>
-            <p>Upload a <code>dwh_reports_showcase.xlsx</code> template to seed the database catalog.</p>
-          </div>
-        } @else {
-          <div class="reports-grid animate-fade-in">
-            @for (report of filteredReports; track report.reportId || $index) {
-              <div class="report-card" (click)="viewReport(report.reportId)">
-                <div class="card-header">
-                  <span class="report-badge" [class.published]="report.status === 'published'">
-                    {{ report.status }}
-                  </span>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <button class="edit-icon-btn" (click)="editReport(report.reportId, $event)" title="Edit definition">✏️</button>
-                    <span class="report-version">v{{ report.version }}</span>
+          <!-- Right Pane: Contextual Inspector Panel -->
+          <div class="right-pane no-scrollbar">
+            @if (selectedReportLoading()) {
+              <div class="inspector-empty-state">
+                <span class="spinner large spinner-blue" style="width: 36px; height: 36px;"></span>
+                <p class="empty-title" style="margin-top: 12px;">Loading Details...</p>
+                <p class="empty-desc">Fetching layout parameters, DWH targets, and semantic joins...</p>
+              </div>
+            } @else if (!selectedReportId() || !selectedReportConfig()) {
+              <div class="inspector-empty-state animate-fade-in">
+                <div class="empty-graphic">📊</div>
+                <h3 class="empty-title">Inspect Template Profile</h3>
+                <p class="empty-desc">
+                  Select a template from the catalog list to inspect its compilation models, DWH schemas, target databases, and semantic dimensional join networks.
+                </p>
+              </div>
+            } @else {
+              @let report = selectedReportConfig();
+              <div class="inspector-container animate-fade-in">
+                
+                <!-- Inspector Header -->
+                <div class="inspector-header-block">
+                  <div class="inspector-title-row">
+                    <div>
+                      <span class="badge" [class.badge-success]="report.status === 'published'" [class.badge-warning]="report.status === 'draft'">
+                        {{ report.status }}
+                      </span>
+                      <h2 style="margin-top: 8px;">{{ report.reportId }}</h2>
+                      <p class="report-subtitle" style="font-size: 15px; color: var(--color-apple-text); font-weight: 500;">{{ report.name }}</p>
+                    </div>
+                    <div style="font-size: 12px; color: var(--color-apple-grey); text-align: right;">
+                      <span>Version: <strong>v{{ report.version }}</strong></span>
+                      <br>
+                      <span>Granularity: <strong>{{ report.granularity || 'Not set' }}</strong></span>
+                    </div>
+                  </div>
+                  <p class="inspector-desc">{{ report.description || 'This report is configured to aggregate transactional rows and present financial indicator summaries in a standard spreadsheet format.' }}</p>
+                </div>
+
+                <!-- Alert Messages inside Inspector -->
+                @if (successMessage()) {
+                  <div class="alert alert-success animate-fade-in">
+                    <span class="alert-icon">✓</span>
+                    <span>{{ successMessage() }}</span>
+                  </div>
+                }
+                @if (errorMessage()) {
+                  <div class="alert alert-error animate-fade-in">
+                    <span class="alert-icon">⚠️</span>
+                    <span>{{ errorMessage() }}</span>
+                  </div>
+                }
+
+                <!-- Delete Confirmation dialog -->
+                @if (showDeleteConfirm()) {
+                  <div class="delete-confirm-block animate-fade-in">
+                    <span class="delete-confirm-msg">⚠️ Delete this template definition? This action is permanent and cannot be undone.</span>
+                    <div class="delete-confirm-actions">
+                      <button (click)="showDeleteConfirm.set(false)" class="btn-secondary" style="min-height: 32px; padding: 4px 12px; font-size: 12px; border-radius: 6px;">Cancel</button>
+                      <button (click)="deleteReport(report.reportId)" [disabled]="deleting()" class="btn-danger" style="min-height: 32px; padding: 4px 12px; font-size: 12px; border-radius: 6px;">
+                        @if (deleting()) { Deleting... } @else { Yes, Delete }
+                      </button>
+                    </div>
+                  </div>
+                }
+
+                <!-- Action Bar -->
+                <div class="inspector-actions-bar">
+                  <div class="inspector-date-box">
+                    <label for="insp-date">Ref Date</label>
+                    <input 
+                      type="date" 
+                      id="insp-date" 
+                      [ngModel]="referenceDate()" 
+                      (ngModelChange)="onDateChange($event)"
+                      class="inspector-date-input"
+                    />
+                  </div>
+                  <div class="inspector-action-buttons">
+                    <button [routerLink]="['/reports', report.reportId, 'edit']" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+                      ✏️ Edit Definition
+                    </button>
+                    <button (click)="showDeleteConfirm.set(true)" class="btn-secondary" style="min-height: 38px; padding: 8px 12px; font-size: 13px; border-radius: 8px; color: #f87171;" title="Delete Template">
+                      🗑️
+                    </button>
+                    <button (click)="runReport()" [disabled]="running()" class="btn-primary" style="min-height: 38px; padding: 8px 20px; font-size: 13px; border-radius: 8px;">
+                      @if (running()) {
+                        <span class="spinner" style="width: 14px; height: 14px;"></span> Running...
+                      } @else {
+                        <span>⚡ Run & Download</span>
+                      }
+                    </button>
                   </div>
                 </div>
-                
-                <h3 class="report-title">{{ report.reportId }}</h3>
-                <h4 class="report-subtitle">{{ report.name }}</h4>
-                <p class="report-desc">
-                  {{ report.description || 'No description provided. Click to inspect columns, rows, and execute the layout.' }}
-                </p>
 
-                <div class="card-footer">
-                  <span class="explore-ref">🎯 Default Explore: {{ report.exploreId || 'Not set' }}</span>
-                  <span class="arrow-icon">→</span>
+                <!-- Target Data Source -->
+                <div class="inspector-section">
+                  <h3 class="inspector-section-title">📊 DWH Target Source</h3>
+                  <div class="datasource-grid">
+                    <div class="datasource-item">
+                      <span class="datasource-label">Physical Table</span>
+                      <span class="datasource-value" style="font-family: monospace; color: var(--color-apple-blue);">{{ report.sourceTable || 'analytics.fact_sales' }}</span>
+                    </div>
+                    <div class="datasource-item">
+                      <span class="datasource-label">Explore Model Binding</span>
+                      <span class="datasource-value" style="font-family: monospace; color: #a855f7;">{{ report.exploreId || 'sales_explore' }}</span>
+                    </div>
+                    <div class="datasource-item">
+                      <span class="datasource-label">Timeframe</span>
+                      <span class="datasource-value">{{ report.timeframeStart && report.timeframeEnd ? (report.timeframeStart + ' to ' + report.timeframeEnd) : 'Dynamic rolling window' }}</span>
+                    </div>
+                  </div>
                 </div>
+
+                <!-- Semantic Joins Mapping -->
+                <div class="inspector-section">
+                  <h3 class="inspector-section-title">🔗 Semantic Join Network</h3>
+                  <div class="semantic-schema-flow">
+                    <!-- Fact Table Root Node -->
+                    <div class="schema-node fact-node">
+                      <span class="node-icon">📊</span>
+                      <div class="node-details">
+                        <span class="node-type">Fact Table (Root)</span>
+                        <span class="node-name">{{ report.sourceTable ? (report.sourceTable.includes('.') ? report.sourceTable.split('.')[1] : report.sourceTable) : 'fact_sales' }}</span>
+                      </div>
+                    </div>
+
+                    @if (selectedReportJoins().length === 0) {
+                      <div class="schema-connector">
+                        <div class="connector-line"></div>
+                        <div class="connector-condition">
+                          <span class="connector-type">Direct Query</span>
+                          <code>Queries fact table directly</code>
+                        </div>
+                        <div class="connector-line"></div>
+                      </div>
+                      <div class="schema-node dim-node" style="border-left-color: var(--color-apple-grey);">
+                        <span class="node-icon">📐</span>
+                        <div class="node-details">
+                          <span class="node-type">Dimensions</span>
+                          <span class="node-name">No connected dimension tables found</span>
+                        </div>
+                      </div>
+                    } @else {
+                      @for (join of selectedReportJoins(); track join.join_id || $index) {
+                        <div class="schema-connector">
+                          <div class="connector-line"></div>
+                          <div class="connector-condition" [title]="join.join_sql">
+                            <span class="connector-type">{{ join.join_type }} Join</span>
+                            <code>ON {{ join.join_sql }}</code>
+                          </div>
+                          <div class="connector-line"></div>
+                        </div>
+
+                        <div class="schema-node dim-node">
+                          <span class="node-icon">📐</span>
+                          <div class="node-details">
+                            <span class="node-type">Dimension View</span>
+                            <span class="node-name">{{ join.to_view }}</span>
+                          </div>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+
+                <!-- Compilation Model Preview -->
+                <div class="inspector-section">
+                  <h3 class="inspector-section-title">🧮 Compilation Layout Model</h3>
+                  <div class="compilation-summary">
+                    <span>Columns: <strong>{{ report.columns?.length || 0 }}</strong></span>
+                    <span>Rows: <strong>{{ report.rows?.length || 0 }}</strong></span>
+                  </div>
+
+                  <div class="compilation-tree no-scrollbar">
+                    @for (row of report.rows; track row.rowId) {
+                      <div class="tree-row" [style.margin-left.px]="row.indentLevel * 12" [style.opacity]="row.rowType === 'blank' ? 0.4 : 1">
+                        <div class="tree-row-label">
+                          <span>
+                            @if (row.rowType === 'section') { 📂 }
+                            @else if (row.rowType === 'calc') { 🧮 }
+                            @else if (row.rowType === 'data') { 📊 }
+                            @else { ◽ }
+                          </span>
+                          <strong>{{ row.label || '[Blank Row]' }}</strong>
+                        </div>
+                        <span class="tree-row-expr" [title]="row.source">
+                          @if (row.rowType === 'data') {
+                            <code>{{ row.source }}</code>
+                          } @else if (row.rowType === 'calc') {
+                            <code style="color:#22c55e;">{{ row.source }}</code>
+                          } @else {
+                            -
+                          }
+                        </span>
+                        <span class="tree-row-type" [class]="row.rowType">{{ row.rowType }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
               </div>
             }
           </div>
 
-          @if (filteredReports.length === 0) {
-            <div class="empty-state animate-fade-in">
-              <span class="empty-icon">🔍</span>
-              <h3>No Match Found</h3>
-              <p>We couldn't find any report templates matching your criteria.</p>
-              <button (click)="clearFilters()" class="clear-filters-btn">Reset Filters</button>
-            </div>
-          }
-        }
+        </div>
       </main>
     </div>
   `,
   styles: [`
     .dashboard-container {
       display: flex;
-      min-height: 100vh;
-      background: #0f172a;
-      color: #f8fafc;
-      font-family: 'Outfit', 'Inter', sans-serif;
+      min-height: 100dvh;
+      background: var(--color-apple-bg);
+      color: var(--color-apple-text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Sidebar Styles */
-    .sidebar {
-      width: 260px;
-      background: rgba(30, 41, 59, 0.5);
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(12px);
-      display: flex;
-      flex-direction: column;
-      padding: 24px;
-      gap: 32px;
-      flex-shrink: 0;
-    }
-
-    .sidebar-brand {
-      display: flex;
+    /* Mobile topbar */
+    .mobile-topbar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      height: 52px;
+      background: var(--color-apple-bg);
+      -webkit-backdrop-filter: saturate(1.8) blur(20px);
+      backdrop-filter: saturate(1.8) blur(20px);
+      border-bottom: 1px solid var(--border-color);
       align-items: center;
-      gap: 12px;
+      padding: 0 16px;
+      gap: 14px;
     }
 
-    .brand-icon {
-      font-size: 28px;
-    }
-
-    .brand-text {
-      font-size: 20px;
+    .topbar-brand {
+      font-size: 15px;
       font-weight: 700;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--color-apple-text);
+      letter-spacing: -0.3px;
     }
 
-    .sidebar-menu {
+    .hamburger-btn {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      flex-grow: 1;
-    }
-
-    .menu-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      color: #94a3b8;
-      text-decoration: none;
-      border-radius: 12px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-    }
-
-    .menu-item:hover, .menu-item.active {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .menu-item.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      color: #a5b4fc;
-    }
-
-    .menu-icon {
-      font-size: 18px;
-    }
-
-    .sidebar-user {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding-top: 24px;
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .user-avatar {
-      font-size: 24px;
-      width: 40px;
-      height: 40px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .user-details {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .user-name {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .user-role {
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    .logout-btn {
-      width: 100%;
-      padding: 10px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: 8px;
-      color: #fca5a5;
-      font-weight: 500;
+      gap: 4px;
+      background: none;
+      border: none;
       cursor: pointer;
-      transition: all 0.2s ease;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background var(--transition-fast, 150ms);
+    }
+    .hamburger-btn:hover { background: var(--input-bg); }
+
+    .ham-line {
+      display: block;
+      width: 20px;
+      height: 1.5px;
+      background: var(--color-apple-text);
+      border-radius: 2px;
     }
 
-    .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.2);
-      color: white;
-    }
-
-    /* Main Content Styles */
     .main-content {
       flex-grow: 1;
-      padding: 40px;
       overflow-y: auto;
     }
 
-    .content-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 40px;
-      gap: 20px;
-    }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      letter-spacing: -0.5px;
-    }
-
-    .content-header p {
-      color: #94a3b8;
-      font-size: 15px;
-      margin: 0;
-    }
-
     .create-btn {
-      padding: 14px 24px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
-      transition: all 0.2s ease;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      color: var(--color-apple-text);
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 40px;
+      cursor: pointer;
+      transition: all var(--transition-base, 300ms);
     }
 
     .create-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(99, 102, 241, 0.4);
+      background: var(--card-bg);
+      border-color: rgba(0, 118, 223, 0.35);
       transform: translateY(-1px);
     }
 
-    .edit-icon-btn {
-      background: none;
-      border: none;
-      color: #94a3b8;
-      font-size: 14px;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      z-index: 5;
-    }
-
-    .edit-icon-btn:hover {
-      color: #818cf8;
-      background: rgba(255, 255, 255, 0.08);
-    }
-
     .upload-label {
-      padding: 14px 24px;
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-      border-radius: 12px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      transition: all 0.2s ease;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--color-apple-blue);
+      border-radius: 9999px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 40px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 118, 223, 0.30);
+      transition: all var(--transition-base, 300ms);
     }
 
     .upload-label:hover {
-      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+      filter: brightness(1.12);
+      box-shadow: 0 6px 20px rgba(0, 118, 223, 0.45);
       transform: translateY(-1px);
     }
 
     .upload-label.uploading {
-      opacity: 0.8;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
     .spinner {
       width: 18px;
       height: 18px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.25);
       border-top-color: white;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: spin 0.75s linear infinite;
+      display: inline-block;
     }
 
     .spinner.large {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-width: 3px;
-      border-top-color: #6366f1;
+      border-color: var(--border-color);
+      border-top-color: var(--color-apple-blue);
     }
 
-    /* Alerts */
-    .alert {
+    /* Split Pane Layout */
+    .dashboard-split-layout {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 20px;
-      border-radius: 12px;
-      margin-bottom: 24px;
-      font-size: 14px;
-      font-weight: 500;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--color-apple-bg);
     }
 
-    .success-alert {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #a7f3d0;
-    }
-
-    .error-alert {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-    }
-
-    .alert-icon {
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    /* Loading / Empty States */
-    .loading-state, .empty-state {
+    .middle-pane {
+      width: 380px;
+      border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 80px 40px;
-      text-align: center;
-      background: rgba(30, 41, 59, 0.2);
-      border: 1px dashed rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
+      height: 100%;
+      flex-shrink: 0;
+      background: rgba(15, 23, 42, 0.25);
+      backdrop-filter: blur(8px);
+    }
+
+    .right-pane {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+      background: var(--color-apple-bg);
+      position: relative;
+    }
+
+    /* Middle Pane Styles */
+    .pane-header {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
       gap: 16px;
     }
 
-    .empty-icon {
-      font-size: 64px;
+    .pane-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .empty-state h3 {
+    .pane-title-row h1 {
       font-size: 20px;
+      font-weight: 700;
       margin: 0;
+      letter-spacing: -0.4px;
+      color: var(--color-apple-text);
     }
 
-    .empty-state p {
-      color: #64748b;
-      margin: 0;
-      max-width: 400px;
-    }
-
-    /* Reports Grid */
-    .reports-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 24px;
-    }
-
-    .report-card {
-      background: rgba(30, 41, 59, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      padding: 24px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .high-density-list {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 16px 12px;
       display: flex;
       flex-direction: column;
+      gap: 10px;
+    }
+
+    /* High Density Template Cards */
+    .hd-card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
       position: relative;
       overflow: hidden;
+      transition: all var(--transition-base, 300ms);
     }
 
-    .report-card::after {
-      content: '';
+    .hd-card::before {
+      content: "";
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.02) 100%);
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--color-apple-blue);
+      border-radius: 0 4px 4px 0;
       opacity: 0;
-      transition: opacity 0.3s ease;
-      z-index: 0;
-      pointer-events: none;
+      transition: opacity 0.2s ease;
     }
 
-    .report-card:hover {
-      border-color: rgba(99, 102, 241, 0.2);
-      transform: translateY(-2px);
-      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2);
+    .hd-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: rgba(30, 41, 59, 0.6);
+      transform: translateY(-1px);
     }
 
-    .report-card:hover::after {
+    .hd-card.active {
+      background: rgba(0, 118, 223, 0.08);
+      border-color: rgba(0, 118, 223, 0.3);
+    }
+
+    .hd-card.active::before {
       opacity: 1;
     }
 
-    .card-header {
+    .hd-card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      z-index: 1;
+      margin-bottom: 8px;
     }
 
-    .report-badge {
+    .hd-card-id {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--color-apple-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .hd-card-version {
+      font-size: 10px;
+      color: var(--color-apple-grey);
+    }
+
+    .hd-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-apple-text);
+      margin: 0 0 6px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hd-card-desc {
       font-size: 11px;
+      color: var(--color-apple-grey);
+      line-height: 1.4;
+      margin: 0 0 10px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .hd-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--color-apple-grey);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 8px;
+    }
+
+    /* Inspector Pane Styles */
+    .inspector-container {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .inspector-header-block {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+
+    .inspector-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      gap: 16px;
+    }
+
+    .inspector-title-row h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.6px;
+      color: var(--color-apple-text);
+    }
+
+    .inspector-desc {
+      font-size: 14px;
+      color: var(--color-apple-grey);
+      line-height: 1.6;
+      margin: 8px 0 0 0;
+    }
+
+    /* Inspector Action Bar */
+    .inspector-actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px 24px;
+      gap: 20px;
+    }
+
+    .inspector-date-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .inspector-date-box label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--color-apple-grey);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .inspector-date-input {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 12px;
+      color: var(--color-apple-text);
+      outline: none;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .inspector-action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Empty state right pane */
+    .inspector-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-grow: 1;
+      padding: 48px;
+      text-align: center;
+      color: var(--color-apple-grey);
+    }
+
+    .empty-graphic {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-apple-text);
+      margin: 0 0 8px 0;
+    }
+
+    .empty-desc {
+      font-size: 13px;
+      max-width: 380px;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Block sections */
+    .inspector-section {
+      background: rgba(30, 41, 59, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .inspector-section-title {
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: rgba(245, 158, 11, 0.15);
-      color: #fde047;
-      border: 1px solid rgba(245, 158, 11, 0.2);
+      letter-spacing: 0.08em;
+      color: var(--color-apple-blue);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .report-badge.published {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.2);
+    .datasource-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
     }
 
-    .report-version {
-      font-size: 12px;
-      color: #64748b;
+    .datasource-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .datasource-label {
+      font-size: 11px;
+      color: var(--color-apple-grey);
       font-weight: 500;
     }
 
-    .report-title {
-      font-size: 20px;
-      font-weight: 700;
-      margin: 0 0 4px 0;
-      z-index: 1;
-    }
-
-    .report-subtitle {
+    .datasource-value {
       font-size: 14px;
       font-weight: 600;
-      color: #818cf8;
-      margin: 0 0 16px 0;
-      z-index: 1;
+      color: var(--color-apple-text);
     }
 
-    .report-desc {
-      font-size: 13px;
-      color: #94a3b8;
-      line-height: 1.6;
-      margin: 0 0 24px 0;
-      flex-grow: 1;
-      z-index: 1;
-    }
-
-    .card-footer {
+    /* Semantic Schema Flow Diagram */
+    .semantic-schema-flow {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      padding-top: 16px;
-      z-index: 1;
+      flex-direction: column;
+      gap: 0;
+      background: rgba(11, 17, 32, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
     }
 
-    .explore-ref {
-      font-size: 11px;
-      color: #64748b;
+    .schema-node {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+
+    .schema-node.fact-node {
+      border-left: 3px solid var(--color-apple-blue);
+    }
+
+    .schema-node.dim-node {
+      border-left: 3px solid #a855f7;
+    }
+
+    .node-icon {
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .node-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .node-type {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-apple-grey);
+      font-weight: 600;
+    }
+
+    .node-name {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: monospace;
+      color: var(--color-apple-text);
+    }
+
+    .schema-connector {
+      display: flex;
+      align-items: center;
+      height: 40px;
+      padding-left: 30px;
+    }
+
+    .connector-line {
+      width: 2px;
+      background: var(--border-color);
+      height: 100%;
+    }
+
+    .connector-condition {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 10px;
+      margin-left: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .connector-type {
+      font-size: 8px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--color-apple-blue);
+    }
+
+    .connector-condition code {
+      font-family: monospace;
+      color: #f472b6;
+      border: none;
+      padding: 0;
+      background: none;
+    }
+
+    /* Model Compilation preview list */
+    .compilation-summary {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--color-apple-grey);
+    }
+
+    .compilation-summary strong {
+      color: var(--color-apple-text);
+    }
+
+    .compilation-tree {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 250px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .tree-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      font-size: 12px;
+    }
+
+    .tree-row-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-weight: 500;
     }
 
-    .arrow-icon {
-      font-size: 16px;
-      color: #64748b;
-      transition: transform 0.2s ease;
+    .tree-row-expr {
+      font-family: monospace;
+      color: var(--color-apple-grey);
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .report-card:hover .arrow-icon {
-      color: #818cf8;
-      transform: translateX(4px);
+    .tree-row-type {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 4px;
+      border-radius: 3px;
     }
 
-    .report-card:hover .arrow-icon {
-      color: #818cf8;
-      transform: translateX(4px);
+    .tree-row-type.section { background: rgba(255, 255, 255, 0.08); color: var(--color-apple-text); }
+    .tree-row-type.data { background: rgba(56, 189, 248, 0.1); color: #38bdf8; }
+    .tree-row-type.calc { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
+
+    /* Delete Confirmation block */
+    .delete-confirm-block {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
     }
 
-    /* PREMIUM SEARCH & QUICK FILTERS */
-    .mb-6 {
-      margin-bottom: 24px;
+    .delete-confirm-msg {
+      font-size: 13px;
+      color: #fca5a5;
+      font-weight: 500;
     }
+
+    .delete-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* High Density Badge overriding styles */
+    .hd-badge {
+      font-size: 8px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .hd-badge.published { background: rgba(16, 185, 129, 0.1); color: #34d399; }
+    .hd-badge.draft { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
 
     .search-filter-bar {
       display: flex;
@@ -609,118 +991,101 @@ import { SidebarComponent } from './sidebar';
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      padding: 18px 24px;
-      background: rgba(30, 41, 59, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      backdrop-filter: blur(8px);
+      padding: 14px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(20px) saturate(180%);
     }
 
     .search-input-wrapper {
       position: relative;
-      width: 480px;
-      max-width: 100%;
+      width: 100%;
     }
 
     .search-icon {
       position: absolute;
-      left: 14px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      color: #64748b;
-      font-size: 16px;
+      color: var(--color-apple-grey);
       pointer-events: none;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
     }
 
     .search-input {
       width: 100%;
-      padding: 10px 40px 10px 42px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      color: #f8fafc;
-      font-size: 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--color-apple-text);
       outline: none;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast, 150ms);
       font-family: inherit;
     }
 
+    .search-input:hover { border-color: var(--text-secondary); }
+
     .search-input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
-      background: rgba(15, 23, 42, 0.8);
+      border-color: rgba(0, 118, 223, 0.45);
+      box-shadow: 0 0 0 3px rgba(0, 118, 223, 0.15);
+      background: var(--card-bg);
     }
 
     .clear-search-btn {
       position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
       background: none;
       border: none;
-      color: #64748b;
+      color: var(--color-apple-grey);
       cursor: pointer;
-      font-size: 12px;
       padding: 4px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast, 150ms);
+      font-size: 10px;
+      top: 50%;
+      transform: translateY(-50%);
     }
 
     .clear-search-btn:hover {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.1);
+      color: var(--color-apple-text);
+      background: var(--input-bg);
     }
 
     .filter-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 6px;
     }
 
     .filter-chip-btn {
-      padding: 8px 16px;
-      background: rgba(15, 23, 42, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 20px;
-      font-size: 13px;
+      padding: 6px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      font-size: 12px;
       font-weight: 500;
-      color: #cbd5e1;
+      color: var(--color-apple-grey);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast, 150ms);
+      white-space: nowrap;
     }
 
     .filter-chip-btn:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #f8fafc;
-      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--card-bg);
+      color: var(--color-apple-text);
+      border-color: var(--text-secondary);
     }
 
     .filter-chip-btn.active {
-      background: rgba(99, 102, 241, 0.15);
-      color: #a5b4fc;
-      border-color: rgba(99, 102, 241, 0.4);
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.1);
-    }
-
-    .clear-filters-btn {
-      margin-top: 8px;
-      padding: 8px 18px;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      border-radius: 8px;
-      color: #a5b4fc;
+      background: rgba(0, 118, 223, 0.12);
+      color: var(--color-apple-blue);
+      border-color: rgba(0, 118, 223, 0.30);
       font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .clear-filters-btn:hover {
-      background: rgba(99, 102, 241, 0.25);
-      color: white;
     }
 
     @keyframes spin {
@@ -729,156 +1094,235 @@ import { SidebarComponent } from './sidebar';
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .animate-fade-in {
-      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* ═══════════════ LIGHT THEME REFINEMENT ═══════════════ */
+    :host-context(html.light) .middle-pane {
+      background: #FFFFFF;
+      border-right-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .right-pane {
+      background: #F8FAFC;
+    }
+
+    :host-context(html.light) .pane-header {
+      border-bottom-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .pane-title-row h1,
+    :host-context(html.light) .inspector-title-row h2,
+    :host-context(html.light) .empty-title,
+    :host-context(html.light) .tree-row-label strong {
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .hd-card {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .hd-card-id,
+    :host-context(html.light) .hd-card-title {
+      color: #334155;
+    }
+
+    :host-context(html.light) .hd-card-desc {
+      color: #64748B;
+    }
+
+    :host-context(html.light) .hd-card-footer {
+      color: #64748B;
+      border-top-color: #F1F5F9;
+    }
+
+    :host-context(html.light) .hd-card:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+    }
+
+    :host-context(html.light) .hd-card.active {
+      background: #F5F3FF;
+      border-color: #C7D2FE;
+    }
+
+    :host-context(html.light) .hd-card.active::before {
+      background: #4F46E5;
+    }
+
+    :host-context(html.light) .hd-card.active .hd-card-id {
+      color: #4F46E5;
+    }
+
+    :host-context(html.light) .inspector-empty-state {
+      color: #64748B;
+    }
+
+    :host-context(html.light) .inspector-desc {
+      color: #475569;
+    }
+
+    :host-context(html.light) .inspector-actions-bar {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .inspector-date-input {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .inspector-date-input:focus {
+      border-color: #818CF8;
+    }
+
+    :host-context(html.light) .btn-primary,
+    :host-context(html.light) .upload-label {
+      background: #4F46E5;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    :host-context(html.light) .btn-primary:hover,
+    :host-context(html.light) .upload-label:hover {
+      background: #4338CA;
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+    }
+
+    :host-context(html.light) .btn-secondary {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      color: #475569;
+    }
+
+    :host-context(html.light) .btn-secondary:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .inspector-section {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    :host-context(html.light) .inspector-section-title {
+      color: #4F46E5;
+    }
+
+    :host-context(html.light) .datasource-label {
+      color: #64748B;
+    }
+
+    :host-context(html.light) .datasource-value {
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .semantic-schema-flow {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .schema-node {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .schema-node.fact-node {
+      border-left-color: #4F46E5;
+    }
+
+    :host-context(html.light) .schema-node.dim-node {
+      border-left-color: #A855F7;
+    }
+
+    :host-context(html.light) .node-name {
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .connector-condition {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .connector-type {
+      color: #4F46E5;
+    }
+
+    :host-context(html.light) .compilation-summary {
+      color: #64748B;
+    }
+
+    :host-context(html.light) .compilation-summary strong {
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .tree-row {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .tree-row:hover {
+      background: #F8FAFC;
+    }
+
+    :host-context(html.light) .tree-row-expr code {
+      background: #F1F5F9;
+      border-color: #E2E8F0;
+      color: #334155;
+    }
+
+    :host-context(html.light) .search-input {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .search-input:focus {
+      border-color: #818CF8;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+      background: #FFFFFF;
+    }
+
+    :host-context(html.light) .clear-search-btn:hover {
+      background: #F1F5F9;
+    }
+
+    :host-context(html.light) .filter-chip-btn {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+      color: #64748B;
+    }
+
+    :host-context(html.light) .filter-chip-btn:hover {
+      background: #F8FAFC;
+      color: #0F172A;
+    }
+
+    :host-context(html.light) .filter-chip-btn.active {
+      background: rgba(79, 70, 229, 0.08);
+      color: #4F46E5;
+      border-color: rgba(79, 70, 229, 0.25);
     }
 
     /* ═══════════════ MOBILE RESPONSIVE ═══════════════ */
-
-    .mobile-topbar {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 200;
-      height: 60px;
-      background: rgba(15, 23, 42, 0.97);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-      align-items: center;
-      padding: 0 16px;
-      gap: 14px;
-    }
-
-    .topbar-brand {
-      font-size: 17px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hamburger-btn {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 8px;
-      transition: background 0.2s ease;
-    }
-    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.08); }
-
-    .ham-line {
-      display: block;
-      width: 22px;
-      height: 2px;
-      background: #f8fafc;
-      border-radius: 2px;
-    }
-
-    .sidebar-close-btn {
-      display: none;
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      color: #f8fafc;
-      font-size: 14px;
-      width: 32px;
-      height: 32px;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      z-index: 10;
-    }
-    .sidebar-close-btn:hover {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-    }
-
-    .sidebar-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: 149;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-    }
-    .sidebar-overlay.visible { display: block; }
-
     @media (max-width: 1023px) {
       .mobile-topbar { display: flex; }
-      .sidebar-close-btn { display: flex; }
-
-      .sidebar {
-        position: fixed;
-        top: 0; left: 0;
-        height: 100%;
-        width: 280px;
-        z-index: 150;
-        transform: translateX(-100%);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .sidebar.open {
-        transform: translateX(0);
-        box-shadow: 4px 0 32px rgba(0, 0, 0, 0.5);
-      }
-
       .main-content {
-        padding: 80px 20px 32px 20px;
+        padding: 52px 0 0 0 !important;
       }
-    }
-
-    @media (max-width: 767px) {
-      .content-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 24px;
-      }
-      .header-actions {
+      .middle-pane {
         width: 100%;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+        border-right: none;
       }
-      .create-btn, .upload-label {
-        flex: 1;
-        min-width: 140px;
-        justify-content: center;
-      }
-      .search-input-wrapper {
-        width: 100%;
-      }
-      .search-filter-bar {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 14px 16px;
-      }
-      .filter-chips {
-        justify-content: flex-start;
-      }
-      .reports-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-      h1 {
-        font-size: 24px;
-      }
-      .main-content {
-        padding: 76px 16px 24px 16px;
+      .right-pane {
+        display: none;
       }
     }
   `]
@@ -895,6 +1339,16 @@ export class DashboardComponent implements OnInit {
   searchQuery = signal('');
   filterStatus = signal('all'); // 'all', 'draft', 'published'
   sidebarOpen = signal(false);
+
+  // Inspector & selection signals
+  selectedReportId = signal<string | null>(null);
+  selectedReportConfig = signal<any | null>(null);
+  selectedReportLoading = signal(false);
+  selectedReportJoins = signal<any[]>([]);
+  referenceDate = signal<string>('2025-12-31');
+  running = signal<boolean>(false);
+  deleting = signal<boolean>(false);
+  showDeleteConfirm = signal<boolean>(false);
 
   private destroyRef = inject(DestroyRef);
   private reportService = inject(ReportService);
@@ -917,6 +1371,15 @@ export class DashboardComponent implements OnInit {
       next: (data) => {
         this.reports.set(data);
         this.loading.set(false);
+        
+        // Auto-select first report if desktop and nothing is selected yet
+        const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+        if (data.length > 0 && !this.selectedReportId() && isDesktop) {
+          const filtered = this.filteredReports;
+          if (filtered.length > 0) {
+            this.selectReport(filtered[0].reportId);
+          }
+        }
       },
       error: (err) => {
         this.loading.set(false);
@@ -953,8 +1416,159 @@ export class DashboardComponent implements OnInit {
   }
 
   editReport(reportId: string, event: Event): void {
-    event.stopPropagation();
+    if (event) {
+      event.stopPropagation();
+    }
     this.router.navigate(['/reports', reportId, 'edit']);
+  }
+
+  viewReportCard(reportId: string): void {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+    if (isDesktop) {
+      this.selectReport(reportId);
+    } else {
+      this.viewReport(reportId);
+    }
+  }
+
+  selectReport(id: string | null): void {
+    if (!id) {
+      this.selectedReportId.set(null);
+      this.selectedReportConfig.set(null);
+      this.selectedReportJoins.set([]);
+      return;
+    }
+
+    this.selectedReportId.set(id);
+    this.selectedReportLoading.set(true);
+    this.showDeleteConfirm.set(false);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    if (this.reportService.getReportConfig) {
+      this.reportService.getReportConfig(id, this.referenceDate()).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (config) => {
+          this.selectedReportConfig.set(config);
+          this.selectedReportLoading.set(false);
+
+          if (config.sourceTable) {
+            this.loadJoins(config.sourceTable);
+          } else {
+            this.selectedReportJoins.set([]);
+          }
+        },
+        error: (err) => {
+          this.selectedReportLoading.set(false);
+          this.selectedReportConfig.set(null);
+          this.selectedReportJoins.set([]);
+          this.errorMessage.set(`Failed to load configuration for report ${id}`);
+        }
+      });
+    } else {
+      this.selectedReportLoading.set(false);
+    }
+  }
+
+  loadJoins(table: string): void {
+    // Extract base table name if it's qualified (analytics.fact_sales -> fact_sales)
+    const baseTable = table.includes('.') ? table.split('.')[1] : table;
+    if (this.reportService.getDimensionJoins) {
+      this.reportService.getDimensionJoins(baseTable).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (joins) => {
+          this.selectedReportJoins.set(joins || []);
+        },
+        error: (err) => {
+          this.selectedReportJoins.set([]);
+        }
+      });
+    } else {
+      this.selectedReportJoins.set([]);
+    }
+  }
+
+  onDateChange(newDate: string): void {
+    this.referenceDate.set(newDate);
+    const currentId = this.selectedReportId();
+    if (currentId) {
+      // Reload config with new date
+      this.selectReport(currentId);
+    }
+  }
+
+  runReport(): void {
+    const reportId = this.selectedReportId();
+    if (!reportId) return;
+
+    this.running.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    if (this.reportService.runReport) {
+      this.reportService.runReport(reportId, this.referenceDate()).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: (blob) => {
+          this.running.set(false);
+          this.successMessage.set(`Report ${reportId} generated successfully!`);
+          // Trigger browser download
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${reportId}_${this.referenceDate()}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        },
+        error: (err) => {
+          this.running.set(false);
+          this.errorMessage.set('Failed to generate report. Make sure the analytical database is correctly seeded.');
+        }
+      });
+    } else {
+      this.running.set(false);
+    }
+  }
+
+  deleteReport(reportId: string): void {
+    this.deleting.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    if (this.reportService.deleteReport) {
+      this.reportService.deleteReport(reportId).pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe({
+        next: () => {
+          this.deleting.set(false);
+          this.showDeleteConfirm.set(false);
+          this.successMessage.set(`Report configuration ${reportId} deleted successfully.`);
+          
+          // Remove from list and update selection
+          const oldReports = this.reports();
+          const updatedReports = oldReports.filter(r => r.reportId !== reportId);
+          this.reports.set(updatedReports);
+          
+          // Auto-select first of remaining
+          const filtered = this.filteredReports;
+          if (filtered.length > 0) {
+            this.selectReport(filtered[0].reportId);
+          } else {
+            this.selectReport(null);
+          }
+        },
+        error: (err) => {
+          this.deleting.set(false);
+          this.errorMessage.set(err.error?.message || `Failed to delete report ${reportId}.`);
+        }
+      });
+    } else {
+      this.deleting.set(false);
+    }
   }
 
   // Filter calculations & helper actions
@@ -986,6 +1600,34 @@ export class DashboardComponent implements OnInit {
   clearFilters(): void {
     this.searchQuery.set('');
     this.filterStatus.set('all');
+    this.autoSelectFirst();
+  }
+
+  setFilterStatus(status: string): void {
+    this.filterStatus.set(status);
+    this.autoSelectFirst();
+  }
+
+  onSearchChange(): void {
+    this.autoSelectFirst();
+  }
+
+  autoSelectFirst(): void {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+    if (!isDesktop) return;
+
+    setTimeout(() => {
+      const filtered = this.filteredReports;
+      if (filtered.length > 0) {
+        const currentId = this.selectedReportId();
+        const exists = filtered.some(r => r.reportId === currentId);
+        if (!exists) {
+          this.selectReport(filtered[0].reportId);
+        }
+      } else {
+        this.selectReport(null);
+      }
+    });
   }
 
   toggleSidebar(): void { this.sidebarOpen.update(v => !v); }

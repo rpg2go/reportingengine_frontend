@@ -250,16 +250,16 @@ import { SidebarComponent } from './sidebar';
       .builder-container {
         display: flex;
         min-height: 100vh;
-        background: #0f172a;
-        color: #f8fafc;
-        font-family: 'Outfit', 'Inter', sans-serif;
+        background: var(--color-apple-bg);
+        color: var(--color-apple-text);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       }
 
       /* ── Sidebar ────────────────────────────────────── */
       .sidebar {
         width: 260px;
-        background: rgba(30, 41, 59, 0.5);
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--card-bg);
+        border-right: 1px solid var(--border-color);
         backdrop-filter: blur(12px);
         display: flex;
         flex-direction: column;
@@ -289,9 +289,7 @@ import { SidebarComponent } from './sidebar';
       .brand-text {
         font-size: 20px;
         font-weight: 700;
-        background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: var(--color-apple-text);
         white-space: nowrap;
         transition:
           opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
@@ -304,7 +302,7 @@ import { SidebarComponent } from './sidebar';
       .menu-collapse-btn {
         background: none;
         border: none;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         cursor: pointer;
         font-size: 16px;
         padding: 4px;
@@ -316,8 +314,8 @@ import { SidebarComponent } from './sidebar';
         border-radius: 6px;
       }
       .menu-collapse-btn:hover {
-        color: white;
-        background: rgba(255, 255, 255, 0.08);
+        color: var(--color-apple-text);
+        background: var(--border-color);
       }
 
       .sidebar-menu {
@@ -333,7 +331,7 @@ import { SidebarComponent } from './sidebar';
         align-items: center;
         gap: 12px;
         padding: 12px 16px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         text-decoration: none;
         border-radius: 12px;
         font-weight: 500;
@@ -341,13 +339,13 @@ import { SidebarComponent } from './sidebar';
         border: 1px solid transparent;
       }
       .menu-item:hover {
-        color: #f8fafc;
-        background: rgba(255, 255, 255, 0.05);
+        color: var(--color-apple-text);
+        background: var(--input-bg);
       }
       .menu-item.active {
-        color: #f8fafc;
-        background: rgba(99, 102, 241, 0.15);
-        border: 1px solid rgba(99, 102, 241, 0.25);
+        color: var(--color-apple-text);
+        background: rgba(0, 118, 223, 0.15);
+        border: 1px solid rgba(0, 118, 223, 0.25);
       }
       .menu-icon {
         font-size: 18px;
@@ -371,10 +369,10 @@ import { SidebarComponent } from './sidebar';
         display: flex;
         align-items: center;
         gap: 12px;
-        background: rgba(255, 255, 255, 0.03);
+        background: var(--input-bg);
         padding: 12px;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
       }
       .user-avatar {
         font-size: 20px;
@@ -386,11 +384,11 @@ import { SidebarComponent } from './sidebar';
       .user-name {
         font-size: 13px;
         font-weight: 600;
-        color: #f8fafc;
+        color: var(--color-apple-text);
       }
       .user-role {
         font-size: 11px;
-        color: #64748b;
+        color: var(--color-apple-grey);
       }
 
       @media (min-width: 1024px) {
@@ -444,17 +442,17 @@ import { SidebarComponent } from './sidebar';
         justify-content: space-between;
         align-items: flex-end;
         gap: 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 24px;
       }
 
       .breadcrumbs {
         font-size: 13px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         margin-bottom: 8px;
       }
       .breadcrumbs a {
-        color: #818cf8;
+        color: var(--color-apple-blue);
         text-decoration: none;
       }
       .breadcrumbs a:hover {
@@ -469,14 +467,14 @@ import { SidebarComponent } from './sidebar';
       }
       .report-subtitle {
         font-size: 15px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         margin: 4px 0 0 0;
       }
 
       /* ── Cards ──────────────────────────────────────── */
       .card {
-        background: rgba(30, 41, 59, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
         border-radius: 20px;
         padding: 32px;
         display: flex;
@@ -488,11 +486,11 @@ import { SidebarComponent } from './sidebar';
         font-size: 18px;
         font-weight: 700;
         margin: 0;
-        color: #f8fafc;
+        color: var(--color-apple-text);
       }
       .section-desc {
         font-size: 14px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         margin: 4px 0 16px 0;
       }
 
@@ -505,16 +503,16 @@ import { SidebarComponent } from './sidebar';
       .form-group label {
         font-size: 13px;
         font-weight: 600;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
       }
 
       .form-input,
       .form-select {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 10px 14px;
-        color: white;
+        color: var(--color-apple-text);
         outline: none;
         font-size: 14px;
         font-family: inherit;
@@ -524,11 +522,11 @@ import { SidebarComponent } from './sidebar';
       }
       .form-input:focus,
       .form-select:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        border-color: var(--color-apple-blue);
+        box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.2);
       }
       .form-input::placeholder {
-        color: #475569;
+        color: var(--color-apple-grey);
       }
 
       .select-template-dropdown {
@@ -576,10 +574,10 @@ import { SidebarComponent } from './sidebar';
 
       .export-csv-btn {
         padding: 10px 20px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
-        color: #e2e8f0;
+        color: var(--color-apple-text);
         font-weight: 600;
         font-size: 14px;
         cursor: pointer;
@@ -589,9 +587,9 @@ import { SidebarComponent } from './sidebar';
         transition: all 0.2s ease;
       }
       .export-csv-btn:hover {
-        background: rgba(255, 255, 255, 0.15);
-        border-color: rgba(255, 255, 255, 0.25);
-        color: white;
+        background: var(--border-color);
+        border-color: var(--color-apple-grey);
+        color: var(--color-apple-text);
         transform: translateY(-1px);
       }
 
@@ -599,8 +597,8 @@ import { SidebarComponent } from './sidebar';
       .table-wrapper {
         overflow-x: auto;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid var(--border-color);
+        background: var(--input-bg);
       }
 
       .rows-table-wrapper {
@@ -617,12 +615,12 @@ import { SidebarComponent } from './sidebar';
       }
 
       .spreadsheet-table th {
-        background: rgba(15, 23, 42, 0.9);
-        color: #94a3b8;
+        background: var(--color-apple-bg);
+        color: var(--color-apple-grey);
         padding: 12px 16px;
         font-size: 11px;
         font-weight: 600;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 2px solid var(--border-color);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         white-space: nowrap;
@@ -630,17 +628,17 @@ import { SidebarComponent } from './sidebar';
 
       .spreadsheet-table td {
         padding: 10px 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--input-bg);
         vertical-align: middle;
-        color: #cbd5e1;
+        color: var(--color-apple-text);
       }
 
       .sticky-col {
         position: sticky;
         left: 0;
-        background: #1e293b;
+        background: var(--color-apple-card);
         z-index: 2;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid var(--border-color);
         font-weight: 500;
       }
 
@@ -655,13 +653,13 @@ import { SidebarComponent } from './sidebar';
       }
       .col-flag-cell.section-cell {
         font-weight: bold;
-        color: #cbd5e1;
+        color: var(--color-apple-text);
         font-family: inherit;
       }
 
       .preview-col-label {
         font-size: 9px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         text-transform: none;
         margin-top: 2px;
       }
@@ -701,8 +699,8 @@ import { SidebarComponent } from './sidebar';
         text-transform: uppercase;
       }
       .row-type-badge.section {
-        background: #1e293b;
-        color: #cbd5e1;
+        background: var(--color-apple-card);
+        color: var(--color-apple-text);
       }
       .row-type-badge.data {
         background: rgba(56, 189, 248, 0.15);
@@ -714,7 +712,7 @@ import { SidebarComponent } from './sidebar';
       }
       .row-type-badge.blank {
         background: transparent;
-        color: #475569;
+        color: var(--color-apple-grey);
       }
 
       /* ── Empty states, alerts and loading ───────────────── */
@@ -724,7 +722,7 @@ import { SidebarComponent } from './sidebar';
         align-items: center;
         justify-content: center;
         padding: 60px 20px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         gap: 12px;
         text-align: center;
       }
@@ -736,7 +734,7 @@ import { SidebarComponent } from './sidebar';
         align-items: center;
         justify-content: center;
         gap: 12px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         font-size: 14px;
         padding: 40px 0;
       }
@@ -744,8 +742,8 @@ import { SidebarComponent } from './sidebar';
         display: inline-block;
         width: 18px;
         height: 18px;
-        border: 2px solid rgba(255, 255, 255, 0.15);
-        border-top-color: #6366f1;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--color-apple-blue);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -796,9 +794,9 @@ import { SidebarComponent } from './sidebar';
         right: 0;
         z-index: 200;
         height: 60px;
-        background: rgba(15, 23, 42, 0.97);
+        background: var(--color-apple-bg);
         backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        border-bottom: 1px solid var(--border-color);
         align-items: center;
         padding: 0 16px;
         gap: 14px;
@@ -806,9 +804,7 @@ import { SidebarComponent } from './sidebar';
       .topbar-brand {
         font-size: 17px;
         font-weight: 700;
-        background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: var(--color-apple-text);
       }
       .hamburger-btn {
         display: flex;
@@ -822,13 +818,13 @@ import { SidebarComponent } from './sidebar';
         transition: background 0.2s ease;
       }
       .hamburger-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--border-color);
       }
       .ham-line {
         display: block;
         width: 22px;
         height: 2px;
-        background: #f8fafc;
+        background: var(--color-apple-text);
         border-radius: 2px;
       }
       .sidebar-close-btn {
@@ -836,10 +832,10 @@ import { SidebarComponent } from './sidebar';
         position: absolute;
         top: 16px;
         right: 16px;
-        background: rgba(255, 255, 255, 0.07);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
-        color: #f8fafc;
+        color: var(--color-apple-text);
         font-size: 14px;
         width: 32px;
         height: 32px;
@@ -876,7 +872,7 @@ import { SidebarComponent } from './sidebar';
           z-index: 150;
           transform: translateX(-100%);
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          border-right: 1px solid var(--border-color);
         }
         .sidebar.open {
           transform: translateX(0);

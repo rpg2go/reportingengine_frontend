@@ -39,6 +39,7 @@ interface FilterCondition {
   operator: string;
   value: string;
   dimTable?: string; // empty → fact table; set → dimension view name
+  conjunction?: 'AND' | 'OR';
   availableValues?: string[];
   showDropdown?: boolean;
   selectedValue?: string;
@@ -127,14 +128,29 @@ export interface FieldGroup {
 
           <div class="action-buttons">
             <button (click)="togglePreview()" class="preview-btn">
-              👁️ {{ showPreview() ? 'Hide Preview' : 'Preview Layout' }}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span>{{ showPreview() ? 'Hide Preview' : 'Preview Layout' }}</span>
             </button>
-            <button (click)="previewSql()" class="btn-preview-sql">‹› Preview SQL</button>
+            <button (click)="previewSql()" class="btn-preview-sql">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+              <span>Preview SQL</span>
+            </button>
             <button (click)="saveConfig()" [disabled]="saving()" class="save-btn">
               @if (saving()) {
                 <span class="spinner"></span> Saving...
               } @else {
-                <span>💾 Save Definition</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span>Save Definition</span>
               }
             </button>
           </div>
@@ -286,7 +302,7 @@ export interface FieldGroup {
                     <span class="spinner"></span> Loading SQL preview...
                   </div>
                 } @else if (compiledSql()) {
-                  <pre class="sql-code-block"><code>{{ compiledSql() }}</code></pre>
+                  <pre class="sql-code-block"><code [innerHTML]="getHighlightedSql(compiledSql())"></code></pre>
                 } @else {
                   <div class="empty-state">No compiled SQL preview available.</div>
                 }
@@ -367,150 +383,194 @@ export interface FieldGroup {
               </select>
             </div>
 
-            <!-- Reporting Date (guarded database calendar picker) -->
-            <div class="form-group">
-              <label for="reporting-date"
-                >Reporting Date <span class="label-hint">(from dim_date)</span></label
-              >
-              <div class="custom-datepicker-wrapper">
-                <!-- Trigger button showing current value or placeholder -->
-                <button
-                  type="button"
-                  id="reporting-date"
-                  class="datepicker-trigger-btn"
-                  [class.active]="showDatePicker()"
-                  (click)="toggleDatePicker()"
+            <!-- Time Information Row -->
+            <div class="time-information-row">
+              <!-- Reporting Date (guarded database calendar picker) -->
+              <div class="form-group reporting-date-group">
+                <label for="reporting-date"
+                  >Reporting Date <span class="label-hint">(from dim_date)</span></label
                 >
-                  <span>{{ reportingDate || '— select a reporting date —' }}</span>
-                  <span class="calendar-icon">📅</span>
-                </button>
-
-                <!-- Click-outside handler backdrop -->
-                @if (showDatePicker()) {
-                  <div class="datepicker-backdrop" (click)="showDatePicker.set(false)"></div>
-                }
-
-                <!-- Datepicker Dropdown Grid overlay -->
-                @if (showDatePicker()) {
-                  <div
-                    class="datepicker-dropdown animate-fade-in"
-                    (click)="$event.stopPropagation()"
+                <div class="custom-datepicker-wrapper">
+                  <!-- Trigger button showing current value or placeholder -->
+                  <button
+                    type="button"
+                    id="reporting-date"
+                    class="datepicker-trigger-btn"
+                    [class.active]="showDatePicker()"
+                    (click)="toggleDatePicker()"
                   >
-                    <div class="datepicker-header">
-                      <button type="button" class="datepicker-nav-btn" (click)="prevMonth()">
-                        ◀
-                      </button>
-                      <span class="datepicker-title"
-                        >{{ monthNames[calendarMonth()] }} {{ calendarYear() }}</span
-                      >
-                      <button type="button" class="datepicker-nav-btn" (click)="nextMonth()">
-                        ▶
-                      </button>
-                    </div>
+                    <span>{{ reportingDate || '— select a reporting date —' }}</span>
+                    <span class="calendar-icon">📅</span>
+                  </button>
 
-                    <div class="datepicker-weekdays">
-                      <span class="datepicker-weekday">Su</span>
-                      <span class="datepicker-weekday">Mo</span>
-                      <span class="datepicker-weekday">Tu</span>
-                      <span class="datepicker-weekday">We</span>
-                      <span class="datepicker-weekday">Th</span>
-                      <span class="datepicker-weekday">Fr</span>
-                      <span class="datepicker-weekday">Sa</span>
-                    </div>
-
-                    <div class="datepicker-days">
-                      @for (day of calendarDays(); track day.formattedStr) {
-                        <div
-                          class="datepicker-day-cell"
-                          [class.other-month]="!day.isCurrentMonth"
-                          [class.enabled]="day.isEnabled"
-                          [class.disabled]="!day.isEnabled"
-                          [class.selected]="reportingDate === day.formattedStr"
-                          (click)="selectCalendarDay(day)"
-                        >
-                          {{ day.dayNum }}
-                        </div>
-                      }
-                    </div>
-
-                    <div class="text-[10px] text-slate-500 mt-3 text-center italic">
-                      {{ availableReportingDates.length }} dates available in dim_date catalog
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- Timeframe Limit (redesigned with mode buttons) -->
-            <div class="form-group timeframe-group">
-              <label>Timeframe Limit</label>
-              <div class="timeframe-row">
-                <input type="date" [(ngModel)]="timeframeStart" class="form-input tf-start" />
-                <span class="tf-arrow">→</span>
-                <div class="tf-end-group">
-                  <div class="mode-btn-group" role="group">
-                    <button
-                      type="button"
-                      class="mode-btn"
-                      [class.active]="timeframeMode === 'today_minus_2'"
-                      (click)="setTimeframeMode('today_minus_2')"
-                      title="Today minus 2 calendar days"
-                    >
-                      Today − 2
-                    </button>
-                    <button
-                      type="button"
-                      class="mode-btn"
-                      [class.active]="timeframeMode === 'today_minus_1'"
-                      (click)="setTimeframeMode('today_minus_1')"
-                      title="Today minus 1 calendar day"
-                    >
-                      Today − 1
-                    </button>
-                    <button
-                      type="button"
-                      class="mode-btn"
-                      [class.active]="timeframeMode === 'today'"
-                      (click)="setTimeframeMode('today')"
-                      title="Today (current date)"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      class="mode-btn"
-                      [class.active]="timeframeMode === 'custom'"
-                      (click)="setTimeframeMode('custom')"
-                      title="Pick a specific date from dim_date or calendar"
-                    >
-                      Custom ▾
-                    </button>
-                  </div>
-                  @if (timeframeMode === 'custom') {
-                    @if (availableReportingDates.length > 0) {
-                      <!-- Single select from dim_date for custom end date -->
-                      <select
-                        [(ngModel)]="timeframeEnd"
-                        class="form-select tf-end-select"
-                        title="Select end date from dim_date"
-                      >
-                        <option value="">— select end date —</option>
-                        @for (d of availableReportingDates; track d) {
-                          <option [value]="d">{{ d }}</option>
-                        }
-                      </select>
-                    } @else {
-                      <!-- Fallback while dim_date is loading -->
-                      <input
-                        type="date"
-                        [(ngModel)]="timeframeEnd"
-                        class="form-input tf-end"
-                        title="Type YYYY-MM-DD — dim_date list is loading"
-                      />
-                    }
-                  } @else {
-                    <span class="computed-date-badge">{{ computedTimeframeEnd }}</span>
+                  <!-- Click-outside handler backdrop -->
+                  @if (showDatePicker()) {
+                    <div class="datepicker-backdrop" (click)="showDatePicker.set(false)"></div>
                   }
+
+                  <!-- Datepicker Dropdown Grid overlay -->
+                  @if (showDatePicker()) {
+                    <div
+                      class="datepicker-dropdown animate-fade-in"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <div class="datepicker-header">
+                        <button type="button" class="datepicker-nav-btn" (click)="prevMonth()">
+                          ◀
+                        </button>
+                        <span class="datepicker-title"
+                          >{{ monthNames[calendarMonth()] }} {{ calendarYear() }}</span
+                        >
+                        <button type="button" class="datepicker-nav-btn" (click)="nextMonth()">
+                          ▶
+                        </button>
+                      </div>
+
+                      <div class="datepicker-weekdays">
+                        <span class="datepicker-weekday">Su</span>
+                        <span class="datepicker-weekday">Mo</span>
+                        <span class="datepicker-weekday">Tu</span>
+                        <span class="datepicker-weekday">We</span>
+                        <span class="datepicker-weekday">Th</span>
+                        <span class="datepicker-weekday">Fr</span>
+                        <span class="datepicker-weekday">Sa</span>
+                      </div>
+
+                      <div class="datepicker-days">
+                        @for (day of calendarDays(); track day.formattedStr) {
+                          <div
+                            class="datepicker-day-cell"
+                            [class.other-month]="!day.isCurrentMonth"
+                            [class.enabled]="day.isEnabled"
+                            [class.disabled]="!day.isEnabled"
+                            [class.selected]="reportingDate === day.formattedStr"
+                            (click)="selectCalendarDay(day)"
+                          >
+                            {{ day.dayNum }}
+                          </div>
+                        }
+                      </div>
+
+                      <div class="text-[10px] text-slate-500 mt-3 text-center italic">
+                        {{ availableReportingDates.length }} dates available in dim_date catalog
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Timeframe Limit (redesigned with mode buttons) -->
+              <div class="form-group timeframe-group-inline">
+                <label>Timeframe Limit</label>
+                <div class="timeframe-row">
+                  <input type="date" [(ngModel)]="timeframeStart" class="form-input tf-start" />
+                  <span class="tf-arrow">→</span>
+                  <div class="tf-end-group">
+                    <div class="mode-btn-group" role="group">
+                      <button
+                        type="button"
+                        class="mode-btn"
+                        [class.active]="timeframeMode === 'today_minus_2'"
+                        (click)="setTimeframeMode('today_minus_2')"
+                        title="Today minus 2 calendar days"
+                      >
+                        Today − 2
+                      </button>
+                      <button
+                        type="button"
+                        class="mode-btn"
+                        [class.active]="timeframeMode === 'today_minus_1'"
+                        (click)="setTimeframeMode('today_minus_1')"
+                        title="Today minus 1 calendar day"
+                      >
+                        Today − 1
+                      </button>
+                      <button
+                        type="button"
+                        class="mode-btn"
+                        [class.active]="timeframeMode === 'today'"
+                        (click)="setTimeframeMode('today')"
+                        title="Today (current date)"
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        class="mode-btn"
+                        [class.active]="timeframeMode === 'custom'"
+                        (click)="setTimeframeMode('custom')"
+                        title="Pick a specific date from dim_date or calendar"
+                      >
+                        Custom ▾
+                      </button>
+                    </div>
+                    @if (timeframeMode === 'custom') {
+                      <div class="custom-datepicker-wrapper">
+                        <!-- Trigger button showing current value or placeholder -->
+                        <button
+                          type="button"
+                          class="datepicker-trigger-btn"
+                          [class.active]="showTimeframeEndDatePicker()"
+                          (click)="toggleTimeframeEndDatePicker()"
+                        >
+                          <span>{{ timeframeEnd || '— select end date —' }}</span>
+                          <span class="calendar-icon">📅</span>
+                        </button>
+
+                        <!-- Click-outside handler backdrop -->
+                        @if (showTimeframeEndDatePicker()) {
+                          <div class="datepicker-backdrop" (click)="showTimeframeEndDatePicker.set(false)"></div>
+                        }
+
+                        <!-- Datepicker Dropdown Grid overlay -->
+                        @if (showTimeframeEndDatePicker()) {
+                          <div
+                            class="datepicker-dropdown animate-fade-in"
+                            (click)="$event.stopPropagation()"
+                          >
+                            <div class="datepicker-header">
+                              <button type="button" class="datepicker-nav-btn" (click)="prevTimeframeEndMonth()">
+                                ◀
+                              </button>
+                              <span class="datepicker-title"
+                                >{{ monthNames[calendarTimeframeEndMonth()] }} {{ calendarTimeframeEndYear() }}</span
+                              >
+                              <button type="button" class="datepicker-nav-btn" (click)="nextTimeframeEndMonth()">
+                                ▶
+                              </button>
+                            </div>
+
+                            <div class="datepicker-weekdays">
+                              <span class="datepicker-weekday">Su</span>
+                              <span class="datepicker-weekday">Mo</span>
+                              <span class="datepicker-weekday">Tu</span>
+                              <span class="datepicker-weekday">We</span>
+                              <span class="datepicker-weekday">Th</span>
+                              <span class="datepicker-weekday">Fr</span>
+                              <span class="datepicker-weekday">Sa</span>
+                            </div>
+
+                            <div class="datepicker-days">
+                              @for (day of calendarTimeframeEndDays(); track day.formattedStr) {
+                                <div
+                                  class="datepicker-day-cell"
+                                  [class.other-month]="!day.isCurrentMonth"
+                                  [class.enabled]="day.isEnabled"
+                                  [class.disabled]="!day.isEnabled"
+                                  [class.selected]="timeframeEnd === day.formattedStr"
+                                  (click)="selectTimeframeEndCalendarDay(day)"
+                                >
+                                  {{ day.dayNum }}
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <span class="computed-date-badge">{{ computedTimeframeEnd }}</span>
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -557,260 +617,289 @@ export interface FieldGroup {
             </p>
           }
 
-          <!-- ── Quick Filters ──────────────────────────────────────────────── -->
-          <div class="form-group filters-builder">
-            <div class="flex-header">
-              <label
-                >Quick Filters
-                <span class="label-hint">(runtime-exposed filter conditions)</span></label
-              >
-              <button (click)="addQuickFilter()" class="add-sub-btn">+ Add Filter Condition</button>
-            </div>
-            @if (quickFilters.length === 0) {
-              <p class="empty-filters">
-                No quick filters configured. Add conditions that users can tune at runtime.
-              </p>
-            } @else {
-              <div class="filters-list">
-                @for (filter of quickFilters; track $index; let idx = $index; let last = $last) {
-                  <div class="filter-row animate-fade-in">
-                    <!-- Table selector -->
-                    <select
-                      [(ngModel)]="filter.dimTable"
-                      (change)="onQuickFilterTableChange(filter); onFilterFieldChanged(filter)"
-                      class="form-select sm dim-select"
-                    >
-                      <option value="">-- Table --</option>
-                      @for (dim of conformedDimensions(); track dim) {
-                        <option [value]="dim">{{ dim }} (Dim)</option>
-                      }
-                    </select>
-
-                    <!-- Column selector -->
-                    <select
-                      [(ngModel)]="filter.attribute"
-                      (change)="onFilterFieldChanged(filter)"
-                      class="form-select sm"
-                    >
-                      <option value="">-- Column --</option>
-                      @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
-                        <option [value]="col">{{ col }}</option>
-                      }
-                    </select>
-
-                    <!-- Operator -->
-                    <select [(ngModel)]="filter.operator" class="form-select sm operator">
-                      @for (op of operators; track op.value) {
-                        <option [value]="op.value">{{ op.label }}</option>
-                      }
-                    </select>
-
-                    <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
-                    <div class="custom-combobox-wrapper">
-                      <button
-                        type="button"
-                        class="combobox-trigger-btn"
-                        [class.active]="filter.showDropdown"
-                        (click)="filter.showDropdown = !filter.showDropdown"
-                        [title]="
-                          isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''
-                        "
-                        [class.invalid-input]="isFilterValueInvalid(filter)"
+          <!-- ── Consolidated Filters Row ── -->
+          <div class="filters-row-container">
+            <!-- ── Quick Filters ──────────────────────────────────────────────── -->
+            <div class="form-group filters-builder">
+              <div class="flex-header">
+                <label
+                  >Quick Filters
+                  <span class="label-hint">(runtime-exposed filter conditions)</span></label
+                >
+                <button (click)="addQuickFilter()" class="add-sub-btn">+ Add Filter Condition</button>
+              </div>
+              @if (quickFilters.length === 0) {
+                <p class="empty-filters">
+                  No quick filters configured. Add conditions that users can tune at runtime.
+                </p>
+              } @else {
+                <div class="filters-list">
+                  @for (filter of quickFilters; track $index; let idx = $index; let last = $last) {
+                    <div class="filter-row animate-fade-in">
+                      <!-- Table selector -->
+                      <select
+                        [(ngModel)]="filter.dimTable"
+                        (change)="onQuickFilterTableChange(filter); onFilterFieldChanged(filter)"
+                        class="form-select sm dim-select"
                       >
-                        <span class="truncate">{{ filter.value || 'Select value…' }}</span>
-                        <span class="combobox-arrow">▼</span>
-                      </button>
+                        <option value="">-- Table --</option>
+                        @for (dim of conformedDimensions(); track dim) {
+                          <option [value]="dim">{{ dim }} (Dim)</option>
+                        }
+                      </select>
 
-                      @if (filter.showDropdown) {
-                        <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
-                      }
+                      <!-- Column selector -->
+                      <select
+                        [(ngModel)]="filter.attribute"
+                        (change)="onFilterFieldChanged(filter)"
+                        class="form-select sm"
+                      >
+                        <option value="">-- Column --</option>
+                        @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
+                          <option [value]="col">{{ col }}</option>
+                        }
+                      </select>
 
-                      @if (filter.showDropdown) {
-                        <div
-                          class="combobox-dropdown z-50 animate-fade-in"
-                          (click)="$event.stopPropagation()"
+                      <!-- Operator -->
+                      <select [(ngModel)]="filter.operator" class="form-select sm operator">
+                        @for (op of operators; track op.value) {
+                          <option [value]="op.value">{{ op.label }}</option>
+                        }
+                      </select>
+
+                      <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
+                      <div class="custom-combobox-wrapper">
+                        <button
+                          type="button"
+                          class="combobox-trigger-btn"
+                          [class.active]="filter.showDropdown"
+                          (click)="filter.showDropdown = !filter.showDropdown"
+                          [title]="
+                            isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''
+                          "
+                          [class.invalid-input]="isFilterValueInvalid(filter)"
                         >
-                          @if (filter.availableValues && filter.availableValues.length > 0) {
-                            <div class="combobox-options-list">
-                              @for (val of filter.availableValues; track val) {
-                                <div
-                                  class="combobox-option-item"
-                                  [class.selected]="filter.value === val"
-                                  (click)="
-                                    filter.value = val;
-                                    filter.selectedValue = val;
-                                    filter.showDropdown = false;
-                                    triggerValidationDebounced()
-                                  "
-                                >
-                                  {{ val }}
-                                </div>
-                              }
-                            </div>
-                          } @else {
-                            <div class="combobox-empty-state">
-                              {{
-                                (!filter.dimTable && !sourceTable) || !filter.attribute
-                                  ? 'Select table and column first'
-                                  : 'No distinct values found'
-                              }}
-                            </div>
-                          }
+                          <span class="truncate">{{ filter.value || 'Select value…' }}</span>
+                          <span class="combobox-arrow">▼</span>
+                        </button>
+
+                        @if (filter.showDropdown) {
+                          <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
+                        }
+
+                        @if (filter.showDropdown) {
+                          <div
+                            class="combobox-dropdown z-50 animate-fade-in"
+                            (click)="$event.stopPropagation()"
+                          >
+                            @if (filter.availableValues && filter.availableValues.length > 0) {
+                              <div class="combobox-options-list">
+                                @for (val of filter.availableValues; track val) {
+                                  <div
+                                    class="combobox-option-item"
+                                    [class.selected]="filter.value === val"
+                                    (click)="
+                                      filter.value = val;
+                                      filter.selectedValue = val;
+                                      filter.showDropdown = false;
+                                      triggerValidationDebounced()
+                                    "
+                                  >
+                                    {{ val }}
+                                  </div>
+                                }
+                              </div>
+                            } @else {
+                              <div class="combobox-empty-state">
+                                {{
+                                  (!filter.dimTable && !sourceTable) || !filter.attribute
+                                    ? 'Select table and column first'
+                                    : 'No distinct values found'
+                                }}
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <button
+                        (click)="removeQuickFilter(idx)"
+                        class="remove-btn"
+                        title="Remove condition"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <!-- AND / OR conjunction between conditions -->
+                    @if (!last) {
+                      <div class="conjunction-row">
+                        <div class="conjunction-toggle-pill">
+                          <button
+                            type="button"
+                            class="conj-btn"
+                            [class.active]="filter.conjunction === 'AND'"
+                            (click)="filter.conjunction = 'AND'"
+                          >
+                            AND
+                          </button>
+                          <button
+                            type="button"
+                            class="conj-btn"
+                            [class.active]="filter.conjunction === 'OR'"
+                            (click)="filter.conjunction = 'OR'"
+                          >
+                            OR
+                          </button>
                         </div>
-                      }
-                    </div>
-
-                    <button
-                      (click)="removeQuickFilter(idx)"
-                      class="remove-btn"
-                      title="Remove condition"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <!-- AND / OR conjunction between conditions -->
-                  @if (!last) {
-                    <div class="conjunction-row">
-                      <button
-                        type="button"
-                        class="conj-btn"
-                        [class.active]="filter.conjunction === 'AND'"
-                        (click)="filter.conjunction = 'AND'"
-                      >
-                        AND
-                      </button>
-                      <button
-                        type="button"
-                        class="conj-btn"
-                        [class.active]="filter.conjunction === 'OR'"
-                        (click)="filter.conjunction = 'OR'"
-                      >
-                        OR
-                      </button>
-                    </div>
+                      </div>
+                    }
                   }
-                }
-              </div>
-            }
-          </div>
-
-          <!-- ── General Filters ───────────────────────────────────────────── -->
-          <div class="form-group filters-builder">
-            <div class="flex-header">
-              <label
-                >General Filters
-                <span class="label-hint">(base scope constraints for entire report)</span></label
-              >
-              <button (click)="addGeneralFilter()" class="add-sub-btn">
-                + Add Filter Condition
-              </button>
+                </div>
+              }
             </div>
-            @if (generalFilters.length === 0) {
-              <p class="empty-filters">
-                No general filters configured. Applies to entire database table scope.
-              </p>
-            } @else {
-              <div class="filters-list">
-                @for (filter of generalFilters; track $index; let idx = $index) {
-                  <div class="filter-row animate-fade-in">
-                    <!-- Dimension table selector -->
-                    <select
-                      [(ngModel)]="filter.dimTable"
-                      (change)="onGeneralFilterTableChange(filter); onFilterFieldChanged(filter)"
-                      class="form-select sm dim-select"
-                    >
-                      <option value="">-- Table --</option>
-                      @for (dim of conformedDimensions(); track dim) {
-                        <option [value]="dim">{{ dim }} (Dim)</option>
-                      }
-                    </select>
 
-                    <!-- Attribute column selector -->
-                    <select
-                      [(ngModel)]="filter.attribute"
-                      (change)="onFilterFieldChanged(filter)"
-                      class="form-select sm"
-                    >
-                      <option value="">-- Column --</option>
-                      @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
-                        <option [value]="col">{{ col }}</option>
-                      }
-                    </select>
-
-                    <!-- Operator -->
-                    <select [(ngModel)]="filter.operator" class="form-select sm operator">
-                      @for (op of operators; track op.value) {
-                        <option [value]="op.value">{{ op.label }}</option>
-                      }
-                    </select>
-
-                    <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
-                    <div class="custom-combobox-wrapper">
-                      <button
-                        type="button"
-                        class="combobox-trigger-btn"
-                        [class.active]="filter.showDropdown"
-                        (click)="filter.showDropdown = !filter.showDropdown"
-                        [title]="
-                          isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''
-                        "
-                        [class.invalid-input]="isFilterValueInvalid(filter)"
+            <!-- ── General Filters ───────────────────────────────────────────── -->
+            <div class="form-group filters-builder">
+              <div class="flex-header">
+                <label
+                  >General Filters
+                  <span class="label-hint">(base scope constraints for entire report)</span></label
+                >
+                <button (click)="addGeneralFilter()" class="add-sub-btn">
+                  + Add Filter Condition
+                </button>
+              </div>
+              @if (generalFilters.length === 0) {
+                <p class="empty-filters">
+                  No general filters configured. Applies to entire database table scope.
+                </p>
+              } @else {
+                <div class="filters-list">
+                  @for (filter of generalFilters; track $index; let idx = $index; let last = $last) {
+                    <div class="filter-row animate-fade-in">
+                      <!-- Dimension table selector -->
+                      <select
+                        [(ngModel)]="filter.dimTable"
+                        (change)="onGeneralFilterTableChange(filter); onFilterFieldChanged(filter)"
+                        class="form-select sm dim-select"
                       >
-                        <span class="truncate">{{ filter.value || 'Select value…' }}</span>
-                        <span class="combobox-arrow">▼</span>
-                      </button>
+                        <option value="">-- Table --</option>
+                        @for (dim of conformedDimensions(); track dim) {
+                          <option [value]="dim">{{ dim }} (Dim)</option>
+                        }
+                      </select>
 
-                      @if (filter.showDropdown) {
-                        <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
-                      }
+                      <!-- Attribute column selector -->
+                      <select
+                        [(ngModel)]="filter.attribute"
+                        (change)="onFilterFieldChanged(filter)"
+                        class="form-select sm"
+                      >
+                        <option value="">-- Column --</option>
+                        @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
+                          <option [value]="col">{{ col }}</option>
+                        }
+                      </select>
 
-                      @if (filter.showDropdown) {
-                        <div
-                          class="combobox-dropdown z-50 animate-fade-in"
-                          (click)="$event.stopPropagation()"
+                      <!-- Operator -->
+                      <select [(ngModel)]="filter.operator" class="form-select sm operator">
+                        @for (op of operators; track op.value) {
+                          <option [value]="op.value">{{ op.label }}</option>
+                        }
+                      </select>
+
+                      <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
+                      <div class="custom-combobox-wrapper">
+                        <button
+                          type="button"
+                          class="combobox-trigger-btn"
+                          [class.active]="filter.showDropdown"
+                          (click)="filter.showDropdown = !filter.showDropdown"
+                          [title]="
+                            isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''
+                          "
+                          [class.invalid-input]="isFilterValueInvalid(filter)"
                         >
-                          @if (filter.availableValues && filter.availableValues.length > 0) {
-                            <div class="combobox-options-list">
-                              @for (val of filter.availableValues; track val) {
-                                <div
-                                  class="combobox-option-item"
-                                  [class.selected]="filter.value === val"
-                                  (click)="
-                                    filter.value = val;
-                                    filter.selectedValue = val;
-                                    filter.showDropdown = false;
-                                    triggerValidationDebounced()
-                                  "
-                                >
-                                  {{ val }}
-                                </div>
-                              }
-                            </div>
-                          } @else {
-                            <div class="combobox-empty-state">
-                              {{
-                                (!filter.dimTable && !sourceTable) || !filter.attribute
-                                  ? 'Select table and column first'
-                                  : 'No distinct values found'
-                              }}
-                            </div>
-                          }
-                        </div>
-                      }
+                          <span class="truncate">{{ filter.value || 'Select value…' }}</span>
+                          <span class="combobox-arrow">▼</span>
+                        </button>
+
+                        @if (filter.showDropdown) {
+                          <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
+                        }
+
+                        @if (filter.showDropdown) {
+                          <div
+                            class="combobox-dropdown z-50 animate-fade-in"
+                            (click)="$event.stopPropagation()"
+                          >
+                            @if (filter.availableValues && filter.availableValues.length > 0) {
+                              <div class="combobox-options-list">
+                                @for (val of filter.availableValues; track val) {
+                                  <div
+                                    class="combobox-option-item"
+                                    [class.selected]="filter.value === val"
+                                    (click)="
+                                      filter.value = val;
+                                      filter.selectedValue = val;
+                                      filter.showDropdown = false;
+                                      triggerValidationDebounced()
+                                    "
+                                  >
+                                    {{ val }}
+                                  </div>
+                                }
+                              </div>
+                            } @else {
+                              <div class="combobox-empty-state">
+                                {{
+                                  (!filter.dimTable && !sourceTable) || !filter.attribute
+                                    ? 'Select table and column first'
+                                    : 'No distinct values found'
+                                }}
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <button
+                        (click)="removeGeneralFilter(idx)"
+                        class="remove-btn"
+                        title="Remove condition"
+                      >
+                        ✕
+                      </button>
                     </div>
 
-                    <button
-                      (click)="removeGeneralFilter(idx)"
-                      class="remove-btn"
-                      title="Remove condition"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                }
-              </div>
-            }
+                    <!-- AND / OR conjunction between conditions -->
+                    @if (!last) {
+                      <div class="conjunction-row">
+                        <div class="conjunction-toggle-pill">
+                          <button
+                            type="button"
+                            class="conj-btn"
+                            [class.active]="filter.conjunction === 'AND'"
+                            (click)="filter.conjunction = 'AND'"
+                          >
+                            AND
+                          </button>
+                          <button
+                            type="button"
+                            class="conj-btn"
+                            [class.active]="filter.conjunction === 'OR'"
+                            (click)="filter.conjunction = 'OR'"
+                          >
+                            OR
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+            </div>
           </div>
         </section>
 
@@ -1316,7 +1405,7 @@ export interface FieldGroup {
                         {{ isCopied() ? '✓ Copied!' : '📋 Copy to Clipboard' }}
                       </button>
                     </div>
-                    <pre><code class="language-sql">{{ previewSqlText() }}</code></pre>
+                    <pre><code class="language-sql" [innerHTML]="getHighlightedSql(previewSqlText())"></code></pre>
                   </div>
                 }
               </div>
@@ -1334,16 +1423,16 @@ export interface FieldGroup {
       .builder-container {
         display: flex;
         min-height: 100vh;
-        background: #0f172a;
-        color: #f8fafc;
-        font-family: 'Outfit', 'Inter', sans-serif;
+        background: var(--color-apple-bg);
+        color: var(--color-apple-text);
+        font-family: 'Inter', sans-serif;
       }
 
       /* ── Sidebar ────────────────────────────────────── */
       .sidebar {
         width: 260px;
-        background: rgba(30, 41, 59, 0.5);
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--color-apple-card);
+        border-right: 1px solid var(--border-color);
         backdrop-filter: blur(12px);
         display: flex;
         flex-direction: column;
@@ -1374,9 +1463,7 @@ export interface FieldGroup {
       .brand-text {
         font-size: 20px;
         font-weight: 700;
-        background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: var(--color-apple-text);
         white-space: nowrap;
         transition:
           opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1389,7 +1476,7 @@ export interface FieldGroup {
       .menu-collapse-btn {
         background: none;
         border: none;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         cursor: pointer;
         font-size: 16px;
         padding: 4px;
@@ -1401,8 +1488,8 @@ export interface FieldGroup {
         border-radius: 6px;
       }
       .menu-collapse-btn:hover {
-        color: white;
-        background: rgba(255, 255, 255, 0.08);
+        color: var(--color-apple-text);
+        background: var(--border-color);
       }
 
       .sidebar-menu {
@@ -1418,15 +1505,15 @@ export interface FieldGroup {
         align-items: center;
         gap: 12px;
         padding: 12px 16px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         text-decoration: none;
         border-radius: 12px;
         font-weight: 500;
         transition: all 0.2s ease;
       }
       .menu-item:hover {
-        color: #f8fafc;
-        background: rgba(255, 255, 255, 0.05);
+        color: var(--color-apple-text);
+        background: var(--border-color);
       }
       .menu-icon {
         font-size: 18px;
@@ -1450,10 +1537,10 @@ export interface FieldGroup {
       .back-btn {
         width: 100%;
         padding: 12px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 10px;
-        color: #f8fafc;
+        color: var(--color-apple-text);
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -1526,17 +1613,17 @@ export interface FieldGroup {
         justify-content: space-between;
         align-items: flex-end;
         gap: 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 24px;
       }
 
       .breadcrumbs {
         font-size: 13px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         margin-bottom: 8px;
       }
       .breadcrumbs a {
-        color: #818cf8;
+        color: var(--color-apple-blue);
         text-decoration: none;
       }
       .breadcrumbs a:hover {
@@ -1551,7 +1638,7 @@ export interface FieldGroup {
       }
       .report-subtitle {
         font-size: 15px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         margin: 4px 0 0 0;
       }
 
@@ -1562,22 +1649,31 @@ export interface FieldGroup {
 
       .preview-btn {
         padding: 12px 24px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 10px;
-        color: white;
+        color: var(--color-apple-text);
         font-weight: 600;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         transition: all 0.2s ease;
       }
+      .btn-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        stroke-width: 2px;
+      }
       .preview-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: #818cf8;
+        background: var(--border-color);
+        border-color: var(--color-apple-blue);
       }
 
       .save-btn {
         padding: 12px 24px;
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        background: var(--color-apple-blue);
         border: none;
         border-radius: 10px;
         color: white;
@@ -1586,12 +1682,12 @@ export interface FieldGroup {
         display: flex;
         align-items: center;
         gap: 10px;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 118, 223, 0.3);
         transition: all 0.2s ease;
       }
       .save-btn:hover:not(:disabled) {
-        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        background: var(--color-apple-blue);
+        box-shadow: 0 6px 16px rgba(0, 118, 223, 0.4);
       }
       .save-btn:disabled {
         opacity: 0.5;
@@ -1600,8 +1696,8 @@ export interface FieldGroup {
 
       /* ── Cards ──────────────────────────────────────── */
       .card {
-        background: rgba(30, 41, 59, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
         border-radius: 20px;
         padding: 32px;
         display: flex;
@@ -1613,11 +1709,11 @@ export interface FieldGroup {
         font-size: 20px;
         font-weight: 700;
         margin: 0;
-        color: #f8fafc;
+        color: var(--color-apple-text);
       }
       .section-desc {
         font-size: 14px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         margin: 4px 0 0 0;
       }
 
@@ -1637,29 +1733,29 @@ export interface FieldGroup {
       .form-group label {
         font-size: 13px;
         font-weight: 600;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
       }
 
       .label-hint {
         font-size: 11px;
         font-weight: 400;
-        color: #475569;
+        color: var(--color-apple-grey);
         margin-left: 4px;
       }
 
       .field-hint {
         font-size: 11px;
-        color: #475569;
+        color: var(--color-apple-grey);
         font-style: italic;
       }
 
       .form-input,
       .form-select {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 10px 14px;
-        color: white;
+        color: var(--color-apple-text);
         outline: none;
         font-size: 14px;
         font-family: inherit;
@@ -1667,8 +1763,8 @@ export interface FieldGroup {
       }
       .form-input:focus,
       .form-select:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        border-color: var(--color-apple-blue);
+        box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.2);
       }
       .form-input:disabled,
       .form-select:disabled {
@@ -1682,9 +1778,35 @@ export interface FieldGroup {
         font-size: 12px;
       }
 
-      /* ── Timeframe redesign ─────────────────────────── */
-      .timeframe-group {
+      /* ── Time Information Row ────────────────────────── */
+      .time-information-row {
         grid-column: 1 / -1;
+        display: flex;
+        align-items: flex-start;
+        gap: 24px;
+        width: 100%;
+      }
+
+      .reporting-date-group {
+        flex: 0 0 300px;
+      }
+
+      .timeframe-group-inline {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      @media (max-width: 1024px) {
+        .time-information-row {
+          flex-direction: column;
+          gap: 16px;
+        }
+        .reporting-date-group {
+          flex: 1 1 auto;
+          width: 100%;
+        }
       }
 
       .timeframe-row {
@@ -1698,7 +1820,7 @@ export interface FieldGroup {
         flex: 0 0 180px;
       }
       .tf-arrow {
-        color: #475569;
+        color: var(--color-apple-grey);
         font-size: 18px;
       }
 
@@ -1713,15 +1835,14 @@ export interface FieldGroup {
         display: flex;
         border-radius: 8px;
         overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--border-color);
       }
 
       .mode-btn {
         padding: 8px 14px;
-        background: rgba(15, 23, 42, 0.5);
-        border: none;
-        border-right: 1px solid rgba(255, 255, 255, 0.07);
-        color: #94a3b8;
+        background: var(--input-bg);
+        border-right: 1px solid var(--border-color);
+        color: var(--color-apple-grey);
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
@@ -1732,13 +1853,13 @@ export interface FieldGroup {
         border-right: none;
       }
       .mode-btn:hover {
-        background: rgba(99, 102, 241, 0.1);
-        color: #c7d2fe;
+        background: rgba(0, 118, 223, 0.1);
+        color: var(--color-apple-blue);
       }
       .mode-btn.active {
-        background: rgba(99, 102, 241, 0.25);
-        color: #a5b4fc;
-        box-shadow: inset 0 1px 0 rgba(99, 102, 241, 0.3);
+        background: rgba(0, 118, 223, 0.25);
+        color: var(--color-apple-blue);
+        box-shadow: inset 0 1px 0 rgba(0, 118, 223, 0.3);
       }
 
       .tf-end {
@@ -1751,10 +1872,10 @@ export interface FieldGroup {
 
       .computed-date-badge {
         padding: 8px 14px;
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(99, 102, 241, 0.2);
+        background: var(--input-bg);
+        border: 1px solid rgba(0, 118, 223, 0.2);
         border-radius: 8px;
-        color: #a5b4fc;
+        color: var(--color-apple-blue);
         font-size: 13px;
         font-weight: 600;
         font-family: 'Fira Code', monospace;
@@ -1766,10 +1887,10 @@ export interface FieldGroup {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
-        background: rgba(15, 23, 42, 0.3);
+        background: var(--input-bg);
         padding: 14px;
         border-radius: 12px;
-        border: 1px solid rgba(99, 102, 241, 0.1);
+        border: 1px solid var(--border-color);
       }
 
       .dim-chip {
@@ -1777,24 +1898,24 @@ export interface FieldGroup {
         align-items: center;
         gap: 6px;
         padding: 7px 14px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
       }
       .dim-chip:hover {
-        background: rgba(99, 102, 241, 0.1);
-        border-color: rgba(99, 102, 241, 0.3);
-        color: #c7d2fe;
+        background: rgba(0, 118, 223, 0.1);
+        border-color: rgba(0, 118, 223, 0.3);
+        color: var(--color-apple-blue);
       }
       .dim-chip.active {
-        background: rgba(99, 102, 241, 0.18);
-        border-color: rgba(99, 102, 241, 0.45);
-        color: #a5b4fc;
+        background: rgba(0, 118, 223, 0.18);
+        border-color: rgba(0, 118, 223, 0.45);
+        color: var(--color-apple-blue);
       }
       .dim-chip-icon {
         font-size: 11px;
@@ -1820,24 +1941,24 @@ export interface FieldGroup {
 
       .add-sub-btn {
         padding: 6px 14px;
-        background: rgba(99, 102, 241, 0.1);
-        border: 1px dashed rgba(99, 102, 241, 0.3);
+        background: rgba(0, 118, 223, 0.1);
+        border: 1px dashed rgba(0, 118, 223, 0.3);
         border-radius: 8px;
-        color: #a5b4fc;
+        color: var(--color-apple-blue);
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
       }
       .add-sub-btn:hover {
-        background: rgba(99, 102, 241, 0.2);
-        border-color: #6366f1;
-        color: white;
+        background: rgba(0, 118, 223, 0.2);
+        border-color: var(--color-apple-blue);
+        color: var(--color-apple-text);
       }
 
       .empty-filters {
         font-size: 13px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         margin: 4px 0;
         font-style: italic;
       }
@@ -1852,10 +1973,10 @@ export interface FieldGroup {
         display: flex;
         align-items: center;
         gap: 8px;
-        background: rgba(15, 23, 42, 0.4);
+        background: var(--input-bg);
         padding: 10px 14px;
         border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
         flex-wrap: wrap;
       }
 
@@ -1866,7 +1987,7 @@ export interface FieldGroup {
       }
       .form-select.sm.operator {
         width: 180px;
-        color: #a5b4fc;
+        color: var(--color-apple-blue);
         font-weight: 600;
         text-align: center;
       }
@@ -1892,8 +2013,8 @@ export interface FieldGroup {
       .table-wrapper {
         overflow-x: auto;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid var(--border-color);
+        background: var(--input-bg);
       }
 
       .rows-table-wrapper {
@@ -1913,25 +2034,25 @@ export interface FieldGroup {
       }
 
       .grid-table th {
-        background: rgba(15, 23, 42, 0.9);
-        color: #94a3b8;
+        background: var(--color-apple-bg);
+        color: var(--color-apple-grey);
         font-weight: 600;
         text-transform: uppercase;
         font-size: 10px;
         letter-spacing: 0.5px;
         padding: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid var(--border-color);
         white-space: nowrap;
       }
 
       .grid-table td {
         padding: 8px 10px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border-color);
         vertical-align: middle;
       }
 
       .grid-table tr.selected {
-        background: rgba(99, 102, 241, 0.05);
+        background: rgba(0, 118, 223, 0.05);
       }
 
       /* ═══════════════════════════════════════════════════════════════════════
@@ -2061,46 +2182,46 @@ export interface FieldGroup {
         position: sticky;
         left: 0;
         z-index: 10;
-        background: #1e293b;
+        background: var(--color-apple-card);
         justify-content: center;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        border-right: 1px solid var(--border-color);
       }
       .rows-grid .sticky-col-2 {
         position: sticky;
         left: 48px; /* col-checkbox (32px) + gap (16px) */
         z-index: 10;
-        background: #1e293b;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--color-apple-card);
+        border-right: 1px solid var(--border-color);
       }
       /* Elevate header sticky cells above body sticky cells and align background */
       .rows-grid thead .sticky-col-1,
       .rows-grid thead .sticky-col-2 {
         z-index: 12;
-        background: #1e293b !important;
+        background: var(--color-apple-card) !important;
       }
       .rows-grid tr:hover td.sticky-col-1,
       .rows-grid tr:hover td.sticky-col-2 {
-        background: #25334c !important;
+        background: var(--border-color) !important;
       }
       .rows-grid tr.selected td.sticky-col-1,
       .rows-grid tr.selected td.sticky-col-2 {
-        background: #2d3b55 !important;
+        background: rgba(0, 118, 223, 0.15) !important;
       }
 
       /* Enhanced Header Row Prominence Styling */
       .rows-grid thead tr.worksheet-fixed-row {
-        background: #1e293b !important;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
+        background: var(--color-apple-card) !important;
+        border-bottom: 2px solid var(--border-color) !important;
       }
       .rows-grid thead tr.worksheet-fixed-row th {
-        background: #1e293b !important;
-        color: #f8fafc !important;
+        background: var(--color-apple-card) !important;
+        color: var(--color-apple-text) !important;
         font-weight: 800 !important;
         font-size: 11px;
         letter-spacing: 0.5px;
         text-transform: uppercase;
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+        border-right: 1px solid var(--border-color);
+        border-bottom: 2px solid var(--border-color);
       }
       .rows-grid thead tr.worksheet-fixed-row th:last-child {
         border-right: none;
@@ -2197,11 +2318,11 @@ export interface FieldGroup {
       .cell-input,
       .cell-select {
         width: 100%;
-        background: rgba(15, 23, 42, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         padding: 6px 10px;
-        color: white;
+        color: var(--color-apple-text);
         outline: none;
         font-size: 12px;
         font-family: inherit;
@@ -2210,16 +2331,16 @@ export interface FieldGroup {
       }
       .cell-input:focus,
       .cell-select:focus {
-        border-color: #6366f1;
-        background: rgba(15, 23, 42, 0.8);
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+        border-color: var(--color-apple-blue);
+        background: var(--input-bg);
+        box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.25);
       }
       .cell-input.center {
         text-align: center;
       }
       .cell-input.code {
         font-family: 'Fira Code', monospace;
-        color: #38bdf8;
+        color: var(--color-apple-blue);
       }
 
       .grid-table .sticky-col-2 .cell-input {
@@ -2232,10 +2353,10 @@ export interface FieldGroup {
         gap: 5px;
       }
       .indent-btn {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 4px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         cursor: pointer;
         font-size: 10px;
         width: 20px;
@@ -2247,9 +2368,9 @@ export interface FieldGroup {
         transition: all 0.15s ease;
       }
       .indent-btn:hover {
-        color: white;
-        background: rgba(99, 102, 241, 0.2);
-        border-color: rgba(99, 102, 241, 0.4);
+        color: var(--color-apple-text);
+        background: rgba(0, 118, 223, 0.2);
+        border-color: rgba(0, 118, 223, 0.4);
       }
 
       .style-cell {
@@ -2263,7 +2384,7 @@ export interface FieldGroup {
 
       .cell-na {
         font-size: 12px;
-        color: #475569;
+        color: var(--color-apple-grey);
         font-style: italic;
       }
 
@@ -2296,7 +2417,7 @@ export interface FieldGroup {
 
       .measure-of {
         font-size: 11px;
-        color: #475569;
+        color: var(--color-apple-grey);
         font-style: italic;
         flex-shrink: 0;
         margin: 0 2px;
@@ -2305,7 +2426,7 @@ export interface FieldGroup {
       .col-select {
         flex: 1 1 140px;
         min-width: 110px;
-        color: #38bdf8;
+        color: var(--color-apple-blue);
         text-overflow: ellipsis;
         overflow: hidden;
       }
@@ -2322,13 +2443,13 @@ export interface FieldGroup {
         transition: all 0.15s ease;
       }
       .mode-toggle-btn.sql {
-        background: rgba(99, 102, 241, 0.08);
-        border-color: rgba(99, 102, 241, 0.25);
-        color: #818cf8;
+        background: rgba(0, 118, 223, 0.08);
+        border-color: rgba(0, 118, 223, 0.25);
+        color: var(--color-apple-blue);
       }
       .mode-toggle-btn.sql:hover {
-        background: rgba(99, 102, 241, 0.18);
-        color: white;
+        background: rgba(0, 118, 223, 0.18);
+        color: var(--color-apple-text);
       }
       .mode-toggle-btn.visual {
         background: rgba(16, 185, 129, 0.08);
@@ -2337,21 +2458,27 @@ export interface FieldGroup {
       }
       .mode-toggle-btn.visual:hover {
         background: rgba(16, 185, 129, 0.18);
-        color: white;
+        color: var(--color-apple-text);
       }
 
       /* AND / OR conjunction row between quick-filter conditions */
       .conjunction-row {
         display: flex;
         align-items: center;
-        gap: 0;
         padding: 4px 0 4px 10px;
+      }
+      .conjunction-toggle-pill {
+        display: inline-flex;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+        background: transparent;
       }
       .conj-btn {
         padding: 4px 12px;
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #475569;
+        background: transparent;
+        border: none;
+        color: var(--color-apple-grey);
         font-size: 11px;
         font-weight: 700;
         cursor: pointer;
@@ -2359,21 +2486,13 @@ export interface FieldGroup {
         transition: all 0.15s ease;
         letter-spacing: 0.5px;
       }
-      .conj-btn:first-child {
-        border-radius: 6px 0 0 6px;
-      }
-      .conj-btn:last-child {
-        border-radius: 0 6px 6px 0;
-        border-left: none;
-      }
       .conj-btn:hover {
-        background: rgba(99, 102, 241, 0.1);
-        color: #c7d2fe;
+        background: rgba(0, 118, 223, 0.1);
+        color: var(--color-apple-blue);
       }
       .conj-btn.active {
-        background: rgba(99, 102, 241, 0.22);
-        color: #a5b4fc;
-        border-color: rgba(99, 102, 241, 0.4);
+        background: rgba(0, 118, 223, 0.22);
+        color: var(--color-apple-blue);
       }
 
       /* ── Filter row (shared by Quick Filters & General Filters) ── */
@@ -2402,11 +2521,11 @@ export interface FieldGroup {
         align-items: center;
         gap: 3px;
         padding: 3px 8px;
-        background: rgba(99, 102, 241, 0.1);
-        border: 1px solid rgba(99, 102, 241, 0.2);
+        background: rgba(0, 118, 223, 0.1);
+        border: 1px solid rgba(0, 118, 223, 0.2);
         border-radius: 12px;
         font-size: 11px;
-        color: #c7d2fe;
+        color: var(--color-apple-blue);
         white-space: nowrap;
       }
 
@@ -2415,16 +2534,16 @@ export interface FieldGroup {
         font-weight: 700;
       }
       .ft-attr {
-        color: #c7d2fe;
+        color: var(--color-apple-blue);
         font-weight: 600;
       }
       .ft-op {
-        color: #64748b;
+        color: var(--color-apple-grey);
         font-style: italic;
         margin: 0 2px;
       }
       .ft-val {
-        color: #f8fafc;
+        color: var(--color-apple-text);
       }
       .ft-remove {
         background: none;
@@ -2439,25 +2558,25 @@ export interface FieldGroup {
       .add-row-filter-btn {
         align-self: flex-start;
         padding: 4px 10px;
-        background: rgba(99, 102, 241, 0.08);
-        border: 1px dashed rgba(99, 102, 241, 0.25);
+        background: rgba(0, 118, 223, 0.08);
+        border: 1px dashed rgba(0, 118, 223, 0.25);
         border-radius: 6px;
-        color: #818cf8;
+        color: var(--color-apple-blue);
         font-size: 11px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.15s ease;
       }
       .add-row-filter-btn:hover {
-        background: rgba(99, 102, 241, 0.18);
-        border-color: #6366f1;
-        color: white;
+        background: rgba(0, 118, 223, 0.18);
+        border-color: var(--color-apple-blue);
+        color: var(--color-apple-text);
       }
 
       /* Inline row filter builder */
       .row-filter-builder {
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(99, 102, 241, 0.25);
+        background: var(--color-apple-card);
+        border: 1px solid var(--border-color);
         border-radius: 10px;
         padding: 12px;
         display: flex;
@@ -2483,7 +2602,7 @@ export interface FieldGroup {
       }
       .rfb-op {
         grid-column: span 1;
-        color: #a5b4fc;
+        color: var(--color-apple-blue);
         font-weight: 600;
       }
       .rfb-val {
@@ -2513,17 +2632,17 @@ export interface FieldGroup {
 
       .rfb-cancel-btn {
         padding: 5px 12px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         font-size: 11px;
         cursor: pointer;
         transition: all 0.15s ease;
       }
       .rfb-cancel-btn:hover {
-        color: #f8fafc;
-        background: rgba(255, 255, 255, 0.08);
+        color: var(--color-apple-text);
+        background: var(--border-color);
       }
 
       /* Legacy filter badge */
@@ -2562,14 +2681,14 @@ export interface FieldGroup {
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: white;
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
+        color: var(--color-apple-text);
         transition: all 0.2s ease;
         font-family: inherit;
       }
       .action-btn-sm:hover {
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--border-color);
       }
 
       .action-btn-sm.add {
@@ -2601,9 +2720,9 @@ export interface FieldGroup {
       .col-badge {
         padding: 2px 6px;
         border-radius: 4px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #64748b;
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
+        color: var(--color-apple-grey);
         cursor: pointer;
         font-size: 10px;
         font-weight: bold;
@@ -2626,21 +2745,21 @@ export interface FieldGroup {
       }
 
       .spreadsheet-table th {
-        background: rgba(15, 23, 42, 0.6);
-        color: #94a3b8;
+        background: var(--color-apple-bg);
+        color: var(--color-apple-grey);
         padding: 10px 14px;
         font-size: 11px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid var(--border-color);
       }
 
       .spreadsheet-table td {
         padding: 10px 14px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--input-bg);
       }
 
       .preview-col-label {
         font-size: 9px;
-        color: #64748b;
+        color: var(--color-apple-grey);
         text-transform: none;
         margin-top: 2px;
       }
@@ -2668,7 +2787,7 @@ export interface FieldGroup {
       .sticky-col {
         position: sticky;
         left: 0;
-        background: #1e293b;
+        background: var(--color-apple-card);
         z-index: 2;
       }
       .col-flag-header {
@@ -2702,8 +2821,8 @@ export interface FieldGroup {
         text-transform: uppercase;
       }
       .row-type-badge.section {
-        background: #1e293b;
-        color: #cbd5e1;
+        background: var(--color-apple-card);
+        color: var(--color-apple-text);
       }
       .row-type-badge.data {
         background: rgba(56, 189, 248, 0.15);
@@ -2715,7 +2834,7 @@ export interface FieldGroup {
       }
       .row-type-badge.blank {
         background: transparent;
-        color: #475569;
+        color: var(--color-apple-grey);
       }
 
       /* ── Alerts ─────────────────────────────────────── */
@@ -2753,13 +2872,13 @@ export interface FieldGroup {
 
       /* ── Spinner ────────────────────────────────────── */
       .spinner {
+        display: inline-block;
         width: 18px;
         height: 18px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--color-apple-blue);
         border-radius: 50%;
         animation: spin 1s linear infinite;
-        display: inline-block;
       }
 
       @keyframes spin {
@@ -2793,10 +2912,10 @@ export interface FieldGroup {
         right: 0;
         z-index: 200;
         height: 60px;
-        background: rgba(15, 23, 42, 0.97);
+        background: var(--color-apple-bg);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        border-bottom: 1px solid var(--border-color);
         align-items: center;
         padding: 0 16px;
         gap: 14px;
@@ -2805,9 +2924,7 @@ export interface FieldGroup {
       .topbar-brand {
         font-size: 17px;
         font-weight: 700;
-        background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: var(--color-apple-text);
       }
 
       .hamburger-btn {
@@ -2822,14 +2939,14 @@ export interface FieldGroup {
         transition: background 0.2s ease;
       }
       .hamburger-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--border-color);
       }
 
       .ham-line {
         display: block;
         width: 22px;
         height: 2px;
-        background: #f8fafc;
+        background: var(--color-apple-text);
         border-radius: 2px;
       }
 
@@ -2838,10 +2955,10 @@ export interface FieldGroup {
         position: absolute;
         top: 16px;
         right: 16px;
-        background: rgba(255, 255, 255, 0.07);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
-        color: #f8fafc;
+        color: var(--color-apple-text);
         font-size: 14px;
         width: 32px;
         height: 32px;
@@ -2887,7 +3004,7 @@ export interface FieldGroup {
           z-index: 150;
           transform: translateX(-100%);
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          border-right: 1px solid var(--border-color);
         }
         .sidebar.open {
           transform: translateX(0);
@@ -2953,7 +3070,7 @@ export interface FieldGroup {
       .validation-console {
         margin-bottom: 24px;
         border: 1px solid rgba(239, 68, 68, 0.2);
-        background: rgba(15, 23, 42, 0.6) !important;
+        background: var(--input-bg) !important;
       }
       .diagnostics-grid {
         display: flex;
@@ -2972,7 +3089,7 @@ export interface FieldGroup {
         border-radius: 8px;
         font-size: 13px;
         line-height: 1.4;
-        background: rgba(255, 255, 255, 0.02);
+        background: var(--border-color);
         border-left: 3px solid transparent;
       }
       .diagnostic-item.critical {
@@ -3005,11 +3122,11 @@ export interface FieldGroup {
         display: flex;
         gap: 8px;
         margin: 8px 0;
-        background: rgba(15, 23, 42, 0.4);
+        background: var(--input-bg);
         padding: 4px;
         border-radius: 10px;
         width: fit-content;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
       }
       .tab-btn {
         padding: 6px 14px;
@@ -3018,7 +3135,7 @@ export interface FieldGroup {
         font-weight: 600;
         background: transparent;
         border: none;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
@@ -3026,18 +3143,18 @@ export interface FieldGroup {
         gap: 6px;
       }
       .tab-btn:hover {
-        color: #f1f5f9;
-        background: rgba(255, 255, 255, 0.02);
+        color: var(--color-apple-text);
+        background: var(--border-color);
       }
       .tab-btn.active {
-        background: #1e293b;
-        color: #fff;
+        background: var(--color-apple-card);
+        color: var(--color-apple-text);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       }
       .sql-preview-container {
-        background: #0f172a;
+        background: var(--color-apple-bg);
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
         padding: 20px;
         margin-top: 12px;
         box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -3046,7 +3163,7 @@ export interface FieldGroup {
         margin: 0;
         font-family: 'Fira Code', 'Courier New', Courier, monospace;
         font-size: 13px;
-        color: #cbd5e1;
+        color: var(--color-apple-text);
         line-height: 1.6;
         max-height: 450px;
         overflow-y: auto;
@@ -3058,7 +3175,7 @@ export interface FieldGroup {
         align-items: center;
         justify-content: center;
         gap: 12px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         font-size: 14px;
         padding: 40px 0;
       }
@@ -3066,8 +3183,8 @@ export interface FieldGroup {
         display: inline-block;
         width: 18px;
         height: 18px;
-        border: 2px solid rgba(255, 255, 255, 0.15);
-        border-top-color: #6366f1;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--color-apple-blue);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -3095,8 +3212,8 @@ export interface FieldGroup {
         width: 90%;
         max-width: 900px;
         max-height: 85vh;
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--color-apple-card);
+        border: 1px solid var(--border-color);
         border-radius: 16px;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         display: flex;
@@ -3105,7 +3222,7 @@ export interface FieldGroup {
       }
       .sql-modal-header {
         padding: 20px 24px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -3114,17 +3231,17 @@ export interface FieldGroup {
         margin: 0;
         font-size: 1.25rem;
         font-weight: 700;
-        color: #f8fafc;
+        color: var(--color-apple-text);
       }
       .modal-subtitle {
         margin: 4px 0 0 0;
         font-size: 13px;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
       }
       .modal-close-btn {
         background: transparent;
         border: none;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         font-size: 20px;
         cursor: pointer;
         padding: 4px;
@@ -3132,8 +3249,8 @@ export interface FieldGroup {
         transition: all 0.2s ease;
       }
       .modal-close-btn:hover {
-        color: #f1f5f9;
-        background: rgba(255, 255, 255, 0.05);
+        color: var(--color-apple-text);
+        background: var(--border-color);
       }
       .sql-modal-body {
         padding: 24px;
@@ -3147,15 +3264,15 @@ export interface FieldGroup {
         justify-content: center;
         gap: 16px;
         padding: 80px 0;
-        color: #94a3b8;
+        color: var(--color-apple-grey);
         font-size: 14px;
       }
       .sql-viewer-wrapper {
         display: flex;
         flex-direction: column;
-        background: #0f172a;
+        background: #0f172a; /* Force dark background */
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid #1e293b;
         overflow: hidden;
       }
       .sql-viewer-actions {
@@ -3163,15 +3280,15 @@ export interface FieldGroup {
         justify-content: space-between;
         align-items: center;
         padding: 8px 16px;
-        background: rgba(15, 23, 42, 0.6);
+        background: #1e293b; /* Dark bar */
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       }
       .file-tag {
         font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.05em;
-        color: #6366f1;
-        background: rgba(99, 102, 241, 0.1);
+        color: #818cf8; /* Indigo accent */
+        background: rgba(99, 102, 241, 0.15);
         padding: 2px 8px;
         border-radius: 4px;
         text-transform: uppercase;
@@ -3180,22 +3297,23 @@ export interface FieldGroup {
         padding: 4px 10px;
         font-size: 12px;
         font-weight: 600;
-        color: #cbd5e1;
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e2e8f0;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
         border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s ease;
       }
       .copy-btn:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: #f1f5f9;
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
       }
       .sql-viewer-wrapper pre {
         margin: 0;
         padding: 16px 20px;
         overflow-x: auto;
         max-height: 400px;
+        background: #0f172a;
       }
       .sql-viewer-wrapper code {
         font-family: 'Fira Code', 'Courier New', Courier, monospace;
@@ -3203,6 +3321,25 @@ export interface FieldGroup {
         color: #cbd5e1;
         line-height: 1.6;
         white-space: pre;
+      }
+      /* Syntax highlighting styles (Option A Dark Theme) */
+      .sql-viewer-wrapper code .sql-keyword {
+        color: #38bdf8; /* bright neon blue for keywords */
+        font-weight: 700;
+      }
+      .sql-viewer-wrapper code .sql-string {
+        color: #fbbf24; /* amber/yellow for strings */
+      }
+      .sql-viewer-wrapper code .sql-number {
+        color: #fb7185; /* rose/pink for numbers */
+      }
+      .sql-viewer-wrapper code .sql-comment {
+        color: #64748b; /* slate gray for comments */
+        font-style: italic;
+      }
+      .sql-viewer-wrapper code .sql-table {
+        color: #34d399; /* emerald green for tables */
+        font-weight: 600;
       }
       .sql-modal-footer {
         padding: 16px 24px;
@@ -3759,6 +3896,515 @@ export interface FieldGroup {
         text-align: center;
         font-style: italic;
       }
+
+      /* ═══════════════ LIGHT THEME REFINEMENT ═══════════════ */
+      :host-context(html.light) .card,
+      :host-context(html.light) .config-panel,
+      :host-context(html.light) .rows-section,
+      :host-context(html.light) .preview-section {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      }
+
+      :host-context(html.light) .main-content h1,
+      :host-context(html.light) .section-title {
+        color: #0F172A;
+      }
+
+      :host-context(html.light) .report-subtitle,
+      :host-context(html.light) .section-desc {
+        color: #475569;
+      }
+
+      :host-context(html.light) .form-input,
+      :host-context(html.light) .form-select,
+      :host-context(html.light) .datepicker-trigger-btn,
+      :host-context(html.light) .combobox-trigger-btn {
+        background: #FFFFFF;
+        border-color: #CBD5E1;
+        color: #0F172A;
+      }
+
+      :host-context(html.light) .form-input:focus,
+      :host-context(html.light) .form-select:focus,
+      :host-context(html.light) .datepicker-trigger-btn.active,
+      :host-context(html.light) .combobox-trigger-btn.active {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      }
+
+      :host-context(html.light) .form-input::placeholder {
+        color: #94A3B8;
+      }
+
+      /* Pill badges */
+      :host-context(html.light) .dim-chip {
+        background: #F8FAFC;
+        border-color: #E2E8F0;
+        color: #64748B;
+      }
+
+      :host-context(html.light) .dim-chip:hover {
+        background: rgba(79, 70, 229, 0.05);
+        border-color: rgba(79, 70, 229, 0.2);
+        color: #4F46E5;
+      }
+
+      :host-context(html.light) .dim-chip.conformed {
+        background: #F0FDF4;
+        border-color: #DCFCE7;
+        color: #166534;
+        box-shadow: none;
+      }
+
+      :host-context(html.light) .dim-chip.conformed.active {
+        background: #E6F4EA;
+        border-color: #A3E635;
+        color: #137333;
+        box-shadow: none;
+      }
+
+      :host-context(html.light) .dim-chip.mismatched {
+        background: #FCE8E6;
+        border-color: #F9D2CD;
+        color: #C5221F;
+        opacity: 0.85;
+      }
+
+      :host-context(html.light) .dim-chip.mismatched:hover {
+        background: #FAECEB;
+        opacity: 1;
+      }
+
+      /* Step 1 Rows Setup Grid */
+      :host-context(html.light) .grid-table.rows-grid {
+        border-color: #E2E8F0;
+      }
+
+      :host-context(html.light) .rows-grid thead tr.worksheet-fixed-row th {
+        background: #F8FAFC;
+        border-bottom-color: #E2E8F0;
+        color: #475569;
+      }
+
+      :host-context(html.light) .rows-grid tbody tr:nth-child(even) {
+        background: #F8FAFC;
+      }
+
+      :host-context(html.light) .rows-grid tbody tr:nth-child(odd) {
+        background: #FFFFFF;
+      }
+
+      :host-context(html.light) .rows-grid tbody tr:hover {
+        background: #F1F5F9;
+      }
+
+      :host-context(html.light) .rows-grid .sticky-col-1 {
+        background: #FFFFFF;
+        border-right-color: #E2E8F0;
+      }
+
+      :host-context(html.light) .rows-grid .sticky-col-2 {
+        background: #FFFFFF;
+        border-right-color: #E2E8F0;
+        color: #0F172A;
+      }
+
+      :host-context(html.light) .rows-grid tr:nth-child(even) td.sticky-col-1,
+      :host-context(html.light) .rows-grid tr:nth-child(even) td.sticky-col-2 {
+        background: #F8FAFC;
+      }
+
+      :host-context(html.light) .rows-grid tr:nth-child(odd) td.sticky-col-1,
+      :host-context(html.light) .rows-grid tr:nth-child(odd) td.sticky-col-2 {
+        background: #FFFFFF;
+      }
+
+      :host-context(html.light) .rows-grid tr:hover td.sticky-col-1,
+      :host-context(html.light) .rows-grid tr:hover td.sticky-col-2 {
+        background: #F1F5F9;
+      }
+
+      :host-context(html.light) .rows-grid thead .sticky-col-1,
+      :host-context(html.light) .rows-grid thead .sticky-col-2 {
+        background: #F8FAFC;
+        border-bottom-color: #E2E8F0;
+      }
+
+      :host-context(html.light) .rows-grid input,
+      :host-context(html.light) .rows-grid select {
+        background: #FFFFFF;
+        border-color: #CBD5E1;
+        color: #0F172A;
+      }
+
+      :host-context(html.light) .rows-grid input:focus,
+      :host-context(html.light) .rows-grid select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+      }
+
+      /* Buttons & Actions */
+      :host-context(html.light) .add-sub-btn {
+        color: #4F46E5;
+        background: rgba(79, 70, 229, 0.08);
+        border: 1px solid rgba(79, 70, 229, 0.15);
+      }
+
+      :host-context(html.light) .add-sub-btn:hover {
+        background: rgba(79, 70, 229, 0.15);
+        color: #4338CA;
+      }
+
+      :host-context(html.light) .action-btn-sm {
+        background: #FFFFFF;
+        border-color: #CBD5E1;
+        color: #475569;
+      }
+
+      :host-context(html.light) .action-btn-sm:hover {
+        background: #F8FAFC;
+        color: #0F172A;
+        border-color: #CBD5E1;
+      }
+
+      :host-context(html.light) .action-btn-sm.add {
+        color: #4F46E5;
+        background: rgba(79, 70, 229, 0.08);
+        border-color: rgba(79, 70, 229, 0.2);
+      }
+
+      :host-context(html.light) .action-btn-sm.add:hover {
+        background: rgba(79, 70, 229, 0.15);
+        color: #4338CA;
+      }
+
+      :host-context(html.light) .btn-preview-sql,
+      :host-context(html.light) .preview-btn {
+        background: #FFFFFF;
+        border-color: #CBD5E1;
+        color: #475569;
+      }
+
+      :host-context(html.light) .btn-preview-sql:hover,
+      :host-context(html.light) .preview-btn:hover {
+        background: #F8FAFC;
+        color: #0F172A;
+        border-color: #CBD5E1;
+      }
+
+      :host-context(html.light) .save-btn {
+        background: #4F46E5;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+      }
+
+      :host-context(html.light) .save-btn:hover {
+        background: #4338CA;
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+      }
+
+      /* Left-hand DWH Catalog Sidebar Panel overrides */
+      :host-context(html.light) .catalog-panel {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-right: 1px solid #E2E8F0;
+        box-shadow: none;
+      }
+
+      :host-context(html.light) .picker-toggle-handle {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        color: #64748B;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+
+      :host-context(html.light) .picker-toggle-handle:hover {
+        color: #4F46E5;
+        background: #F8FAFC;
+        border-color: #CBD5E1;
+      }
+
+      :host-context(html.light) .catalog-search-box .search-input {
+        background: #FFFFFF;
+        border: 1px solid #CBD5E1;
+        color: #0F172A;
+      }
+
+      :host-context(html.light) .catalog-search-box .search-input::placeholder {
+        color: #94A3B8;
+      }
+
+      :host-context(html.light) .category-title {
+        background: #FFFFFF;
+        border-color: #E2E8F0;
+      }
+
+      :host-context(html.light) .category-title:hover {
+        background: #F8FAFC;
+        border-color: #CBD5E1;
+      }
+
+      :host-context(html.light) .cat-name,
+      :host-context(html.light) .field-name {
+        color: #334155;
+      }
+
+      :host-context(html.light) .table-badge {
+        background: #EEF2F6;
+        color: #475569;
+        border: 1px solid #E2E8F0;
+      }
+
+      :host-context(html.light) .fields-list-mini {
+        border-left-color: #E2E8F0;
+      }
+
+      :host-context(html.light) .field-item-draggable {
+        background: #FFFFFF;
+        border-color: #E2E8F0;
+      }
+
+      :host-context(html.light) .field-item-draggable:hover {
+        background: #EEF2F6;
+        border-color: #CBD5E1;
+        color: #4F46E5;
+      }
+
+      :host-context(html.light) .field-type {
+        color: #64748B;
+      }
+
+      :host-context(html.light) .catalog-empty {
+        color: #94A3B8;
+      }
+
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.03);
+      }
+
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      /* Steps 1 Grid Typography & Inputs overrides */
+      :host-context(html.light) .rows-grid thead tr.worksheet-fixed-row th {
+        color: #0F172A;
+        font-weight: 700;
+      }
+
+      :host-context(html.light) .measure-td span.text-slate-500 {
+        color: #334155 !important;
+      }
+
+      :host-context(html.light) select option[value=""],
+      :host-context(html.light) select option:disabled {
+        color: #64748B;
+      }
+
+      :host-context(html.light) .col-badge {
+        background: #F8FAFC;
+        border-color: #E2E8F0;
+        color: #64748B;
+      }
+
+      :host-context(html.light) .col-badge.active {
+        background: #E6F4EA;
+        color: #137333;
+        border-color: #A3E635;
+      }
+
+      /* ── Consolidated Filters Row ── */
+      .filters-row-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+        width: 100%;
+      }
+      @media (max-width: 1024px) {
+        .filters-row-container {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+      }
+
+      /* ── Timeframe Row No-Wrap Fix ── */
+      .timeframe-row,
+      .tf-end-group {
+        flex-wrap: nowrap !important;
+      }
+
+      /* Timeframe Limit Light Theme overrides */
+      :host-context(html.light) .mode-btn-group {
+        border-color: #CBD5E1;
+      }
+      :host-context(html.light) .mode-btn {
+        background: #FFFFFF;
+        border-right-color: #CBD5E1;
+        color: #475569;
+      }
+      :host-context(html.light) .mode-btn:hover {
+        background: #EEF2F6;
+        color: #4F46E5;
+      }
+      :host-context(html.light) .mode-btn.active {
+        background: rgba(79, 70, 229, 0.15);
+        color: #4F46E5;
+        border-color: rgba(79, 70, 229, 0.3);
+      }
+      :host-context(html.light) .computed-date-badge {
+        background: #EEF2F6;
+        color: #4338CA;
+        border-color: #C7D2FE;
+      }
+
+      /* Datepicker Dropdown & Days Light Theme overrides */
+      :host-context(html.light) .datepicker-dropdown {
+        background: #FFFFFF;
+        border: 1px solid #CBD5E1;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      }
+      :host-context(html.light) .datepicker-title {
+        color: #0F172A;
+      }
+      :host-context(html.light) .datepicker-nav-btn {
+        background: #F8FAFC;
+        border-color: #E2E8F0;
+        color: #475569;
+      }
+      :host-context(html.light) .datepicker-nav-btn:hover {
+        background: #EEF2F6;
+        color: #4F46E5;
+        border-color: #CBD5E1;
+      }
+      :host-context(html.light) .datepicker-weekday {
+        color: #64748B;
+      }
+      :host-context(html.light) .datepicker-day-cell {
+        color: #334155;
+      }
+      :host-context(html.light) .datepicker-day-cell.other-month {
+        color: #94A3B8;
+        opacity: 0.5;
+      }
+      :host-context(html.light) .datepicker-day-cell.enabled {
+        color: #334155;
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+      }
+      :host-context(html.light) .datepicker-day-cell.enabled:hover {
+        background: rgba(79, 70, 229, 0.1);
+        color: #4F46E5;
+        border-color: rgba(79, 70, 229, 0.2);
+      }
+      :host-context(html.light) .datepicker-day-cell.selected {
+        background: #4F46E5 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 0 10px rgba(79, 70, 229, 0.3);
+        border-color: #4F46E5;
+      }
+      :host-context(html.light) .datepicker-day-cell.disabled {
+        color: #94A3B8;
+        background: transparent;
+        opacity: 0.3;
+        text-decoration: line-through;
+        border: none;
+      }
+
+      /* Combobox / Distinct Values Dropdown Light Theme overrides */
+      :host-context(html.light) .combobox-trigger-btn {
+        background: #FFFFFF;
+        border-color: #CBD5E1;
+        color: #0F172A;
+      }
+      :host-context(html.light) .combobox-trigger-btn:focus,
+      :host-context(html.light) .combobox-trigger-btn.active {
+        border-color: #6366F1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+      }
+      :host-context(html.light) .combobox-dropdown {
+        background: #FFFFFF;
+        border-color: #CBD5E1;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      }
+      :host-context(html.light) .combobox-option-item {
+        color: #334155;
+      }
+      :host-context(html.light) .combobox-option-item:hover {
+        background: #F8FAFC;
+        color: #0F172A;
+      }
+      :host-context(html.light) .combobox-option-item.selected {
+        background: #E0E7FF;
+        color: #4338CA;
+      }
+      :host-context(html.light) .combobox-empty-state {
+        color: #64748B;
+      }
+      :host-context(html.light) .dim-select {
+        color: #7C3AED;
+      }
+      :host-context(html.light) .form-select.sm.operator {
+        color: #4F46E5;
+      }
+
+      /* Light Theme overrides for Conjunction Toggle Pill */
+      :host-context(html.light) .conjunction-toggle-pill {
+        border-color: #E2E8F0;
+      }
+      :host-context(html.light) .conj-btn {
+        color: #64748B;
+      }
+      :host-context(html.light) .conj-btn:hover {
+        background: rgba(79, 70, 229, 0.05);
+        color: #4F46E5;
+      }
+      :host-context(html.light) .conj-btn.active {
+        background: #EEF2F6;
+        color: #4F46E5;
+      }
+
+      /* Light Theme overrides for SQL Preview Modal */
+      :host-context(html.light) .sql-modal-card {
+        background: #FFFFFF;
+        border-color: #E2E8F0;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+      }
+      :host-context(html.light) .sql-modal-header {
+        border-bottom-color: #E2E8F0;
+      }
+      :host-context(html.light) .sql-modal-header h2 {
+        color: #0F172A;
+      }
+      :host-context(html.light) .modal-subtitle {
+        color: #64748B;
+      }
+      :host-context(html.light) .modal-close-btn {
+        color: #64748B;
+      }
+      :host-context(html.light) .modal-close-btn:hover {
+        color: #0F172A;
+        background: #F1F5F9;
+      }
+      :host-context(html.light) .sql-modal-footer {
+        border-top-color: #E2E8F0;
+        background: #F8FAFC;
+      }
+      :host-context(html.light) .footer-close-btn {
+        color: #475569;
+        border-color: #CBD5E1;
+        background: #FFFFFF;
+      }
+      :host-context(html.light) .footer-close-btn:hover {
+        background: #F1F5F9;
+        color: #0F172A;
+        border-color: #94A3B8;
+      }
     `,
   ],
 })
@@ -3799,7 +4445,6 @@ export class ReportBuilderComponent implements OnInit {
     this.previewTrigger(); // reacts to validation changes
     const year = this.calendarYear();
     const month = this.calendarMonth();
-    const datesCache = this.availableReportingDates || [];
 
     const days: CalendarDay[] = [];
 
@@ -3822,7 +4467,7 @@ export class ReportBuilderComponent implements OnInit {
         dayNum,
         isCurrentMonth: false,
         formattedStr,
-        isEnabled: datesCache.includes(formattedStr),
+        isEnabled: true, // Unbounded 100-day constraint removed
       });
     }
 
@@ -3835,11 +4480,11 @@ export class ReportBuilderComponent implements OnInit {
         dayNum,
         isCurrentMonth: true,
         formattedStr,
-        isEnabled: datesCache.includes(formattedStr),
+        isEnabled: true, // Unbounded 100-day constraint removed
       });
     }
 
-    // Next month days to pad to a multiple of 7 (or 42 for a perfect 6-row grid)
+    // Next month days to pad to a multiple of 7
     const totalCells = 42;
     const nextMonthYear = month === 11 ? year + 1 : year;
     const nextMonth = month === 11 ? 0 : month + 1;
@@ -3852,13 +4497,83 @@ export class ReportBuilderComponent implements OnInit {
         dayNum: nextMonthDay,
         isCurrentMonth: false,
         formattedStr,
-        isEnabled: datesCache.includes(formattedStr),
+        isEnabled: true, // Unbounded 100-day constraint removed
       });
       nextMonthDay++;
     }
 
     return days;
   });
+
+  // ── Timeframe End Date Picker signals & properties ────────────────
+  showTimeframeEndDatePicker = signal<boolean>(false);
+  calendarTimeframeEndYear = signal<number>(new Date().getFullYear());
+  calendarTimeframeEndMonth = signal<number>(new Date().getMonth());
+
+  calendarTimeframeEndDays = computed(() => {
+    this.previewTrigger(); // reacts to validation changes
+    const year = this.calendarTimeframeEndYear();
+    const month = this.calendarTimeframeEndMonth();
+
+    const days: CalendarDay[] = [];
+
+    // First day of current month (0 = Sunday, 6 = Saturday)
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    // Number of days in current month
+    const numDays = new Date(year, month + 1, 0).getDate();
+
+    // Prev month days to pad
+    const prevMonthYear = month === 0 ? year - 1 : year;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const numDaysPrevMonth = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = numDaysPrevMonth - i;
+      const d = new Date(prevMonthYear, prevMonth, dayNum);
+      const formattedStr = this.formatDateString(d);
+      days.push({
+        date: d,
+        dayNum,
+        isCurrentMonth: false,
+        formattedStr,
+        isEnabled: true,
+      });
+    }
+
+    // Current month days
+    for (let dayNum = 1; dayNum <= numDays; dayNum++) {
+      const d = new Date(year, month, dayNum);
+      const formattedStr = this.formatDateString(d);
+      days.push({
+        date: d,
+        dayNum,
+        isCurrentMonth: true,
+        formattedStr,
+        isEnabled: true,
+      });
+    }
+
+    // Next month days to pad to a multiple of 7
+    const totalCells = 42;
+    const nextMonthYear = month === 11 ? year + 1 : year;
+    const nextMonth = month === 11 ? 0 : month + 1;
+    let nextMonthDay = 1;
+    while (days.length < totalCells) {
+      const d = new Date(nextMonthYear, nextMonth, nextMonthDay);
+      const formattedStr = this.formatDateString(d);
+      days.push({
+        date: d,
+        dayNum: nextMonthDay,
+        isCurrentMonth: false,
+        formattedStr,
+        isEnabled: true,
+      });
+      nextMonthDay++;
+    }
+
+    return days;
+  });
+
 
   // ── Dynamic Granularity Options Signal ────────────────────────────
   dynamicGranularityOptions = computed(() => {
@@ -4297,6 +5012,70 @@ export class ReportBuilderComponent implements OnInit {
     }
   }
 
+  getHighlightedSql(sql: string): string {
+    if (!sql) return '';
+
+    // Escape HTML characters to prevent XSS
+    let escaped = sql
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // RegEx patterns
+    const commentRegex = /(--.*)/g;
+    const stringRegex = /('[^']*'|"[^"]*")/g;
+    const numberRegex = /\b(\d+(?:\.\d+)?)\b/g;
+
+    const keywords = [
+      'WITH', 'SELECT', 'CAST', 'AS', 'FROM', 'LEFT JOIN', 'JOIN', 'ON', 'GROUP BY',
+      'UNION ALL', 'UNION DISTINCT', 'UNION', 'WHERE', 'AND', 'OR', 'COALESCE',
+      'SUM', 'AVG', 'COUNT', 'MIN', 'MAX', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+      'DOUBLE PRECISION', 'INTEGER', 'NULL', 'FALSE', 'TRUE', 'IS NOT', 'IS', 'LIKE',
+      'NOT LIKE', 'DISTINCT'
+    ];
+    keywords.sort((a, b) => b.length - a.length);
+    const keywordsPattern = keywords.map(kw => kw.replace(/ /g, '\\s+')).join('|');
+    const keywordRegex = new RegExp(`\\b(${keywordsPattern})\\b`, 'gi');
+
+    const schemaTableRegex = /\b(analytics\.[a-zA-Z0-9_]+|cte_[a-zA-Z0-9_]+)\b/g;
+
+    const placeholders: string[] = [];
+
+    // Replace comments
+    escaped = escaped.replace(commentRegex, (match) => {
+      placeholders.push(`<span class="sql-comment">${match}</span>`);
+      return `___PLACEHOLDER_${placeholders.length - 1}___`;
+    });
+
+    // Replace strings
+    escaped = escaped.replace(stringRegex, (match) => {
+      placeholders.push(`<span class="sql-string">${match}</span>`);
+      return `___PLACEHOLDER_${placeholders.length - 1}___`;
+    });
+
+    // Replace keywords
+    escaped = escaped.replace(keywordRegex, (match) => {
+      return `<span class="sql-keyword">${match.toUpperCase()}</span>`;
+    });
+
+    // Replace schema table names
+    escaped = escaped.replace(schemaTableRegex, (match) => {
+      return `<span class="sql-table">${match}</span>`;
+    });
+
+    // Replace numbers
+    escaped = escaped.replace(numberRegex, (match) => {
+      return `<span class="sql-number">${match}</span>`;
+    });
+
+    // Restore placeholders
+    for (let i = placeholders.length - 1; i >= 0; i--) {
+      escaped = escaped.replace(new RegExp(`___PLACEHOLDER_${i}___`, 'g'), placeholders[i]);
+    }
+
+    return escaped;
+  }
+
   // ── DB Metadata ─────────────────────────────────────────────────────────
   dbTables: string[] = [];
   tableColumns: string[] = [];
@@ -4535,6 +5314,9 @@ export class ReportBuilderComponent implements OnInit {
       this.quickFilters = data.quickFilters ? JSON.parse(data.quickFilters) : [];
       if (!Array.isArray(this.quickFilters)) this.quickFilters = [];
       this.quickFilters.forEach((f) => {
+        if (!f.conjunction) {
+          f.conjunction = 'AND';
+        }
         f.operator = this.normalizeFilterOperator(f.operator);
         this.onFilterFieldChanged(f);
       });
@@ -4557,6 +5339,9 @@ export class ReportBuilderComponent implements OnInit {
     try {
       this.generalFilters = data.generalFilters ? JSON.parse(data.generalFilters) : [];
       this.generalFilters.forEach((f) => {
+        if (!f.conjunction) {
+          f.conjunction = 'AND';
+        }
         f.operator = this.normalizeFilterOperator(f.operator);
         this.onFilterFieldChanged(f);
       });
@@ -4968,10 +5753,7 @@ export class ReportBuilderComponent implements OnInit {
 
   initializeCalendarView(): void {
     let dateToUse = new Date();
-    const isReportingDateAvailable =
-      this.reportingDate && this.availableReportingDates.includes(this.reportingDate);
-
-    if (isReportingDateAvailable) {
+    if (this.reportingDate) {
       const parsed = new Date(this.reportingDate);
       if (!isNaN(parsed.getTime())) {
         dateToUse = parsed;
@@ -5010,6 +5792,46 @@ export class ReportBuilderComponent implements OnInit {
     this.reportingDate = day.formattedStr;
     this.showDatePicker.set(false);
     this.triggerValidationDebounced();
+  }
+
+  prevTimeframeEndMonth(): void {
+    if (this.calendarTimeframeEndMonth() === 0) {
+      this.calendarTimeframeEndMonth.set(11);
+      this.calendarTimeframeEndYear.update((y) => y - 1);
+    } else {
+      this.calendarTimeframeEndMonth.update((m) => m - 1);
+    }
+  }
+
+  nextTimeframeEndMonth(): void {
+    if (this.calendarTimeframeEndMonth() === 11) {
+      this.calendarTimeframeEndMonth.set(0);
+      this.calendarTimeframeEndYear.update((y) => y + 1);
+    } else {
+      this.calendarTimeframeEndMonth.update((m) => m + 1);
+    }
+  }
+
+  selectTimeframeEndCalendarDay(day: CalendarDay): void {
+    if (!day.isEnabled) return;
+    this.timeframeEnd = day.formattedStr;
+    this.showTimeframeEndDatePicker.set(false);
+    this.triggerValidationDebounced();
+  }
+
+  toggleTimeframeEndDatePicker(): void {
+    this.showTimeframeEndDatePicker.set(!this.showTimeframeEndDatePicker());
+    if (this.showTimeframeEndDatePicker()) {
+      let dateToUse = new Date();
+      if (this.timeframeEnd) {
+        const parsed = new Date(this.timeframeEnd);
+        if (!isNaN(parsed.getTime())) {
+          dateToUse = parsed;
+        }
+      }
+      this.calendarTimeframeEndYear.set(dateToUse.getFullYear());
+      this.calendarTimeframeEndMonth.set(dateToUse.getMonth());
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -5055,7 +5877,13 @@ export class ReportBuilderComponent implements OnInit {
   // ═══════════════════════════════════════════════════════════════════════════
 
   addGeneralFilter(): void {
-    this.generalFilters.push({ attribute: '', operator: '=', value: '', dimTable: '' });
+    this.generalFilters.push({
+      dimTable: '',
+      attribute: '',
+      operator: '=',
+      value: '',
+      conjunction: 'AND',
+    });
   }
 
   removeGeneralFilter(index: number): void {

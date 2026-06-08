@@ -39,12 +39,12 @@ import { ValuePickerComponent } from './value-picker';
     .filter-tag-mini {
       display: inline-flex;
       align-items: center;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 4px;
       padding: 1px 6px;
       font-size: 10px;
-      color: #cbd5e1;
+      color: var(--color-apple-text);
       gap: 4px;
       transition: all 0.15s ease;
     }
@@ -56,29 +56,29 @@ import { ValuePickerComponent } from './value-picker';
     }
 
     .ft-dim {
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-weight: 500;
     }
 
     .ft-attr {
-      color: #e2e8f0;
+      color: var(--color-apple-text);
       font-weight: 600;
     }
 
     .ft-op {
-      color: #f59e0b;
+      color: var(--color-apple-blue);
       font-family: monospace;
     }
 
     .ft-val {
-      color: #38bdf8;
+      color: var(--color-apple-blue);
       font-weight: 500;
     }
 
     .ft-remove {
       background: transparent;
       border: none;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       cursor: pointer;
       font-size: 9px;
       padding: 0 2px;
@@ -89,14 +89,14 @@ import { ValuePickerComponent } from './value-picker';
     }
 
     .ft-remove:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #f8fafc;
+      background: var(--border-color);
+      color: var(--color-apple-text);
     }
 
     .add-row-filter-btn {
-      background: rgba(99, 102, 241, 0.1);
-      border: 1px dashed rgba(99, 102, 241, 0.3);
-      color: #a5b4fc;
+      background: rgba(0, 118, 223, 0.1);
+      border: 1px dashed rgba(0, 118, 223, 0.3);
+      color: var(--color-apple-blue);
       font-size: 11px;
       font-weight: 500;
       padding: 4px 8px;
@@ -111,9 +111,9 @@ import { ValuePickerComponent } from './value-picker';
     }
 
     .add-row-filter-btn:hover:not(:disabled) {
-      background: rgba(99, 102, 241, 0.2);
-      border-color: #818cf8;
-      color: white;
+      background: rgba(0, 118, 223, 0.2);
+      border-color: var(--color-apple-blue);
+      color: var(--color-apple-text);
     }
 
     .add-row-filter-btn:disabled {
@@ -128,10 +128,10 @@ import { ValuePickerComponent } from './value-picker';
       top: 100%;
       margin-top: 8px;
       width: 320px;
-      background: #0f172a;
-      border: 1px solid rgba(99, 102, 241, 0.25);
+      background: var(--color-apple-card);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+      box-shadow: var(--shadow-md);
       z-index: 50 !important;
       padding: 12px;
       display: flex;
@@ -162,17 +162,17 @@ import { ValuePickerComponent } from './value-picker';
     .rfb-label-row label {
       font-size: 10px;
       font-weight: 600;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
     .form-select, .form-input {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 6px 10px;
-      color: #e2e8f0;
+      color: var(--color-apple-text);
       font-size: 12px;
       outline: none;
       transition: all 0.15s ease;
@@ -180,8 +180,8 @@ import { ValuePickerComponent } from './value-picker';
     }
 
     .form-select:focus, .form-input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+      border-color: var(--color-apple-blue);
+      box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.25);
     }
 
     .form-input.invalid-input {
@@ -193,13 +193,13 @@ import { ValuePickerComponent } from './value-picker';
       display: flex;
       justify-content: flex-end;
       gap: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-top: 1px solid var(--border-color);
       padding-top: 10px;
       margin-top: 4px;
     }
 
     .rfb-confirm-btn {
-      background: #2563eb;
+      background: var(--color-apple-blue);
       color: white;
       border: none;
       padding: 6px 12px;
@@ -211,7 +211,8 @@ import { ValuePickerComponent } from './value-picker';
     }
 
     .rfb-confirm-btn:hover:not(:disabled) {
-      background: #1d4ed8;
+      background: var(--color-apple-blue);
+      filter: brightness(1.1);
     }
 
     .rfb-confirm-btn:disabled {
@@ -221,8 +222,8 @@ import { ValuePickerComponent } from './value-picker';
 
     .rfb-cancel-btn {
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #cbd5e1;
+      border: 1px solid var(--border-color);
+      color: var(--color-apple-text);
       padding: 6px 12px;
       border-radius: 6px;
       font-size: 11px;
@@ -232,8 +233,82 @@ import { ValuePickerComponent } from './value-picker';
     }
 
     .rfb-cancel-btn:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: white;
+      background: var(--border-color);
+      color: var(--color-apple-text);
+    }
+
+    /* Light Theme overrides for row-filter component */
+    :host-context(html.light) .add-row-filter-btn {
+      background: rgba(79, 70, 229, 0.08) !important;
+      border: 1px dashed rgba(79, 70, 229, 0.4) !important;
+      color: #4F46E5 !important;
+      font-weight: 600;
+    }
+    :host-context(html.light) .add-row-filter-btn:hover:not(:disabled) {
+      background: rgba(79, 70, 229, 0.15) !important;
+      border-color: #4338CA !important;
+      color: #4338CA !important;
+    }
+    :host-context(html.light) .filter-tag-mini {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+      color: #0F172A;
+    }
+    :host-context(html.light) .ft-dim {
+      color: #64748B;
+    }
+    :host-context(html.light) .ft-attr {
+      color: #0F172A;
+    }
+    :host-context(html.light) .ft-op {
+      color: #4F46E5;
+    }
+    :host-context(html.light) .ft-val {
+      color: #4F46E5;
+    }
+    :host-context(html.light) .ft-remove {
+      color: #64748B;
+    }
+    :host-context(html.light) .ft-remove:hover {
+      background: #E2E8F0;
+      color: #EF4444;
+    }
+    :host-context(html.light) .row-filter-builder {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+    :host-context(html.light) .row-filter-builder label {
+      color: #475569;
+    }
+    :host-context(html.light) .form-select,
+    :host-context(html.light) .form-input {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+    :host-context(html.light) .form-select:focus,
+    :host-context(html.light) .form-input:focus {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+    }
+    :host-context(html.light) .rfb-actions {
+      border-top-color: #E2E8F0;
+    }
+    :host-context(html.light) .rfb-confirm-btn {
+      background: #4F46E5;
+      color: #FFFFFF;
+    }
+    :host-context(html.light) .rfb-confirm-btn:hover:not(:disabled) {
+      background: #4338CA;
+    }
+    :host-context(html.light) .rfb-cancel-btn {
+      border-color: #CBD5E1;
+      color: #475569;
+    }
+    :host-context(html.light) .rfb-cancel-btn:hover {
+      background: #F8FAFC;
+      color: #0F172A;
     }
   `]
 })

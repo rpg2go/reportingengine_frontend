@@ -230,16 +230,16 @@ import { SidebarComponent } from './sidebar';
     .dashboard-container {
       display: flex;
       min-height: 100vh;
-      background: #0f172a;
-      color: #f8fafc;
-      font-family: 'Outfit', 'Inter', sans-serif;
+      background: var(--color-apple-bg);
+      color: var(--color-apple-text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     /* Sidebar */
     .sidebar {
       width: 260px;
-      background: rgba(30, 41, 59, 0.5);
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--card-bg);
+      border-right: 1px solid var(--border-color);
       backdrop-filter: blur(12px);
       display: flex;
       flex-direction: column;
@@ -261,9 +261,7 @@ import { SidebarComponent } from './sidebar';
     .brand-text {
       font-size: 20px;
       font-weight: 700;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--color-apple-text);
     }
 
     .sidebar-menu {
@@ -278,7 +276,7 @@ import { SidebarComponent } from './sidebar';
       align-items: center;
       gap: 12px;
       padding: 12px 16px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       text-decoration: none;
       border-radius: 12px;
       font-weight: 500;
@@ -286,14 +284,14 @@ import { SidebarComponent } from './sidebar';
     }
 
     .menu-item:hover, .menu-item.active {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.05);
+      color: var(--color-apple-text);
+      background: var(--input-bg);
     }
 
     .menu-item.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      color: #a5b4fc;
+      background: linear-gradient(135deg, rgba(0, 118, 223, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+      border: 1px solid rgba(0, 118, 223, 0.2);
+      color: var(--color-apple-blue);
     }
 
     .menu-icon {
@@ -303,18 +301,18 @@ import { SidebarComponent } from './sidebar';
     .back-btn {
       width: 100%;
       padding: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      color: #f8fafc;
+      color: var(--color-apple-text);
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .back-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
+      background: var(--border-color);
+      border-color: var(--border-color);
     }
 
     /* Main Content */
@@ -332,18 +330,18 @@ import { SidebarComponent } from './sidebar';
       justify-content: space-between;
       align-items: flex-end;
       gap: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border-color);
       padding-bottom: 24px;
     }
 
     .breadcrumbs {
       font-size: 13px;
-      color: #64748b;
+      color: var(--color-apple-grey);
       margin-bottom: 8px;
     }
 
     .breadcrumbs a {
-      color: #818cf8;
+      color: var(--color-apple-blue);
       text-decoration: none;
     }
 
@@ -360,7 +358,7 @@ import { SidebarComponent } from './sidebar';
 
     .report-subtitle {
       font-size: 16px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       margin: 4px 0 0 0;
     }
 
@@ -369,8 +367,8 @@ import { SidebarComponent } from './sidebar';
       display: flex;
       align-items: center;
       gap: 20px;
-      background: rgba(30, 41, 59, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
       padding: 16px 24px;
     }
@@ -384,32 +382,32 @@ import { SidebarComponent } from './sidebar';
     .date-selector label {
       font-size: 11px;
       font-weight: 700;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .date-input {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 8px 12px;
-      color: white;
+      color: var(--color-apple-text);
       outline: none;
       font-size: 14px;
       font-family: inherit;
     }
 
     .date-input:focus {
-      border-color: #6366f1;
+      border-color: var(--color-apple-blue);
     }
 
     .edit-btn-link {
       padding: 12px 24px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      color: white;
+      color: var(--color-apple-text);
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
@@ -421,13 +419,13 @@ import { SidebarComponent } from './sidebar';
     }
 
     .edit-btn-link:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(99, 102, 241, 0.4);
+      background: var(--border-color);
+      border-color: rgba(0, 118, 223, 0.4);
     }
 
     .run-btn {
       padding: 12px 24px;
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      background: linear-gradient(135deg, var(--color-apple-blue) 0%, var(--color-apple-blue) 100%);
       border: none;
       border-radius: 10px;
       color: white;
@@ -436,14 +434,14 @@ import { SidebarComponent } from './sidebar';
       display: flex;
       align-items: center;
       gap: 10px;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 118, 223, 0.3);
       transition: all 0.2s ease;
       align-self: flex-end;
     }
 
     .run-btn:hover:not(:disabled) {
-      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+      background: var(--color-apple-blue);
+      box-shadow: 0 6px 16px rgba(0, 118, 223, 0.4);
     }
 
     .run-btn:disabled {
@@ -454,8 +452,8 @@ import { SidebarComponent } from './sidebar';
     .spinner {
       width: 18px;
       height: 18px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--color-apple-text);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
@@ -464,7 +462,7 @@ import { SidebarComponent } from './sidebar';
       width: 45px;
       height: 45px;
       border-width: 3px;
-      border-top-color: #6366f1;
+      border-top-color: var(--color-apple-blue);
     }
 
     /* Alerts */
@@ -492,16 +490,16 @@ import { SidebarComponent } from './sidebar';
     .tabs-container {
       display: flex;
       flex-direction: column;
-      background: rgba(30, 41, 59, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 20px;
       overflow: hidden;
     }
 
     .tabs-header {
       display: flex;
-      background: rgba(15, 23, 42, 0.4);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--color-apple-bg);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .tab-btn {
@@ -517,12 +515,12 @@ import { SidebarComponent } from './sidebar';
     }
 
     .tab-btn:hover {
-      color: white;
+      color: var(--color-apple-text);
     }
 
     .tab-btn.active {
-      color: #818cf8;
-      border-bottom-color: #6366f1;
+      color: var(--color-apple-blue);
+      border-bottom-color: var(--color-apple-blue);
     }
 
     .tab-body {
@@ -533,7 +531,7 @@ import { SidebarComponent } from './sidebar';
     .table-wrapper {
       overflow-x: auto;
       border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
     }
 
     .data-table, .spreadsheet-table {
@@ -544,19 +542,19 @@ import { SidebarComponent } from './sidebar';
     }
 
     .data-table th, .spreadsheet-table th {
-      background: rgba(15, 23, 42, 0.6);
-      color: #94a3b8;
+      background: var(--color-apple-bg);
+      color: var(--color-apple-grey);
       font-weight: 600;
       text-transform: uppercase;
       font-size: 11px;
       letter-spacing: 0.5px;
       padding: 14px 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .data-table td, .spreadsheet-table td {
       padding: 12px 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--input-bg);
     }
 
     .font-bold {
@@ -564,13 +562,13 @@ import { SidebarComponent } from './sidebar';
     }
 
     code {
-      background: rgba(15, 23, 42, 0.6);
+      background: var(--input-bg);
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 12px;
       font-family: 'Fira Code', monospace;
-      color: #f1f5f9;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--color-apple-text);
+      border: 1px solid var(--border-color);
     }
 
     code.formula {
@@ -589,7 +587,7 @@ import { SidebarComponent } from './sidebar';
       text-transform: uppercase;
     }
 
-    .col-type-badge.week { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+    .col-type-badge.week { background: rgba(0, 118, 223, 0.15); color: var(--color-apple-blue); }
     .col-type-badge.mtd { background: rgba(234, 179, 8, 0.15); color: #facc15; }
     .col-type-badge.ytd { background: rgba(16, 185, 129, 0.15); color: #34d399; }
     .col-type-badge.rolling { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
@@ -603,10 +601,10 @@ import { SidebarComponent } from './sidebar';
       text-transform: uppercase;
     }
 
-    .row-type-badge.section { background: #1e293b; color: #cbd5e1; }
+    .row-type-badge.section { background: var(--color-apple-card); color: var(--color-apple-text); }
     .row-type-badge.data { background: rgba(56, 189, 248, 0.1); color: #38bdf8; }
     .row-type-badge.calc { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
-    .row-type-badge.blank { background: transparent; color: #475569; }
+    .row-type-badge.blank { background: transparent; color: var(--color-apple-grey); }
 
     /* Status Badges */
     .report-status-badge {
@@ -621,7 +619,7 @@ import { SidebarComponent } from './sidebar';
     }
     .report-status-badge.draft { background: rgba(234, 179, 8, 0.15); color: #facc15; }
     .report-status-badge.published { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .report-status-badge.running { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+    .report-status-badge.running { background: rgba(0, 118, 223, 0.15); color: var(--color-apple-blue); }
 
     /* Spreadsheet View Styles */
     .spreadsheet-container {
@@ -658,7 +656,7 @@ import { SidebarComponent } from './sidebar';
     .sticky-col {
       position: sticky;
       left: 0;
-      background: #1e293b;
+      background: var(--color-apple-card);
       z-index: 2;
       box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
     }
@@ -723,10 +721,10 @@ import { SidebarComponent } from './sidebar';
       top: 0; left: 0; right: 0;
       z-index: 200;
       height: 60px;
-      background: rgba(15, 23, 42, 0.97);
+      background: var(--color-apple-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      border-bottom: 1px solid var(--border-color);
       align-items: center;
       padding: 0 16px;
       gap: 14px;
@@ -735,9 +733,7 @@ import { SidebarComponent } from './sidebar';
     .topbar-brand {
       font-size: 17px;
       font-weight: 700;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--color-apple-text);
     }
 
     .hamburger-btn {
@@ -751,13 +747,13 @@ import { SidebarComponent } from './sidebar';
       border-radius: 8px;
       transition: background 0.2s ease;
     }
-    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.08); }
+    .hamburger-btn:hover { background: var(--border-color); }
 
     .ham-line {
       display: block;
       width: 22px;
       height: 2px;
-      background: #f8fafc;
+      background: var(--color-apple-text);
       border-radius: 2px;
     }
 
@@ -766,10 +762,10 @@ import { SidebarComponent } from './sidebar';
       position: absolute;
       top: 16px;
       right: 16px;
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      color: #f8fafc;
+      color: var(--color-apple-text);
       font-size: 14px;
       width: 32px;
       height: 32px;
@@ -808,7 +804,7 @@ import { SidebarComponent } from './sidebar';
         z-index: 150;
         transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid var(--border-color);
       }
       .sidebar.open {
         transform: translateX(0);

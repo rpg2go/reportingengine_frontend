@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, computed, input, output } f
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -167,6 +168,41 @@ import { AuthService } from '../services/auth.service';
         </a>
       </nav>
 
+      <!-- Theme toggle -->
+      <div class="theme-toggle-row">
+        <button
+          class="theme-toggle-btn-sidebar"
+          (click)="themeService.toggle()"
+          [title]="themeService.isLight() ? 'Switch to Dark Mode' : 'Switch to Light Mode'"
+          [attr.aria-label]="themeService.isLight() ? 'Switch to Dark Mode' : 'Switch to Light Mode'"
+        >
+          @if (themeService.isLight()) {
+            <!-- Moon icon -->
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          } @else {
+            <!-- Sun icon -->
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          }
+          @if (isSidebarExpanded()) {
+            <span class="theme-toggle-label animate-slide-left">
+              {{ themeService.isLight() ? 'Dark Mode' : 'Light Mode' }}
+            </span>
+          }
+        </button>
+      </div>
+
       <div class="sidebar-user">
         @if (showBackButton()) {
           <button (click)="handleBack()" class="back-btn" [title]="backButtonText()">
@@ -179,8 +215,15 @@ import { AuthService } from '../services/auth.service';
         } @else if (showUser()) {
           <div class="user-info-container">
             @if (isSidebarExpanded()) {
-              <div class="user-info animate-fade-in">
-                <span class="user-avatar">👤</span>
+              <div class="user-info animate-slide-left">
+                <!-- User icon SVG -->
+                <span class="user-avatar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </span>
                 <div class="user-details">
                   <span class="user-name">{{ username() }}</span>
                   <span class="user-role">Administrator</span>
@@ -188,9 +231,15 @@ import { AuthService } from '../services/auth.service';
               </div>
             }
             <button (click)="logout()" class="logout-btn" [title]="'Sign Out'">
-              <span class="logout-icon">📤</span>
+              <!-- Log out SVG -->
+              <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
               @if (isSidebarExpanded()) {
-                <span class="logout-text animate-fade-in">Sign Out</span>
+                <span class="logout-text animate-slide-left">Sign Out</span>
               }
             </button>
           </div>
@@ -206,106 +255,96 @@ import { AuthService } from '../services/auth.service';
       top: 0;
       z-index: 100;
       flex-shrink: 0;
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: width var(--transition-base, 300ms cubic-bezier(0.2, 0.8, 0.2, 1));
     }
-    :host.collapsed {
-      width: 64px;
-    }
-    :host.expanded {
-      width: 260px;
-    }
+    :host.collapsed { width: 64px; }
+    :host.expanded  { width: 240px; }
 
-    /* Transition classes to mimic Tailwind behavior */
-    .transition-all {
-      transition-property: all;
-    }
-    .duration-300 {
-      transition-duration: 300ms;
-    }
-    .ease-in-out {
-      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .shadow-2xl {
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    }
-
-    /* Responsive glassmorphic dark-mode sidebar styles */
     .sidebar {
       height: 100vh;
       width: 100%;
-      background: rgba(15, 23, 42, 0.8) !important;
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(16px);
+      background: var(--color-apple-bg, #0B1120);
+      border-right: 1px solid var(--border-color, rgba(255,255,255,0.08));
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(20px) saturate(180%);
       display: flex;
       flex-direction: column;
-      padding: 24px 16px;
-      gap: 32px;
+      padding: 20px 12px;
+      gap: 24px;
       flex-shrink: 0;
       box-sizing: border-box;
     }
 
     .sidebar.collapsed {
-      padding: 24px 8px;
+      padding: 20px 8px;
       align-items: center;
     }
 
+    /* Brand */
     .sidebar-brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       width: 100%;
       height: 40px;
+      padding-left: 4px;
     }
-
     .sidebar.collapsed .sidebar-brand {
       justify-content: center;
-      gap: 0;
+      padding-left: 0;
     }
 
     .brand-icon {
-      font-size: 24px;
       flex-shrink: 0;
+      color: var(--color-apple-blue, #0076DF);
+    }
+
+    .brand-logo-icon {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2;
     }
 
     .brand-text {
-      font-size: 18px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-apple-text, #F5F5F7);
+      letter-spacing: -0.3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .menu-collapse-btn {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #94a3b8;
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+      color: var(--color-apple-grey, #94A3B8);
       cursor: pointer;
-      font-size: 14px;
       padding: 6px;
-      border-radius: 6px;
+      border-radius: 8px;
       margin-left: auto;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast, 150ms);
+      min-width: 32px;
+      min-height: 32px;
     }
     .menu-collapse-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #f1f5f9;
+      background: var(--card-bg, rgba(30,41,59,0.7));
+      color: var(--color-apple-text, #F5F5F7);
     }
     .sidebar.collapsed .menu-collapse-btn {
       margin-left: 0;
-      margin-top: 8px;
-      display: none; /* Hide on collapsed view, using hover or hamburger on mobile */
+      margin-top: 4px;
+      display: none;
     }
 
+    /* Nav menu */
     .sidebar-menu {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
       flex-grow: 1;
       width: 100%;
     }
@@ -314,61 +353,88 @@ import { AuthService } from '../services/auth.service';
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px;
-      color: #94a3b8;
+      padding: 10px 12px;
+      color: var(--color-apple-grey, #94A3B8);
       text-decoration: none;
-      border-radius: 8px;
-      transition: all 0.2s ease;
-      height: 48px;
+      border-radius: 10px;
+      transition: all var(--transition-fast, 150ms);
+      height: 44px;
       box-sizing: border-box;
       white-space: nowrap;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid transparent;
     }
     .menu-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #f1f5f9;
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      color: var(--color-apple-text, #F5F5F7);
     }
     .menu-item.active {
-      background: rgba(99, 102, 241, 0.15);
-      color: #818cf8;
-      border: 1px solid rgba(99, 102, 241, 0.2);
+      background: rgba(0, 118, 223, 0.12);
+      color: var(--color-apple-blue, #0076DF);
+      border-color: rgba(0, 118, 223, 0.20);
       font-weight: 600;
     }
-
     .sidebar.collapsed .menu-item {
       justify-content: center;
-      padding: 12px 0;
+      padding: 10px 0;
     }
 
+    /* Icons */
     .menu-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
-
     .icon-svg {
-      width: 20px;
-      height: 20px;
-      stroke-width: 2;
-      transition:
-        stroke 0.2s ease,
-        transform 0.2s ease;
+      width: 18px;
+      height: 18px;
+      stroke-width: 1.75;
+      transition: transform var(--transition-fast, 150ms);
     }
-    .menu-item:hover .icon-svg {
-      transform: scale(1.05);
+    .menu-item:hover .icon-svg { transform: scale(1.08); }
+
+    .menu-text { font-size: 13px; }
+
+    /* Theme Toggle */
+    .theme-toggle-row {
+      width: 100%;
+      padding: 0 0 8px 0;
     }
 
-    .brand-logo-icon {
-      width: 22px;
-      height: 22px;
-      color: #818cf8;
-      stroke-width: 2;
+    .theme-toggle-btn-sidebar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      width: 100%;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: var(--color-apple-grey, #94A3B8);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: all var(--transition-fast, 150ms);
+      height: 44px;
+      box-sizing: border-box;
+    }
+    .theme-toggle-btn-sidebar:hover {
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      color: var(--color-apple-text, #F5F5F7);
+      border-color: transparent;
+    }
+    .sidebar.collapsed .theme-toggle-btn-sidebar {
+      justify-content: center;
+      padding: 10px 0;
+    }
+    .theme-toggle-label {
+      font-size: 13px;
     }
 
-    .menu-text {
-      font-size: 14px;
-    }
-
+    /* User section */
     .sidebar-user {
       width: 100%;
       margin-top: auto;
@@ -377,24 +443,32 @@ import { AuthService } from '../services/auth.service';
     .user-info-container {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 8px;
       width: 100%;
     }
 
     .user-info {
       display: flex;
       align-items: center;
-      gap: 12px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 10px;
-      border-radius: 8px;
+      gap: 10px;
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+      padding: 10px 12px;
+      border-radius: 10px;
       width: 100%;
       box-sizing: border-box;
     }
 
     .user-avatar {
-      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: rgba(0,118,223,0.15);
+      border-radius: 50%;
+      color: var(--color-apple-blue, #0076DF);
+      flex-shrink: 0;
     }
 
     .user-details {
@@ -404,158 +478,144 @@ import { AuthService } from '../services/auth.service';
     }
 
     .user-name {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      color: #f1f5f9;
+      color: var(--color-apple-text, #F5F5F7);
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
     }
 
     .user-role {
-      font-size: 11px;
-      color: #64748b;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-apple-grey, #94A3B8);
     }
 
     .logout-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       width: 100%;
-      padding: 10px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
+      padding: 10px 12px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.18);
       color: #f87171;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 13px;
-      font-weight: 500;
+      transition: all var(--transition-fast, 150ms);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
     .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.2);
+      background: rgba(239, 68, 68, 0.16);
       color: #ef4444;
     }
-
     .sidebar.collapsed .logout-btn {
       padding: 10px 0;
     }
-    .sidebar.collapsed .logout-text {
-      display: none;
+    .sidebar.collapsed .logout-text { display: none; }
+
+    .logout-icon {
+      flex-shrink: 0;
     }
 
+    /* Back button */
     .back-btn {
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 8px;
       width: 100%;
-      padding: 10px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #94a3b8;
-      border-radius: 8px;
+      padding: 10px 12px;
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+      color: var(--color-apple-grey, #94A3B8);
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 13px;
+      transition: all var(--transition-fast, 150ms);
+      font-size: 12px;
+      font-weight: 500;
     }
     .back-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #f1f5f9;
+      background: var(--card-bg, rgba(30,41,59,0.7));
+      color: var(--color-apple-text, #F5F5F7);
     }
 
-    /* Mobile drawer overlay styling */
+    /* Mobile overlay */
     .sidebar-overlay {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.55);
+      -webkit-backdrop-filter: blur(4px);
       backdrop-filter: blur(4px);
       z-index: 99;
     }
-    .sidebar-overlay.visible {
-      display: block;
-    }
+    .sidebar-overlay.visible { display: block; }
 
     .sidebar-close-btn {
       display: none;
       position: absolute;
       top: 16px;
       right: 16px;
-      background: none;
-      border: none;
-      color: #94a3b8;
-      font-size: 20px;
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+      color: var(--color-apple-grey, #94A3B8);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
       cursor: pointer;
+      font-size: 14px;
+      display: none;
+      align-items: center;
+      justify-content: center;
     }
 
-    .animate-fade-in {
-      animation: fadeIn 0.2s ease-out forwards;
-    }
+    .animate-fade-in   { animation: fadeIn   0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    .animate-slide-left { animation: slideInLeft 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateX(-4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-6px); }
+      to   { opacity: 1; transform: translateX(0); }
     }
 
     @media (max-width: 1023px) {
       :host {
         position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
+        left: 0; top: 0; bottom: 0;
         width: 0 !important;
         z-index: 100;
       }
       .sidebar {
         position: fixed;
-        left: -260px;
-        top: 0;
-        bottom: 0;
+        left: -260px; top: 0; bottom: 0;
         width: 260px !important;
-        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: left var(--transition-base, 300ms cubic-bezier(0.2, 0.8, 0.2, 1));
         z-index: 100;
-        background: #0f172a !important;
+        background: var(--color-apple-bg, #0B1120) !important;
       }
-      .sidebar.open {
-        left: 0;
-      }
-      .sidebar-close-btn {
-        display: block;
-      }
+      .sidebar.open { left: 0; }
+      .sidebar-close-btn { display: flex; }
       .sidebar.collapsed {
-        padding: 24px 16px;
+        padding: 20px 12px;
         align-items: flex-start;
       }
-      .sidebar.collapsed .sidebar-brand {
-        justify-content: flex-start;
-        gap: 12px;
-      }
-      .sidebar.collapsed .menu-item {
-        justify-content: flex-start;
-        padding: 12px;
-      }
-      .sidebar.collapsed .logout-btn {
-        padding: 10px;
-      }
-      .sidebar.collapsed .logout-text {
-        display: block;
-      }
-      .sidebar.collapsed .brand-text {
-        display: block;
-      }
-      .sidebar.collapsed .menu-text {
-        display: block;
-      }
+      .sidebar.collapsed .sidebar-brand { justify-content: flex-start; gap: 10px; }
+      .sidebar.collapsed .menu-item { justify-content: flex-start; padding: 10px 12px; }
+      .sidebar.collapsed .logout-btn { padding: 10px 12px; }
+      .sidebar.collapsed .logout-text { display: block; }
+      .sidebar.collapsed .brand-text { display: block; }
+      .sidebar.collapsed .menu-text  { display: block; }
     }
   `,
 })
@@ -581,6 +641,7 @@ export class SidebarComponent {
   constructor(
     private authService: AuthService,
     private router: Router,
+    public themeService: ThemeService,
   ) {}
 
   username = computed(() => this.authService.getUsername());

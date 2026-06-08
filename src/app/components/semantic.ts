@@ -323,16 +323,16 @@ import { SidebarComponent } from './sidebar';
     .dashboard-container {
       display: flex;
       min-height: 100vh;
-      background: #0f172a;
-      color: #f8fafc;
-      font-family: 'Outfit', 'Inter', sans-serif;
+      background: var(--color-apple-bg);
+      color: var(--color-apple-text);
+      font-family: 'Inter', sans-serif;
     }
 
     /* Sidebar Styles */
     .sidebar {
       width: 260px;
-      background: rgba(30, 41, 59, 0.5);
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--color-apple-card);
+      border-right: 1px solid var(--border-color);
       backdrop-filter: blur(12px);
       display: flex;
       flex-direction: column;
@@ -354,9 +354,7 @@ import { SidebarComponent } from './sidebar';
     .brand-text {
       font-size: 20px;
       font-weight: 700;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--color-apple-text);
     }
 
     .sidebar-menu {
@@ -371,7 +369,7 @@ import { SidebarComponent } from './sidebar';
       align-items: center;
       gap: 12px;
       padding: 12px 16px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       text-decoration: none;
       border-radius: 12px;
       font-weight: 500;
@@ -379,14 +377,14 @@ import { SidebarComponent } from './sidebar';
     }
 
     .menu-item:hover, .menu-item.active {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.05);
+      color: var(--color-apple-text);
+      background: var(--border-color);
     }
 
     .menu-item.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      color: #a5b4fc;
+      background: rgba(0, 118, 223, 0.15);
+      border: 1px solid var(--color-apple-blue);
+      color: var(--color-apple-blue);
     }
 
     .menu-icon {
@@ -397,7 +395,7 @@ import { SidebarComponent } from './sidebar';
       display: flex;
       flex-direction: column;
       gap: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-top: 1px solid var(--border-color);
       padding-top: 24px;
     }
 
@@ -411,7 +409,7 @@ import { SidebarComponent } from './sidebar';
       font-size: 24px;
       width: 40px;
       height: 40px;
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--input-bg);
       border-radius: 50%;
       display: flex;
       justify-content: center;
@@ -430,7 +428,7 @@ import { SidebarComponent } from './sidebar';
 
     .user-role {
       font-size: 12px;
-      color: #64748b;
+      color: var(--color-apple-grey);
     }
 
     .logout-btn {
@@ -469,7 +467,7 @@ import { SidebarComponent } from './sidebar';
     }
 
     .content-header p {
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       font-size: 15px;
       margin: 0;
     }
@@ -479,14 +477,14 @@ import { SidebarComponent } from './sidebar';
       display: flex;
       gap: 12px;
       margin-bottom: 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border-color);
       padding-bottom: 12px;
     }
 
     .tab-btn {
       background: transparent;
       border: none;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       font-size: 16px;
       font-weight: 600;
       padding: 8px 16px;
@@ -496,19 +494,19 @@ import { SidebarComponent } from './sidebar';
     }
 
     .tab-btn:hover {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.03);
+      color: var(--color-apple-text);
+      background: var(--input-bg);
     }
 
     .tab-btn.active {
-      color: #818cf8;
-      background: rgba(99, 102, 241, 0.1);
+      color: var(--color-apple-blue);
+      background: rgba(0, 118, 223, 0.1);
     }
 
     /* Glass Cards */
     .glass-card {
-      background: rgba(30, 41, 59, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 20px;
       padding: 24px;
       position: relative;
@@ -556,7 +554,7 @@ import { SidebarComponent } from './sidebar';
       font-size: 22px;
       font-weight: 700;
       margin: 0;
-      color: #f1f5f9;
+      color: var(--color-apple-text);
     }
 
     .text-right {
@@ -568,7 +566,7 @@ import { SidebarComponent } from './sidebar';
 
     .subtext {
       font-size: 11px;
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-weight: 500;
     }
 
@@ -576,15 +574,15 @@ import { SidebarComponent } from './sidebar';
       font-size: 13px;
       padding: 4px 8px;
       border-radius: 6px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      color: #38bdf8;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--color-apple-blue);
       font-family: monospace;
     }
 
     .description-text {
       font-size: 14px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       line-height: 1.6;
       margin: 0 0 16px 0;
     }
@@ -598,11 +596,11 @@ import { SidebarComponent } from './sidebar';
 
     .key-pill {
       font-size: 12px;
-      background: rgba(15, 23, 42, 0.4);
+      background: var(--input-bg);
       padding: 6px 12px;
       border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      color: #cbd5e1;
+      border: 1px solid var(--border-color);
+      color: var(--color-apple-text);
     }
 
     .key-pill code {
@@ -612,15 +610,15 @@ import { SidebarComponent } from './sidebar';
 
     /* SQL box styles */
     .sql-box {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
       padding: 12px 16px;
     }
 
     .sql-label {
       font-size: 11px;
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-weight: 600;
       text-transform: uppercase;
       display: block;
@@ -633,7 +631,7 @@ import { SidebarComponent } from './sidebar';
 
     .sql-box code {
       font-family: monospace;
-      color: #e2e8f0;
+      color: var(--color-apple-text);
       font-size: 13px;
     }
 
@@ -643,14 +641,14 @@ import { SidebarComponent } from './sidebar';
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #818cf8;
+      color: var(--color-apple-blue);
       margin-bottom: 12px;
     }
 
     /* Tables */
     .table-wrapper {
-      background: rgba(15, 23, 42, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       overflow: hidden;
     }
@@ -664,16 +662,16 @@ import { SidebarComponent } from './sidebar';
 
     .grid-table th {
       padding: 12px 16px;
-      background: rgba(15, 23, 42, 0.8);
+      background: var(--color-apple-bg);
       font-weight: 600;
-      color: #cbd5e1;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--color-apple-text);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .grid-table td {
       padding: 12px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      color: #94a3b8;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--color-apple-grey);
     }
 
     .grid-table tr:last-child td {
@@ -682,7 +680,7 @@ import { SidebarComponent } from './sidebar';
 
     .bold-text {
       font-weight: 600;
-      color: #f1f5f9;
+      color: var(--color-apple-text);
     }
 
     .join-type-badge {
@@ -690,8 +688,8 @@ import { SidebarComponent } from './sidebar';
       font-weight: 700;
       padding: 2px 6px;
       border-radius: 4px;
-      background: rgba(99, 102, 241, 0.2);
-      color: #c7d2fe;
+      background: rgba(0, 118, 223, 0.2);
+      color: var(--color-apple-blue);
     }
 
     .sql-cell code {
@@ -701,7 +699,7 @@ import { SidebarComponent } from './sidebar';
 
     .no-data-msg {
       font-size: 13px;
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-style: italic;
       margin: 8px 0;
     }
@@ -714,10 +712,10 @@ import { SidebarComponent } from './sidebar';
     }
 
     .column-section {
-      background: rgba(15, 23, 42, 0.2);
+      background: var(--card-bg);
       border-radius: 12px;
       padding: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
     }
 
     /* List styling */
@@ -728,16 +726,16 @@ import { SidebarComponent } from './sidebar';
     }
 
     .list-item {
-      background: rgba(15, 23, 42, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
       padding: 12px;
       transition: all 0.2s ease;
     }
 
     .list-item:hover {
-      border-color: rgba(255, 255, 255, 0.1);
-      background: rgba(15, 23, 42, 0.6);
+      border-color: var(--color-apple-grey);
+      background: var(--border-color);
     }
 
     .item-header {
@@ -750,7 +748,7 @@ import { SidebarComponent } from './sidebar';
     .item-name {
       font-size: 14px;
       font-weight: 600;
-      color: #e2e8f0;
+      color: var(--color-apple-text);
     }
 
     .item-type-badge {
@@ -770,14 +768,14 @@ import { SidebarComponent } from './sidebar';
     .code-small {
       font-size: 11px;
       font-family: monospace;
-      color: #64748b;
+      color: var(--color-apple-grey);
       display: block;
       margin-bottom: 4px;
     }
 
     .item-desc {
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       margin: 4px 0 0 0;
       line-height: 1.4;
     }
@@ -811,8 +809,8 @@ import { SidebarComponent } from './sidebar';
       align-items: center;
       padding: 80px 40px;
       text-align: center;
-      background: rgba(30, 41, 59, 0.2);
-      border: 1px dashed rgba(255, 255, 255, 0.1);
+      background: var(--card-bg);
+      border: 1px dashed var(--border-color);
       border-radius: 24px;
       gap: 16px;
     }
@@ -820,8 +818,8 @@ import { SidebarComponent } from './sidebar';
     .spinner {
       width: 18px;
       height: 18px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--color-apple-text);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
@@ -830,7 +828,7 @@ import { SidebarComponent } from './sidebar';
       width: 40px;
       height: 40px;
       border-width: 3px;
-      border-top-color: #6366f1;
+      border-top-color: var(--color-apple-blue);
     }
 
     @keyframes spin {
@@ -854,8 +852,8 @@ import { SidebarComponent } from './sidebar';
       align-items: center;
       gap: 16px;
       padding: 18px 24px;
-      background: rgba(30, 41, 59, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
       backdrop-filter: blur(8px);
     }
@@ -871,7 +869,7 @@ import { SidebarComponent } from './sidebar';
       left: 14px;
       top: 50%;
       transform: translateY(-50%);
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-size: 16px;
       pointer-events: none;
     }
@@ -879,10 +877,10 @@ import { SidebarComponent } from './sidebar';
     .search-input {
       width: 100%;
       padding: 10px 40px 10px 42px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      color: #f8fafc;
+      color: var(--color-apple-text);
       font-size: 14px;
       outline: none;
       transition: all 0.2s ease;
@@ -890,9 +888,9 @@ import { SidebarComponent } from './sidebar';
     }
 
     .search-input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
-      background: rgba(15, 23, 42, 0.8);
+      border-color: var(--color-apple-blue);
+      box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.15);
+      background: var(--input-bg);
     }
 
     .clear-search-btn {
@@ -902,7 +900,7 @@ import { SidebarComponent } from './sidebar';
       transform: translateY(-50%);
       background: none;
       border: none;
-      color: #64748b;
+      color: var(--color-apple-grey);
       cursor: pointer;
       font-size: 12px;
       padding: 4px;
@@ -914,8 +912,8 @@ import { SidebarComponent } from './sidebar';
     }
 
     .clear-search-btn:hover {
-      color: #f8fafc;
-      background: rgba(255, 255, 255, 0.1);
+      color: var(--color-apple-text);
+      background: var(--border-color);
     }
 
     .filter-chips {
@@ -926,27 +924,27 @@ import { SidebarComponent } from './sidebar';
 
     .filter-chip-btn {
       padding: 8px 16px;
-      background: rgba(15, 23, 42, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 20px;
       font-size: 13px;
       font-weight: 500;
-      color: #cbd5e1;
+      color: var(--color-apple-grey);
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .filter-chip-btn:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #f8fafc;
-      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--border-color);
+      color: var(--color-apple-text);
+      border-color: var(--color-apple-grey);
     }
 
     .filter-chip-btn.active {
-      background: rgba(99, 102, 241, 0.15);
-      color: #a5b4fc;
-      border-color: rgba(99, 102, 241, 0.4);
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.1);
+      background: rgba(0, 118, 223, 0.15);
+      color: var(--color-apple-blue);
+      border-color: var(--color-apple-blue);
+      box-shadow: 0 0 12px rgba(0, 118, 223, 0.1);
     }
 
     /* Cards Hover and Glow */
@@ -956,9 +954,9 @@ import { SidebarComponent } from './sidebar';
 
     .card-hover:hover {
       transform: translateY(-3px);
-      border-color: rgba(99, 102, 241, 0.25);
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.6), 0 0 20px rgba(99, 102, 241, 0.08);
-      background: rgba(30, 41, 59, 0.55);
+      border-color: var(--color-apple-blue);
+      box-shadow: var(--shadow-md);
+      background: var(--card-bg);
     }
 
     /* Stat Pills */
@@ -986,8 +984,8 @@ import { SidebarComponent } from './sidebar';
       justify-content: center;
       padding: 60px 40px;
       text-align: center;
-      background: rgba(30, 41, 59, 0.25);
-      border: 1px dashed rgba(255, 255, 255, 0.08);
+      background: var(--card-bg);
+      border: 1px dashed var(--border-color);
       border-radius: 20px;
       gap: 12px;
       width: 100%;
@@ -995,29 +993,29 @@ import { SidebarComponent } from './sidebar';
 
     .empty-icon {
       font-size: 32px;
-      color: #64748b;
+      color: var(--color-apple-grey);
     }
 
     .empty-state h4 {
       font-size: 18px;
       font-weight: 600;
       margin: 0;
-      color: #f8fafc;
+      color: var(--color-apple-text);
     }
 
     .empty-state p {
       font-size: 14px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       margin: 0 0 8px 0;
       max-width: 320px;
     }
 
     .clear-filters-btn {
       padding: 8px 18px;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      background: rgba(0, 118, 223, 0.15);
+      border: 1px solid var(--color-apple-blue);
       border-radius: 8px;
-      color: #a5b4fc;
+      color: var(--color-apple-blue);
       font-weight: 600;
       font-size: 13px;
       cursor: pointer;
@@ -1025,19 +1023,19 @@ import { SidebarComponent } from './sidebar';
     }
 
     .clear-filters-btn:hover {
-      background: rgba(99, 102, 241, 0.25);
-      color: white;
+      background: rgba(0, 118, 223, 0.25);
+      color: var(--color-apple-text);
     }
 
     /* Section count badge */
     .joins-count-badge {
       font-size: 11px;
       font-weight: 600;
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--input-bg);
       padding: 4px 8px;
       border-radius: 6px;
-      color: #cbd5e1;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--color-apple-text);
+      border: 1px solid var(--border-color);
     }
 
     @media (max-width: 1024px) {
@@ -1071,9 +1069,9 @@ import { SidebarComponent } from './sidebar';
     }
 
     .explore-badge {
-      background: rgba(99, 102, 241, 0.15) !important;
-      color: #c7d2fe !important;
-      border-color: rgba(99, 102, 241, 0.25) !important;
+      background: rgba(0, 118, 223, 0.15) !important;
+      color: var(--color-apple-blue) !important;
+      border-color: rgba(0, 118, 223, 0.25) !important;
     }
 
     .fact-view-code {
@@ -1096,10 +1094,10 @@ import { SidebarComponent } from './sidebar';
       top: 0; left: 0; right: 0;
       z-index: 200;
       height: 60px;
-      background: rgba(15, 23, 42, 0.97);
+      background: var(--color-apple-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      border-bottom: 1px solid var(--border-color);
       align-items: center;
       padding: 0 16px;
       gap: 14px;
@@ -1108,9 +1106,7 @@ import { SidebarComponent } from './sidebar';
     .topbar-brand {
       font-size: 17px;
       font-weight: 700;
-      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--color-apple-text);
     }
 
     .hamburger-btn {
@@ -1124,13 +1120,13 @@ import { SidebarComponent } from './sidebar';
       border-radius: 8px;
       transition: background 0.2s ease;
     }
-    .hamburger-btn:hover { background: rgba(255, 255, 255, 0.08); }
+    .hamburger-btn:hover { background: var(--border-color); }
 
     .ham-line {
       display: block;
       width: 22px;
       height: 2px;
-      background: #f8fafc;
+      background: var(--color-apple-text);
       border-radius: 2px;
     }
 
@@ -1139,10 +1135,10 @@ import { SidebarComponent } from './sidebar';
       position: absolute;
       top: 16px;
       right: 16px;
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      color: #f8fafc;
+      color: var(--color-apple-text);
       font-size: 14px;
       width: 32px;
       height: 32px;
@@ -1181,7 +1177,7 @@ import { SidebarComponent } from './sidebar';
         z-index: 150;
         transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid var(--border-color);
       }
       .sidebar.open {
         transform: translateX(0);

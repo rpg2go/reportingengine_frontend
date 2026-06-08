@@ -34,11 +34,11 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
 
     .picker-input {
       width: 100%;
-      background: rgba(15, 23, 42, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 6px 30px 6px 10px;
-      color: #38bdf8;
+      color: var(--color-apple-blue);
       outline: none;
       font-size: 12px;
       font-family: inherit;
@@ -50,9 +50,9 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
     }
 
     .picker-input:hover, .picker-input:focus {
-      border-color: #6366f1;
-      background: rgba(15, 23, 42, 0.6);
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+      border-color: var(--color-apple-blue);
+      background: var(--card-bg);
+      box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.20);
     }
 
     .arrow-btn {
@@ -63,7 +63,7 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       width: 30px;
       background: transparent;
       border: none;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -72,7 +72,7 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
     }
 
     .arrow-btn:hover {
-      color: white;
+      color: var(--color-apple-text);
     }
 
     .arrow-icon {
@@ -86,10 +86,10 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       margin-top: 4px;
       width: 100%;
       min-width: 280px;
-      background: #0f172a;
-      border: 1px solid rgba(99, 102, 241, 0.25);
+      background: var(--color-apple-card);
+      border: 1px solid rgba(0, 118, 223, 0.20);
       border-radius: 10px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
       z-index: 50 !important;
       overflow: hidden;
       backdrop-filter: blur(16px);
@@ -117,12 +117,12 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       padding: 6px 12px;
       font-size: 11px;
       font-weight: 700;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       cursor: pointer;
       user-select: none;
       transition: all 0.15s ease;
-      background: rgba(255, 255, 255, 0.02);
-      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      background: var(--input-bg);
+      border-top: 1px solid var(--border-color);
       margin-top: 4px;
     }
     
@@ -132,14 +132,14 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
     }
 
     .picker-group-header:hover {
-      background: rgba(99, 102, 241, 0.08);
-      color: #f8fafc;
+      background: rgba(0, 118, 223, 0.08);
+      color: var(--color-apple-text);
     }
 
     .folder-indicator {
       display: inline-block;
       font-size: 8px;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       margin-right: 8px;
       user-select: none;
@@ -147,7 +147,7 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
 
     .folder-indicator.expanded, .rotate-90 {
       transform: rotate(90deg) !important;
-      color: #a5b4fc !important;
+      color: var(--color-apple-blue) !important;
     }
 
     .folder-name {
@@ -158,9 +158,9 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       font-size: 9px;
       padding: 1px 5px;
       border-radius: 4px;
-      background: rgba(99, 102, 241, 0.15);
-      color: #818cf8;
-      border: 1px solid rgba(99, 102, 241, 0.25);
+      background: rgba(0, 118, 223, 0.12);
+      color: var(--color-apple-blue);
+      border: 1px solid rgba(0, 118, 223, 0.22);
       font-family: monospace;
     }
 
@@ -169,7 +169,7 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       flex-direction: column;
       gap: 2px;
       padding: 4px 0 4px 8px;
-      border-left: 1px dashed rgba(255, 255, 255, 0.08);
+      border-left: 1px dashed var(--border-color);
       margin-left: 16px;
     }
 
@@ -179,32 +179,32 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       padding: 6px 12px;
       cursor: pointer;
       font-size: 12px;
-      color: #cbd5e1;
+      color: var(--color-apple-text);
       transition: all 0.15s ease;
       gap: 6px;
       border-radius: 4px;
     }
 
     .picker-option-item:hover, .picker-option-item.active {
-      background: #2563eb !important;
+      background: var(--color-apple-blue) !important;
       color: white !important;
     }
 
     .picker-option-item.selected {
-      background: rgba(99, 102, 241, 0.25);
-      color: #a5b4fc;
+      background: rgba(0, 118, 223, 0.18);
+      color: var(--color-apple-blue);
       font-weight: 600;
     }
 
     .picker-option-category-muted {
-      color: #475569;
+      color: var(--color-apple-grey);
       font-size: 11px;
       white-space: nowrap;
     }
 
     .picker-option-name {
       font-weight: 500;
-      color: #cbd5e1;
+      color: var(--color-apple-text);
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
@@ -217,12 +217,12 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
     }
     
     .picker-option-item.selected .picker-option-name {
-      color: #a5b4fc;
+      color: var(--color-apple-blue);
     }
 
     .picker-option-type {
       font-size: 9px;
-      color: #475569;
+      color: var(--color-apple-grey);
       font-family: monospace;
       margin-left: auto;
       flex-shrink: 0;
@@ -231,7 +231,7 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
     .picker-no-results {
       padding: 16px;
       text-align: center;
-      color: #475569;
+      color: var(--color-apple-grey);
       font-size: 12px;
       font-style: italic;
     }
@@ -249,6 +249,79 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    /* Light Theme overrides for field-picker component */
+    :host-context(html.light) .selected-field-chip {
+      background: #E0E7FF;
+      border-color: #C7D2FE;
+      color: #3730A3;
+    }
+    :host-context(html.light) .arrow-btn {
+      color: #475569;
+    }
+    :host-context(html.light) .picker-popover-panel {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+    :host-context(html.light) .picker-group-header {
+      background: #F8FAFC;
+      border-top-color: #E2E8F0;
+      color: #475569;
+    }
+    :host-context(html.light) .picker-group-header:hover {
+      background: #EEF2F6;
+      color: #4F46E5;
+    }
+    :host-context(html.light) .folder-indicator {
+      color: #64748B;
+    }
+    :host-context(html.light) .folder-indicator.expanded,
+    :host-context(html.light) .rotate-90 {
+      color: #4F46E5 !important;
+    }
+    :host-context(html.light) .table-badge-mini {
+      background: #EEF2F6;
+      color: #475569;
+      border-color: #D1D5DB;
+    }
+    :host-context(html.light) .picker-group-fields-container {
+      border-left-color: #E2E8F0;
+    }
+    :host-context(html.light) .picker-option-item {
+      color: #334155;
+    }
+    :host-context(html.light) .picker-option-item:hover,
+    :host-context(html.light) .picker-option-item.active {
+      background: #4F46E5 !important;
+      color: #FFFFFF !important;
+    }
+    :host-context(html.light) .picker-option-item.selected {
+      background: #E0E7FF;
+      color: #4338CA;
+    }
+    :host-context(html.light) .picker-option-category-muted {
+      color: #64748B;
+    }
+    :host-context(html.light) .picker-option-name {
+      color: #334155;
+    }
+    :host-context(html.light) .picker-option-item:hover .picker-option-name,
+    :host-context(html.light) .picker-option-item.active .picker-option-name {
+      color: #FFFFFF;
+    }
+    :host-context(html.light) .picker-option-item.selected .picker-option-name {
+      color: #4338CA;
+    }
+    :host-context(html.light) .picker-option-type {
+      color: #64748B;
+    }
+    :host-context(html.light) .picker-no-results {
+      color: #64748B;
+    }
+    :host-context(html.light) .picker-input span.text-slate-500 {
+      color: #64748B !important;
     }
   `]
 })

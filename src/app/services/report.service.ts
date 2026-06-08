@@ -43,6 +43,10 @@ export class ReportService {
     return this.http.post(this.apiUrl, config);
   }
 
+  deleteReport(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
   validateReport(config: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/validate`, config);
   }

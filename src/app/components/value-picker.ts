@@ -32,8 +32,8 @@ import { FormsModule } from '@angular/forms';
       justify-content: space-between;
       min-height: 34px;
       padding: 4px 10px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s ease;
@@ -41,9 +41,9 @@ import { FormsModule } from '@angular/forms';
     }
 
     .picker-input-housing:hover, .picker-input-housing.is-focused {
-      border-color: #6366f1;
-      background: rgba(15, 23, 42, 0.8);
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+      border-color: var(--color-apple-blue);
+      background: var(--input-bg);
+      box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.25);
     }
 
     .chips-container {
@@ -55,7 +55,7 @@ import { FormsModule } from '@angular/forms';
     }
 
     .placeholder-text {
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-size: 12px;
       user-select: none;
     }
@@ -63,9 +63,9 @@ import { FormsModule } from '@angular/forms';
     .value-chip {
       display: inline-flex;
       align-items: center;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: #e2e8f0;
+      background: rgba(0, 118, 223, 0.15);
+      border: 1px solid rgba(0, 118, 223, 0.3);
+      color: var(--color-apple-text);
       font-size: 11px;
       font-weight: 500;
       padding: 1px 6px;
@@ -75,14 +75,14 @@ import { FormsModule } from '@angular/forms';
     }
 
     .value-chip:hover {
-      background: rgba(99, 102, 241, 0.25);
-      color: #ffffff;
+      background: rgba(0, 118, 223, 0.25);
+      color: var(--color-apple-text);
     }
 
     .chip-delete-btn {
       background: transparent;
       border: none;
-      color: #94a3b8;
+      color: var(--color-apple-grey);
       cursor: pointer;
       font-size: 9px;
       padding: 0 2px;
@@ -93,14 +93,14 @@ import { FormsModule } from '@angular/forms';
     }
 
     .chip-delete-btn:hover {
-      background: rgba(255, 255, 255, 0.15);
+      background: var(--border-color);
       color: #ef4444;
     }
 
     .arrow-indicator {
       display: flex;
       align-items: center;
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-size: 8px;
       padding-left: 6px;
     }
@@ -112,10 +112,10 @@ import { FormsModule } from '@angular/forms';
       left: 0;
       right: 0;
       margin-top: 4px;
-      background: #0f172a;
-      border: 1px solid rgba(99, 102, 241, 0.25);
+      background: var(--color-apple-card);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+      box-shadow: var(--shadow-md);
       z-index: 50 !important;
       overflow: hidden;
       backdrop-filter: blur(16px);
@@ -133,16 +133,16 @@ import { FormsModule } from '@angular/forms';
 
     .dropdown-search-wrapper {
       padding: 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .dropdown-search-input {
       width: 100%;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
       border-radius: 4px;
       padding: 4px 8px;
-      color: #e2e8f0;
+      color: var(--color-apple-text);
       font-size: 11px;
       outline: none;
       transition: all 0.15s ease;
@@ -150,8 +150,8 @@ import { FormsModule } from '@angular/forms';
     }
 
     .dropdown-search-input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+      border-color: var(--color-apple-blue);
+      box-shadow: 0 0 0 2px rgba(0, 118, 223, 0.15);
     }
 
     .dropdown-options-list {
@@ -171,11 +171,11 @@ import { FormsModule } from '@angular/forms';
       background: transparent;
     }
     .dropdown-options-list::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--border-color);
       border-radius: 3px;
     }
     .dropdown-options-list::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: var(--color-apple-grey);
     }
 
     .dropdown-option-item {
@@ -184,7 +184,7 @@ import { FormsModule } from '@angular/forms';
       padding: 6px 8px;
       border-radius: 4px;
       cursor: pointer;
-      color: #cbd5e1;
+      color: var(--color-apple-text);
       font-size: 11px;
       transition: all 0.15s ease;
       gap: 6px;
@@ -192,13 +192,13 @@ import { FormsModule } from '@angular/forms';
     }
 
     .dropdown-option-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #ffffff;
+      background: var(--border-color);
+      color: var(--color-apple-text);
     }
 
     .dropdown-option-item.is-selected {
-      background: rgba(99, 102, 241, 0.1);
-      color: #818cf8;
+      background: rgba(0, 118, 223, 0.1);
+      color: var(--color-apple-blue);
     }
 
     .checkbox-indicator {
@@ -207,17 +207,17 @@ import { FormsModule } from '@angular/forms';
       justify-content: center;
       width: 14px;
       height: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--border-color);
       border-radius: 3px;
-      color: #818cf8;
+      color: var(--color-apple-blue);
       font-size: 10px;
       font-weight: bold;
       transition: all 0.15s ease;
     }
 
     .dropdown-option-item.is-selected .checkbox-indicator {
-      border-color: #6366f1;
-      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--color-apple-blue);
+      background: rgba(0, 118, 223, 0.2);
     }
 
     .option-label {
@@ -230,8 +230,83 @@ import { FormsModule } from '@angular/forms';
     .no-options-message {
       padding: 12px;
       text-align: center;
-      color: #64748b;
+      color: var(--color-apple-grey);
       font-size: 11px;
+    }
+
+    /* Light Theme overrides for value-picker component */
+    :host-context(html.light) .picker-input-housing {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+    }
+    :host-context(html.light) .picker-input-housing:hover,
+    :host-context(html.light) .picker-input-housing.is-focused {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+    }
+    :host-context(html.light) .placeholder-text {
+      color: #64748B;
+    }
+    :host-context(html.light) .value-chip {
+      background: #E0E7FF;
+      border-color: #C7D2FE;
+      color: #3730A3;
+    }
+    :host-context(html.light) .value-chip:hover {
+      background: #C7D2FE;
+      color: #312E81;
+    }
+    :host-context(html.light) .chip-delete-btn {
+      color: #64748B;
+    }
+    :host-context(html.light) .chip-delete-btn:hover {
+      background: #E2E8F0;
+      color: #EF4444;
+    }
+    :host-context(html.light) .arrow-indicator {
+      color: #475569;
+    }
+    :host-context(html.light) .picker-dropdown-overlay {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+    :host-context(html.light) .dropdown-search-wrapper {
+      border-bottom-color: #E2E8F0;
+    }
+    :host-context(html.light) .dropdown-search-input {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+    :host-context(html.light) .dropdown-search-input:focus {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+    }
+    :host-context(html.light) .dropdown-option-item {
+      color: #334155;
+    }
+    :host-context(html.light) .dropdown-option-item:hover {
+      background: #F8FAFC;
+      color: #0F172A;
+    }
+    :host-context(html.light) .dropdown-option-item.is-selected {
+      background: #E0E7FF;
+      color: #4338CA;
+    }
+    :host-context(html.light) .checkbox-indicator {
+      border-color: #CBD5E1;
+      color: #4338CA;
+    }
+    :host-context(html.light) .dropdown-option-item.is-selected .checkbox-indicator {
+      border-color: #6366F1;
+      background: #E0E7FF;
+    }
+    :host-context(html.light) .option-label {
+      color: #334155;
+    }
+    :host-context(html.light) .no-options-message {
+      color: #64748B;
     }
   `]
 })
