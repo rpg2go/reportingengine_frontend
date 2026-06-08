@@ -38,7 +38,7 @@ if (-not (Get-Variable -Name GCP_REGION -Scope Script -ErrorAction SilentlyConti
 Write-Host "Deployment region: $GCP_REGION" -ForegroundColor Cyan
 
 # Validate required variables
-$requiredVars = @("GCP_PROJECT_ID", "BACKEND_SERVICE_NAME", "FRONTEND_SERVICE_NAME", "SPRING_DATASOURCE_URL", "SPRING_DATASOURCE_USERNAME", "SPRING_DATASOURCE_PASSWORD")
+$requiredVars = @("GCP_PROJECT_ID", "BACKEND_SERVICE_NAME", "FRONTEND_SERVICE_NAME")
 foreach ($var in $requiredVars) {
     if (-not (Get-Variable -Name $var -ErrorAction SilentlyContinue)) {
         Write-Error "Error: Required environment variable $var is missing from .env"
@@ -49,21 +49,13 @@ foreach ($var in $requiredVars) {
 Write-Host "Setting gcloud project to $GCP_PROJECT_ID..." -ForegroundColor Cyan
 gcloud config set project $GCP_PROJECT_ID
 
-Write-Host "Deploying Backend Service ($BACKEND_SERVICE_NAME) to Cloud Run..." -ForegroundColor Cyan
-gcloud run deploy $BACKEND_SERVICE_NAME `
-  --source (Resolve-Path "$PSScriptRoot/../../ReportTemplate_BackEnd") `
-  --region $GCP_REGION `
-  --set-env-vars="SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL,SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME,SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD" `
-  --allow-unauthenticated `
-  --quiet
-
-if ($LASTEXITCODE -ne 0) {
-  Write-Error "Backend deployment failed!"
-  exit $LASTEXITCODE
+Write-Host "Fetching Backend URL from existing Cloud Run service ($BACKEND_SERVICE_NAME)..." -ForegroundColor Cyan
+$BACKEND_URL = (gcloud run services describe $BACKEND_SERVICE_NAME --region $GCP_REGION --format "value(status.url)" 2>$null)
+if (-not $BACKEND_URL) {
+  Write-Error "Error: Could not find a deployed backend service named '$BACKEND_SERVICE_NAME' in region '$GCP_REGION'."
+  Write-Error "Deploy the backend first by running: scripts\deploy.ps1 from reportingengine_backend\"
+  exit 1
 }
-
-Write-Host "Retrieving Backend URL..." -ForegroundColor Cyan
-$BACKEND_URL = (gcloud run services describe $BACKEND_SERVICE_NAME --region $GCP_REGION --format "value(status.url)")
 Write-Host "Backend URL: $BACKEND_URL" -ForegroundColor Green
 
 Write-Host "Deploying Frontend Service ($FRONTEND_SERVICE_NAME) to Cloud Run..." -ForegroundColor Cyan
