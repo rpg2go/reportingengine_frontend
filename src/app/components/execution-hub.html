@@ -1,0 +1,303 @@
+<div class="builder-container">
+  <!-- Mobile topbar -->
+  <div class="mobile-topbar">
+    <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle navigation">
+      <span class="ham-line"></span>
+      <span class="ham-line"></span>
+      <span class="ham-line"></span>
+    </button>
+    <span class="topbar-brand">Reports Execution Hub</span>
+  </div>
+  <app-sidebar
+    brandIcon="👁️"
+    brandText="Execution Hub"
+    [showUser]="true"
+    [mobileOpen]="sidebarOpen()"
+    (mobileOpenChange)="sidebarOpen.set($event)"
+  ></app-sidebar>
+
+  <!-- ══════════════════════════════════════════ MAIN CONTENT -->
+  <main class="main-content animate-fade-in">
+    <header class="detail-header">
+      <div>
+        <div class="breadcrumbs">
+          <a routerLink="/dashboard">Reports</a> / <span>Execution Hub</span>
+        </div>
+        <h1>📈 Reports Execution Hub</h1>
+        <p class="report-subtitle">
+          Configure parameters, run queries, and review calculated data grids.
+        </p>
+      </div>
+    </header>
+
+    <!-- Split-Pane Workspace Dashboard Explorer Layout -->
+    <div class="workspace-split-pane">
+      <!-- Left Nav Explorer Sidebar (w-[320px]) -->
+      <aside class="explorer-sidebar">
+        <div class="search-container">
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="🔍 Search templates..."
+            class="form-input text-sm bg-slate-50 border-slate-200 focus:border-indigo-500 rounded-lg p-2.5 w-full text-slate-800 placeholder-slate-400"
+          />
+        </div>
+
+        <div class="explorer-list">
+          @for (rep of filteredReports(); track rep.reportId) {
+            <div
+              (click)="onReportSelected(rep.reportId)"
+              [class.active-light-explorer-row]="selectedReportId() === rep.reportId"
+              class="explorer-row group"
+            >
+              <div class="flex flex-col gap-1">
+                <span class="report-code font-mono font-bold text-slate-400 group-hover:text-indigo-600">{{ rep.reportId }}</span>
+                <span class="report-name-text font-bold text-slate-700 group-hover:text-slate-900">{{ rep.name }}</span>
+              </div>
+              <span class="status-badge-explorer" [class]="rep.status || 'draft'">
+                {{ rep.status || 'draft' }}
+              </span>
+            </div>
+          } @empty {
+            <div class="text-center text-xs text-slate-400 py-8 font-mono">No templates found</div>
+          }
+        </div>
+      </aside>
+
+      <!-- Right Active Canvas Workspace -->
+      <div class="workspace-active-canvas">
+        @if (selectedReportId()) {
+          <!-- Active Report Header Area -->
+          <div class="active-report-meta-header">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2" style="margin:0;">
+                <span>📊 {{ reportName() }}</span>
+                <span class="report-code font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" style="margin-left: 8px;">{{ selectedReportId() }}</span>
+              </h2>
+            </div>
+            <div class="status-badge-explorer" [class]="reportConfig()?.status || 'draft'">
+              {{ reportConfig()?.status || 'draft' }}
+            </div>
+          </div>
+
+          <!-- Horizontal Parameter Bar inside Canvas -->
+          <div class="horizontal-parameter-bar">
+            <!-- Custom Date Picker Popover Widget -->
+            <div class="calendar-picker-container">
+              <label class="text-[10px] font-bold tracking-wider uppercase text-slate-400 mb-1.5 block">Reporting Date</label>
+              <button 
+                type="button"
+                class="calendar-trigger-btn font-mono"
+                (click)="toggleCalendarPopover($event)"
+              >
+                <span>📅 {{ selectedReportingDate() || 'Select Date' }}</span>
+                <span class="text-[9px] text-slate-400">▼</span>
+              </button>
+              
+              @if (isCalendarOpen()) {
+                <div class="calendar-popover-panel">
+                  <!-- Calendar Header -->
+                  <div class="calendar-popover-header">
+                    <button type="button" class="month-nav-btn" (click)="prevMonth()">◀</button>
+                    <span class="calendar-month-year">{{ getMonthName(calendarMonth()) }} {{ calendarYear() }}</span>
+                    <button type="button" class="month-nav-btn" (click)="nextMonth()">▶</button>
+                  </div>
+                  
+                  <!-- Weekday headers -->
+                  <div class="calendar-weekdays">
+                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                  </div>
+                  
+                  <!-- Day cells -->
+                  <div class="calendar-days">
+                    @for (cell of calendarCells(); track $index) {
+                      @if (cell.dayNum) {
+                        <button
+                          type="button"
+                          [disabled]="!cell.isAvailable"
+                          [class.day-available]="cell.isAvailable"
+                          [class.day-selected]="cell.isSelected"
+                          [class.day-unavailable]="!cell.isAvailable"
+                          class="day-cell"
+                          (click)="selectCalendarDate(cell.dateStr)"
+                        >
+                          {{ cell.dayNum }}
+                        </button>
+                      } @else {
+                        <span class="day-cell empty-cell"></span>
+                      }
+                    }
+                  </div>
+                  
+                  <!-- Popover Footer -->
+                  <div class="calendar-footer">
+                    <span style="display: flex; align-items: center; gap: 4px;">
+                      <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span> Available
+                    </span>
+                    <button type="button" class="hover:text-indigo-600 font-bold text-slate-500" style="background:none; border:none; cursor:pointer; font-size:9px;" (click)="isCalendarOpen.set(false)">Close</button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Quick Filters Runtime Inputs -->
+            @for (filter of runtimeQuickFilters(); track filter.tableColumn) {
+              <div class="form-group">
+                <label class="text-[10px] font-bold tracking-wider uppercase text-slate-400 mb-1.5 block">
+                  {{ filter.dimTable ? filter.dimTable + '.' : '' }}{{ filter.attribute }} ({{ filter.operator }})
+                </label>
+
+                @if (filter.options.length > 0) {
+                  <select [(ngModel)]="filter.value" class="form-select font-mono text-xs bg-white border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 max-w-[180px]">
+                    <option value="">-- All Values --</option>
+                    @for (opt of filter.options; track opt) {
+                      <option [value]="opt">{{ opt }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input
+                    type="text"
+                    [(ngModel)]="filter.value"
+                    placeholder="Enter filter value..."
+                    class="form-input text-xs bg-white border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 max-w-[180px]"
+                  />
+                }
+              </div>
+            }
+
+            <!-- Run execution button -->
+            <button
+              (click)="runExecution()"
+              [disabled]="executing() || !selectedReportingDate()"
+              class="run-report-btn"
+              style="margin: 0; min-height: 38px; width: auto; padding: 10px 24px;"
+            >
+              @if (executing()) {
+                <span class="spinner"></span> Executing...
+              } @else {
+                <span>⚡ Run Report</span>
+              }
+            </button>
+          </div>
+
+          <!-- Canvas Workspace Container -->
+          <div class="immersive-data-canvas">
+            <!-- Execution Error Alert -->
+            @if (executionError()) {
+              <div class="alert error-alert animate-fade-in mb-4">
+                <span class="alert-icon">🛑</span>
+                <span>{{ executionError() }}</span>
+              </div>
+            }
+
+            <!-- When Idle (No data executed yet) -->
+            @if (!executedData() && !executing()) {
+              <div class="idle-placeholder">
+                <span class="placeholder-icon">📈</span>
+                <h3 class="placeholder-title">Ready for Execution</h3>
+                <p class="placeholder-desc">Configure the reporting parameters in the top bar and execute the queries.</p>
+              </div>
+            }
+
+            <!-- When Executing (Loading/Spinner) -->
+            @if (executing()) {
+              <div class="loading-state-canvas">
+                <span class="spinner border-4 w-12 h-12 mb-4" style="border-top-color: #4f46e5;"></span>
+                <h3 class="loading-title">Running Queries</h3>
+                <p class="loading-desc">Compiling SQL matrices and evaluating formulas...</p>
+              </div>
+            }
+
+            <!-- When Executed -->
+            @if (executedData() && !executing()) {
+              <div class="executed-workspace card animate-fade-in">
+                <!-- Header bar -->
+                <div class="workspace-header-bar mb-4 pb-4">
+                  <div>
+                    <h3 class="section-title text-[10px] tracking-wider uppercase font-bold text-slate-400">📊 Publication-Ready Data Grid</h3>
+                    <p class="section-subtitle font-mono text-[11px] text-slate-500 mt-1">Compiled matrix for {{ reportName() }}</p>
+                  </div>
+                  <button (click)="exportToCsv()" class="export-csv-btn">
+                    <span>📥 Export CSV</span>
+                  </button>
+                </div>
+
+                <!-- Spreadsheet Grid -->
+                <div class="table-wrapper rows-table-wrapper max-w-full overflow-auto">
+                  <table class="spreadsheet-table w-full border-collapse">
+                    <thead>
+                      <tr>
+                        <th class="sticky-col px-4 py-3 text-left">Label</th>
+                        <th class="px-4 py-3 text-left">ID</th>
+                        <th class="px-4 py-3 text-left">Type</th>
+                        @for (col of expandedColumns(); track col.colId) {
+                          <th class="col-flag-header px-4 py-3 text-center border-l border-slate-200">
+                            <div class="font-mono text-indigo-600">{{ col.colId }}</div>
+                            <div class="preview-col-label">{{ col.label }}</div>
+                          </th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of rows(); track row.rowId) {
+                        <tr
+                          [class]="'row-style-' + (row.style || 'normal').toLowerCase()"
+                          class="hover:bg-slate-50 transition-colors"
+                        >
+                          <td
+                            class="sticky-col label-cell px-4 py-3"
+                            [style.padding-left.px]="16 + row.indentLevel * 16"
+                          >
+                            @if (
+                              row.rowType === 'section' ||
+                              row.style?.toLowerCase() === 'section' ||
+                              row.style?.toLowerCase() === 'header'
+                            ) {
+                              📂 <strong>{{ row.label }}</strong>
+                            } @else if (row.rowType === 'calc') {
+                              🧮 <strong>{{ row.label }}</strong>
+                            } @else if (row.rowType === 'data') {
+                              📊 {{ row.label }}
+                            } @else {
+                              &nbsp;
+                            }
+                          </td>
+                          <td class="px-4 py-3 font-mono text-slate-400">{{ row.rowId }}</td>
+                          <td class="px-4 py-3">
+                            <span class="row-type-badge badge font-mono text-[9px]" [class]="'badge-' + (row.rowType === 'calc' ? 'success' : row.rowType === 'data' ? 'success' : 'muted')">
+                              {{ row.rowType }}
+                            </span>
+                          </td>
+                          @for (col of expandedColumns(); track col.colId) {
+                            <td
+                              class="col-flag-cell px-4 py-3 text-center font-mono border-l border-slate-200"
+                              [class.section-cell]="row.rowType === 'section'"
+                            >
+                              @if (row.rowType === 'blank') {
+                                &nbsp;
+                              } @else {
+                                {{ getCellValue(row.rowId, col.colId) }}
+                              }
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- Explorer Placeholder when no report is selected -->
+          <div class="select-placeholder animate-fade-in">
+            <span class="placeholder-icon">👁️</span>
+            <h3 class="placeholder-title">No Template Selected</h3>
+            <p class="placeholder-desc">Please select a report template from the vertical sidebar explorer on the left to review parameter configurations and run query calculations.</p>
+          </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>

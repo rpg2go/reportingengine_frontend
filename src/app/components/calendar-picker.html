@@ -1,0 +1,46 @@
+<div class="calendar-popover-panel">
+  <!-- Calendar Header -->
+  <div class="calendar-popover-header flex justify-between items-center mb-3">
+    <button type="button" class="month-nav-btn text-slate-500 hover:text-indigo-600 font-bold px-2 py-1" (click)="prevMonth()">◀</button>
+    <span class="calendar-month-year font-bold text-slate-800 text-sm">{{ months[calendarMonth()] }} {{ calendarYear() }}</span>
+    <button type="button" class="month-nav-btn text-slate-500 hover:text-indigo-600 font-bold px-2 py-1" (click)="nextMonth()">▶</button>
+  </div>
+
+  <!-- Weekdays Header -->
+  <div class="calendar-weekdays grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">
+    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+  </div>
+
+  <!-- Days Grid -->
+  <div class="calendar-days grid grid-cols-7 gap-1">
+    @for (day of calendarDays(); track $index) {
+      @if (day.dayNum !== null) {
+        <button
+          type="button"
+          (click)="selectDay(day)"
+          [disabled]="!day.isSelectable"
+          [class.text-slate-800]="day.isSelectable && !day.isSelected"
+          [class.font-bold]="day.isSelectable"
+          [class.hover:bg-indigo-50]="day.isSelectable && !day.isSelected"
+          [class.cursor-pointer]="day.isSelectable"
+          [class.bg-indigo-600]="day.isSelected"
+          [class.text-white]="day.isSelected"
+          [class.text-slate-300]="!day.isSelectable"
+          [class.pointer-events-none]="!day.isSelectable"
+          class="day-cell text-center text-xs py-1.5 rounded transition-all font-mono"
+        >
+          {{ day.dayNum }}
+        </button>
+      } @else {
+        <span class="day-cell empty-cell block py-1.5 invisible"></span>
+      }
+    }
+  </div>
+
+  <!-- Calendar Footer -->
+  <div class="calendar-footer flex justify-between items-center mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+    <span class="flex items-center gap-1">
+      <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Available
+    </span>
+  </div>
+</div>

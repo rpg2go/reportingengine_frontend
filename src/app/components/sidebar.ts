@@ -53,6 +53,14 @@ import { ThemeService } from '../services/theme.service';
               />
               <circle cx="12" cy="12" r="3" />
             </svg>
+          } @else if (brandIcon() === 'analytics-grid') {
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm transition-transform duration-200 hover:scale-105">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" />
+                <path d="m5 17 4-4 4 4 6-6" stroke-width="2.5" class="text-indigo-500" />
+              </svg>
+            </div>
           } @else {
             <svg
               class="icon-svg brand-logo-icon"
@@ -297,7 +305,42 @@ import { ThemeService } from '../services/theme.service';
     .brand-icon {
       flex-shrink: 0;
       color: var(--color-apple-blue, #0076DF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+
+    .brand-logo-icon {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2;
+    }
+
+    .brand-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-apple-text, #F5F5F7);
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Tailwind utility classes for SVG frame */
+    .w-10 { width: 2.5rem; }
+    .h-10 { height: 2.5rem; }
+    .rounded-xl { border-radius: 0.75rem; }
+    .bg-indigo-50 { background-color: rgba(79, 70, 229, 0.08); }
+    .border-indigo-100 { border: 1px solid rgba(79, 70, 229, 0.2); }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .text-indigo-600 { color: #4f46e5; }
+    .text-indigo-500 { color: #6366f1; }
+    .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+    .transition-transform { transition-property: transform; }
+    .duration-200 { transition-duration: 200ms; }
+    .hover\:scale-105:hover { transform: scale(1.05); }
 
     .brand-logo-icon {
       width: 22px;
