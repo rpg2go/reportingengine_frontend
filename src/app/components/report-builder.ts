@@ -6487,7 +6487,10 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   onColTypeChange(col: any): void {
-    if (col.colType !== 'ROLLING') {
+    if (col.colType === 'ROLLING') {
+      if (!col.rollingN) col.rollingN = 3;
+      if (!col.rollingGrain) col.rollingGrain = 'MONTH';
+    } else {
       col.rollingN = null;
       col.rollingGrain = null; // clear grain when leaving ROLLING
     }

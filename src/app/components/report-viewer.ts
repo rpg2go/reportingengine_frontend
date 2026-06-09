@@ -1157,7 +1157,14 @@ export class ReportViewerComponent implements OnInit {
     if (!grid) return '';
     const row = grid.get(rowId);
     if (!row) return '-';
-    const val = row.get(colId);
+    let val = row.get(colId);
+    if (val === undefined || val === null) {
+      // Fallback to parentColId if this is an expanded subcolumn
+      const colMeta = this.expandedColumns().find((c) => c.colId === colId);
+      if (colMeta && colMeta.parentColId) {
+        val = row.get(colMeta.parentColId.toUpperCase());
+      }
+    }
     if (val === undefined || val === null) return '-';
 
     const rowMeta = this.rows().find((r) => r.rowId === rowId);
