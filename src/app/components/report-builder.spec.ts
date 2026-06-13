@@ -2,6 +2,7 @@ import '@angular/compiler';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Injector, runInInjectionContext, DestroyRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormBuilder } from '@angular/forms';
 import { ReportBuilderComponent } from './report-builder';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
@@ -62,6 +63,7 @@ describe('ReportBuilderComponent', () => {
       getColumnTypes: vi.fn().mockReturnValue(of({})),
       getDimensionJoins: vi.fn().mockReturnValue(of([])),
       getDistinctValues: vi.fn().mockReturnValue(of([])),
+      getSemanticModel: vi.fn().mockReturnValue(of({ dimensions: [], measures: [] })),
       createReport: vi.fn(),
       saveReport: vi.fn(),
       validateReport: vi.fn().mockReturnValue(of({ errors: [] })),
@@ -94,6 +96,7 @@ describe('ReportBuilderComponent', () => {
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: mockRoute },
         { provide: DestroyRef, useValue: mockDestroyRef },
+        FormBuilder,
       ],
     });
 

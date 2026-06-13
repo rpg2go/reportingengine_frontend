@@ -1,14 +1,14 @@
 import '@angular/compiler';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Injector, runInInjectionContext, DestroyRef } from '@angular/core';
-import { ReportViewerComponent } from './report-viewer';
+import { ExecutionHubComponent } from './execution-hub';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
-describe('ReportViewerComponent', () => {
-  let component: ReportViewerComponent;
+describe('ExecutionHubComponent', () => {
+  let component: ExecutionHubComponent;
   let mockReportService: any;
   let mockAuthService: any;
   let mockActivatedRoute: any;
@@ -32,6 +32,7 @@ describe('ReportViewerComponent', () => {
       ),
       getDistinctValues: vi.fn().mockReturnValue(of(['EMEA', 'APAC', 'AMER'])),
       executeReport: vi.fn().mockReturnValue(of([{ rowId: 'R1', colId: 'C1', val: 125.5 }])),
+      runReport: vi.fn().mockReturnValue(of(new Blob())),
     };
 
     mockAuthService = {
@@ -63,7 +64,7 @@ describe('ReportViewerComponent', () => {
     });
 
     runInInjectionContext(injector, () => {
-      component = new ReportViewerComponent();
+      component = new ExecutionHubComponent();
     });
   });
 
@@ -124,81 +125,20 @@ describe('ReportViewerComponent', () => {
     expect(component.executedData()).toBeNull();
   });
 
-  it('should sanitize strings to protect against CSV formula injection', () => {
-    expect(component.sanitizeForCsv('Regular Label')).toBe('Regular Label');
-    expect(component.sanitizeForCsv('=Formula')).toBe("'=Formula");
-    expect(component.sanitizeForCsv('+Formula')).toBe("'+Formula");
-    expect(component.sanitizeForCsv('-Formula')).toBe("'-Formula");
-    expect(component.sanitizeForCsv('@Formula')).toBe("'@Formula");
-    expect(component.sanitizeForCsv('Label, with comma')).toBe('"Label, with comma"');
-    expect(component.sanitizeForCsv('Label "with quotes"')).toBe('"Label ""with quotes"""');
+
+  it('should toggle sidebar panel layout signal', () => {
+    expect(component.isSidebarOpen()).toBe(true);
+    component.toggleSidebarPanel();
+    expect(component.isSidebarOpen()).toBe(false);
+    component.toggleSidebarPanel();
+    expect(component.isSidebarOpen()).toBe(true);
   });
 
-  it('should export datagrid to CSV with formula injection protection', () => {
-    component.selectedReportId.set('RPT_001');
-    component.selectedReportingDate.set('2026-05-26');
-    component.ngOnInit();
-
-    component.rows.set([
-      { rowId: 'R1', label: 'Revenue', rowType: 'data' },
-      { rowId: 'R2', label: '=Unsafe Formula', rowType: 'data' },
-    ]);
-    component.columns.set([
-      { colId: 'C1', label: 'Col 1', colType: 'WEEK' },
-      { colId: 'C2', label: '+Unsafe Col', colType: 'WEEK' },
-    ]);
-
-    const gridMap = new Map<string, Map<string, number>>();
-    gridMap.set(
-      'R1',
-      new Map([
-        ['C1', 100],
-        ['C2', 200],
-      ]),
-    );
-    gridMap.set(
-      'R2',
-      new Map([
-        ['C1', 300],
-        ['C2', 400],
-      ]),
-    );
-    component.executedData.set(gridMap);
-
-    const mockLink = { href: '', download: '', click: vi.fn() };
-    const originalDocument = (globalThis as any).document;
-    (globalThis as any).document = {
-      createElement: vi.fn().mockReturnValue(mockLink),
-      body: {
-        appendChild: vi.fn(),
-        removeChild: vi.fn(),
-      },
-    } as any;
-
-    const createElementSpy = vi.spyOn(document, 'createElement');
-    const appendChildSpy = vi.spyOn(document.body, 'appendChild');
-    const removeChildSpy = vi.spyOn(document.body, 'removeChild');
-
-    const createObjectURLSpy = vi.fn().mockReturnValue('blob:csv-mock-url');
-    const revokeObjectURLSpy = vi.fn();
-
-    const originalURL = globalThis.URL;
-    globalThis.URL = {
-      createObjectURL: createObjectURLSpy,
-      revokeObjectURL: revokeObjectURLSpy,
-    } as any;
-
-    component.exportToCsv();
-
-    expect(createElementSpy).toHaveBeenCalledWith('a');
-    expect(mockLink.download).toBe('report_RPT_001_2026-05-26.csv');
-    expect(mockLink.href).toBe('blob:csv-mock-url');
-    expect(mockLink.click).toHaveBeenCalled();
-
-    createElementSpy.mockRestore();
-    appendChildSpy.mockRestore();
-    removeChildSpy.mockRestore();
-    globalThis.URL = originalURL;
-    (globalThis as any).document = originalDocument;
+  it('should toggle main menu expanded signal', () => {
+    expect(component.isMainMenuExpanded()).toBe(false);
+    component.toggleMainMenu();
+    expect(component.isMainMenuExpanded()).toBe(true);
+    component.toggleMainMenu();
+    expect(component.isMainMenuExpanded()).toBe(false);
   });
 });

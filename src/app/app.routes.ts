@@ -28,12 +28,12 @@ export const routes: Routes = [
   },
   {
     path: 'viewer',
-    loadComponent: () => import('./components/report-viewer').then(m => m.ReportViewerComponent),
+    loadComponent: () => import('./components/execution-hub').then(m => m.ExecutionHubComponent),
     canActivate: [authGuard]
   },
   {
     path: 'viewer/:id',
-    loadComponent: () => import('./components/report-viewer').then(m => m.ReportViewerComponent),
+    loadComponent: () => import('./components/execution-hub').then(m => m.ExecutionHubComponent),
     canActivate: [authGuard]
   },
   {

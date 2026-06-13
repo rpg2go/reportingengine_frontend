@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,11 +6,12 @@ import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from './sidebar';
+import { CalendarPickerComponent } from './calendar-picker';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent, CalendarPickerComponent],
   template: `
     <div class="dashboard-container">
       <!-- Mobile topbar -->
@@ -216,15 +217,26 @@ import { SidebarComponent } from './sidebar';
 
                 <!-- Action Bar -->
                 <div class="inspector-actions-bar">
-                  <div class="inspector-date-box">
-                    <label for="insp-date">Ref Date</label>
-                    <input 
-                      type="date" 
-                      id="insp-date" 
-                      [ngModel]="referenceDate()" 
-                      (ngModelChange)="onDateChange($event)"
+                  <div class="inspector-date-box" style="position: relative;">
+                    <label>Ref Date</label>
+                    <button
+                      type="button"
                       class="inspector-date-input"
-                    />
+                      style="display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; min-width: 135px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--color-apple-text); border-radius: 8px; padding: 6px 12px; font-size: 13px; font-family: inherit;"
+                      (click)="toggleDatePicker($event)"
+                    >
+                      <span>📅 {{ referenceDate() || 'Select Date' }}</span>
+                      <span style="font-size: 10px; color: var(--color-apple-grey);">▼</span>
+                    </button>
+                    
+                    @if (showDatePicker()) {
+                      <app-calendar-picker
+                        [availableDates]="availableReportingDates()"
+                        [(selectedDate)]="referenceDate"
+                        (dateSelected)="onDateSelectedFromPicker($event)"
+                        (click)="$event.stopPropagation()"
+                      ></app-calendar-picker>
+                    }
                   </div>
                   <div class="inspector-action-buttons">
                     <button [routerLink]="['/reports', report.reportId, 'edit']" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
@@ -1346,6 +1358,8 @@ export class DashboardComponent implements OnInit {
   selectedReportLoading = signal(false);
   selectedReportJoins = signal<any[]>([]);
   referenceDate = signal<string>('2025-12-31');
+  availableReportingDates = signal<string[]>([]);
+  showDatePicker = signal<boolean>(false);
   running = signal<boolean>(false);
   deleting = signal<boolean>(false);
   showDeleteConfirm = signal<boolean>(false);
@@ -1361,6 +1375,18 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCatalog();
+    this.reportService.getReportingDates().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (dates) => {
+        this.availableReportingDates.set(dates);
+        if (dates.length > 0) {
+          if (!dates.includes(this.referenceDate())) {
+            this.referenceDate.set(dates[0]);
+          }
+        }
+      }
+    });
   }
 
   loadCatalog(): void {
@@ -1496,6 +1522,24 @@ export class DashboardComponent implements OnInit {
     if (currentId) {
       // Reload config with new date
       this.selectReport(currentId);
+    }
+  }
+
+  toggleDatePicker(event: Event): void {
+    event.stopPropagation();
+    this.showDatePicker.update(v => !v);
+  }
+
+  onDateSelectedFromPicker(newDate: string): void {
+    this.showDatePicker.set(false);
+    this.onDateChange(newDate);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (this.showDatePicker() && !target.closest('.inspector-date-box')) {
+      this.showDatePicker.set(false);
     }
   }
 

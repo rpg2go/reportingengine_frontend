@@ -22,7 +22,8 @@ describe('DashboardComponent', () => {
   beforeEach(() => {
     mockReportService = {
       getReports: vi.fn().mockReturnValue(of(mockReports)),
-      importTemplate: vi.fn()
+      importTemplate: vi.fn(),
+      getReportingDates: vi.fn().mockReturnValue(of(['2025-12-31', '2026-03-31']))
     };
     mockAuthService = {
       getUsername: vi.fn().mockReturnValue('test-user'),

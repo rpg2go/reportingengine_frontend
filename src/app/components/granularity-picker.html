@@ -1,0 +1,95 @@
+<div class="gp-trigger" [class.open]="isOpen()" (click)="toggleDropdown($event)">
+  <!-- Selected chips strip -->
+  <div class="gp-chips-row">
+    @for (val of selectedValues(); track val) {
+      <span class="gp-chip">
+        <span>{{ chipLabel(val) }}</span>
+        <button
+          type="button"
+          class="gp-chip-remove"
+          (click)="removeValue(val, $event)"
+          aria-label="Remove"
+        >✕</button>
+      </span>
+    }
+    @if (selectedValues().length === 0) {
+      <span class="gp-placeholder">-- Select grouping columns --</span>
+    }
+  </div>
+  <!-- Clear-all button — only visible when selections exist -->
+  @if (selectedValues().length > 0) {
+    <button
+      type="button"
+      class="gp-clear-all-btn"
+      (click)="clearAll($event)"
+      title="Clear all selections"
+      aria-label="Clear all selections"
+    >✕</button>
+  }
+  <span class="gp-arrow">▾</span>
+</div>
+
+@if (isOpen()) {
+  <div class="gp-popover" (click)="$event.stopPropagation()">
+    <!-- Search bar -->
+    <div class="gp-search-wrapper">
+      <input
+        type="text"
+        class="gp-search-input"
+        placeholder="Search grouping columns..."
+        [ngModel]="searchText()"
+        (ngModelChange)="searchText.set($event)"
+        (keydown)="$event.stopPropagation()"
+      />
+    </div>
+
+    <!-- Options list grouped by table accordion -->
+    <div class="gp-options-list">
+      @if (groupedOptions().length === 0) {
+        <div class="gp-no-results">No grouping fields found</div>
+      }
+      @for (group of groupedOptions(); track group.tableName) {
+        <!-- Table group header -->
+        <div class="gp-group-header" (click)="toggleGroup(group.tableName, $event)">
+          <span class="gp-folder-indicator" [class.expanded]="group.isExpanded">▶</span>
+          <span class="gp-folder-name">{{ group.cleanTableName }}</span>
+          <span class="gp-table-badge">{{ group.tableName }}</span>
+        </div>
+
+        @if (group.isExpanded) {
+          <div class="gp-fields-container">
+            @for (opt of group.options; track opt.value) {
+              <div
+                class="gp-option-item"
+                [class.selected]="selectedValues().includes(opt.value)"
+                (click)="toggleSelection(opt.value, $event)"
+              >
+                <!-- Checkbox -->
+                <div class="gp-checkbox" [class.checked]="selectedValues().includes(opt.value)">
+                  @if (selectedValues().includes(opt.value)) {
+                    <span class="gp-checkbox-tick">✓</span>
+                  }
+                </div>
+                <!-- Table prefix (muted) -->
+                <span class="gp-option-category-muted">{{ group.cleanTableName }} -&gt;&nbsp;</span>
+                <!-- Column name -->
+                <span class="gp-option-name">{{ opt.columnName }}</span>
+                <!-- Data type (far right) -->
+                <span class="gp-option-type">{{ opt.dataType }}</span>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Popover footer: clear all link -->
+    @if (selectedValues().length > 0) {
+      <div class="gp-popover-footer">
+        <button type="button" class="gp-footer-clear-btn" (click)="clearAll($event)">
+          ✕ Clear all {{ selectedValues().length }} selection{{ selectedValues().length === 1 ? '' : 's' }}
+        </button>
+      </div>
+    }
+  </div>
+}

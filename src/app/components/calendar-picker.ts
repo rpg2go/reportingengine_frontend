@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, input, model } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, input, model, effect, output, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface CalendarDay {
@@ -16,6 +16,19 @@ export interface CalendarDay {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './calendar-picker.html',
   styles: [`
+    :host {
+      display: block;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 100;
+      animation: calendarFadeIn 0.15s ease-out;
+    }
+    @keyframes calendarFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .calendar-popover-panel {
       width: 280px;
       background: #ffffff;
@@ -104,37 +117,100 @@ export interface CalendarDay {
     .grid { display: grid; }
     .grid-cols-7 { grid-template-columns: repeat(7, 1fr); }
     .text-center { text-align: center; }
-    .text-\[10px\] { font-size: 10px; }
+    .text-\\[10px\\] { font-size: 10px; }
     .text-slate-400 { color: #94a3b8; }
     .mb-2 { margin-bottom: 0.5rem; }
     .uppercase { text-transform: uppercase; }
     .tracking-wider { letter-spacing: 0.05em; }
     .gap-1 { gap: 0.25rem; }
     .text-xs { font-size: 0.75rem; }
-    .py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+    .py-1\\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
     .rounded { border-radius: 0.25rem; }
     .transition-all { transition-property: all; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
 
     .text-slate-800 { color: #1e293b; }
     .font-bold { font-weight: 700; }
-    .hover\:bg-indigo-50:hover { background-color: rgba(79, 70, 229, 0.08); color: #4f46e5; }
+    .hover\\:bg-indigo-50:hover { background-color: rgba(79, 70, 229, 0.08); color: #4f46e5; }
     .cursor-pointer { cursor: pointer; }
     .bg-indigo-600 { background-color: #4f46e5; }
     .text-white { color: #ffffff; }
     .text-slate-300 { color: #cbd5e1; }
     .pointer-events-none { pointer-events: none; }
+
+    .bg-transparent { background-color: transparent; }
+    .hover\\:bg-slate-50:hover { background-color: #f8fafc; }
+    .text-slate-700 { color: #334155; }
+    .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+    .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+    .outline-none { outline: none; }
+    .bg-slate-50 { background-color: #f8fafc; }
+    .hover\\:bg-slate-100:hover { background-color: #f1f5f9; }
+    .text-slate-600 { color: #475569; }
+    .hover\\:text-indigo-600:hover { color: #4f46e5; }
+    .font-semibold { font-weight: 600; }
+    .border { border: 1px solid #e2e8f0; }
+    .border-slate-200 { border-color: #e2e8f0; }
+    .border-slate-100 { border-color: #f1f5f9; }
+    .border-t { border-top: 1px solid #e2e8f0; }
+    .mt-3 { margin-top: 0.75rem; }
+    .pt-2 { padding-top: 0.5rem; }
   `]
 })
 export class CalendarPickerComponent {
   availableDates = input<string[]>([]); // Injected dim_date cache signal array
   selectedDate = model<string>(''); // Currently selected date (YYYY-MM-DD)
+  dateSelected = output<string>();
 
   calendarYear = signal<number>(new Date().getFullYear());
   calendarMonth = signal<number>(new Date().getMonth());
 
   maxSafetyDate = signal<Date>(new Date('2026-12-31'));
   readonly MIN_DATE = '2024-01-01';
+
+  constructor() {
+    effect(() => {
+      const selected = this.selectedDate();
+      if (selected && /^\d{4}-\d{2}-\d{2}$/.test(selected)) {
+        const year = parseInt(selected.substring(0, 4), 10);
+        const month = parseInt(selected.substring(5, 7), 10) - 1;
+        untracked(() => {
+          if (this.calendarYear() !== year) {
+            this.calendarYear.set(year);
+          }
+          if (this.calendarMonth() !== month) {
+            this.calendarMonth.set(month);
+          }
+        });
+      }
+    });
+  }
+
+  years = computed(() => {
+    const centerYear = 2026;
+    const range: number[] = [];
+    for (let y = centerYear - 5; y <= centerYear + 5; y++) {
+      range.push(y);
+    }
+    return range;
+  });
+
+  onMonthChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.calendarMonth.set(Number(select.value));
+  }
+
+  onYearChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.calendarYear.set(Number(select.value));
+  }
+
+  jumpToToday(): void {
+    const today = new Date();
+    this.calendarYear.set(today.getFullYear());
+    this.calendarMonth.set(today.getMonth());
+    this.selectedDate.set(this.formatDateString(today));
+  }
 
   months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -225,5 +301,6 @@ export class CalendarPickerComponent {
   selectDay(day: CalendarDay): void {
     if (!day.isSelectable) return;
     this.selectedDate.set(day.dateStr);
+    this.dateSelected.emit(day.dateStr);
   }
 }

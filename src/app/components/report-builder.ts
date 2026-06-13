@@ -1,7 +1,7 @@
 import { Component, OnInit, signal, computed, effect, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { forkJoin } from 'rxjs';
@@ -18,6 +18,8 @@ import { DateFormatter } from '../utils/date-formatter';
 import { FieldPickerComponent } from './field-picker';
 import { SidebarComponent } from './sidebar';
 import { RowFilterComponent } from './row-filter';
+import { CalendarPickerComponent } from './calendar-picker';
+import { GranularityPickerComponent } from './granularity-picker';
 interface CalendarDay {
   date: Date;
   dayNum: number;
@@ -85,10 +87,14 @@ export interface FieldGroup {
     CommonModule,
     RouterModule,
     FormsModule,
+    ReactiveFormsModule,
     FieldPickerComponent,
     SidebarComponent,
     RowFilterComponent,
+    CalendarPickerComponent,
+    GranularityPickerComponent,
   ],
+
   template: `
     <div class="builder-container">
       <!-- Mobile topbar -->
@@ -241,11 +247,14 @@ export interface FieldGroup {
                       <th class="sticky-col">Label</th>
                       <th>ID</th>
                       <th>Type</th>
+                      @for (gran of granularityPreviewCols(); track gran.value) {
+                        <th class="col-flag-header border-l border-slate-200 text-indigo-600 font-mono">
+                          {{ gran.shortLabel }}
+                        </th>
+                      }
                       @for (col of expandedColumns(); track col.colId) {
                         <th class="col-flag-header">
-                          <div>
-                            <code>{{ col.colId }}</code>
-                          </div>
+                          <div><code>{{ col.colId }}</code></div>
                           <div class="preview-col-label">{{ col.label }}</div>
                         </th>
                       }
@@ -253,6 +262,7 @@ export interface FieldGroup {
                   </thead>
                   <tbody>
                     @for (row of rows; track row.rowId) {
+                      <!-- ── Main data/section/calc row ───────────────────────── -->
                       <tr [class]="'row-style-' + (row.style || 'normal').toLowerCase()">
                         <td
                           class="sticky-col label-cell"
@@ -268,14 +278,13 @@ export interface FieldGroup {
                             &nbsp;
                           }
                         </td>
+                        <td><code>{{ row.rowId }}</code></td>
                         <td>
-                          <code>{{ row.rowId }}</code>
+                          <span class="row-type-badge" [class]="row.rowType">{{ row.rowType }}</span>
                         </td>
-                        <td>
-                          <span class="row-type-badge" [class]="row.rowType">{{
-                            row.rowType
-                          }}</span>
-                        </td>
+                        @for (gran of granularityPreviewCols(); track gran.value) {
+                          <td class="col-flag-cell border-l border-slate-200 font-mono text-slate-300 text-center">-</td>
+                        }
                         @for (col of expandedColumns(); track col.colId) {
                           <td class="col-flag-cell">
                             @if (
@@ -291,6 +300,36 @@ export interface FieldGroup {
                           </td>
                         }
                       </tr>
+
+                      <!-- ── Granularity sub-rows (data rows only) ────────────── -->
+                      @if (row.rowType === 'data' && granularityPreviewCols().length > 0) {
+                        @for (subGran of granularityPreviewCols(); track subGran.value; let subIdx = $index; let last = $last) {
+                          <tr class="gran-subrow">
+                            <td
+                              class="sticky-col gran-subrow-label"
+                              [style.padding-left.px]="20 + row.indentLevel * 16 + 24"
+                            >
+                              <span class="gran-subrow-connector">{{ last ? '└' : '├' }}</span>
+                            </td>
+                            <td></td>
+                            <td>
+                              <span class="gran-subrow-badge">group by</span>
+                            </td>
+                            @for (gCol of granularityPreviewCols(); track gCol.value; let colIdx = $index) {
+                              <td class="col-flag-cell gran-subrow-cell border-l border-slate-200 font-mono text-slate-600 text-center">
+                                @if (subIdx === colIdx) {
+                                  <code>[{{ subGran.shortLabel }}]</code>
+                                } @else {
+                                  -
+                                }
+                              </td>
+                            }
+                            @for (col of expandedColumns(); track col.colId) {
+                              <td class="col-flag-cell gran-subrow-cell"></td>
+                            }
+                          </tr>
+                        }
+                      }
                     }
                   </tbody>
                 </table>
@@ -368,19 +407,15 @@ export interface FieldGroup {
             </div>
 
             <!-- Granularity (bound to conformed keys / dynamic granularity fields) -->
-            <div class="form-group">
-              <label for="granularity">Report Granularity*</label>
-              <select
-                id="granularity"
-                [(ngModel)]="granularity"
-                (ngModelChange)="triggerValidationDebounced()"
-                class="form-select"
-              >
-                <option value="">-- Select grouping column --</option>
-                @for (opt of dynamicGranularityOptions(); track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
+            <div [formGroup]="reportForm" class="form-group">
+              <label for="granularity" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Report Granularity*</label>
+              <div class="w-full">
+                <app-granularity-picker
+                  id="granularity"
+                  [options]="dynamicGranularityOptions()"
+                  formControlName="granularity"
+                ></app-granularity-picker>
+              </div>
             </div>
 
             <!-- Time Information Row -->
@@ -410,51 +445,12 @@ export interface FieldGroup {
 
                   <!-- Datepicker Dropdown Grid overlay -->
                   @if (showDatePicker()) {
-                    <div
-                      class="datepicker-dropdown animate-fade-in"
+                    <app-calendar-picker
+                      [availableDates]="availableReportingDates"
+                      [(selectedDate)]="reportingDate"
+                      (dateSelected)="showDatePicker.set(false)"
                       (click)="$event.stopPropagation()"
-                    >
-                      <div class="datepicker-header">
-                        <button type="button" class="datepicker-nav-btn" (click)="prevMonth()">
-                          ◀
-                        </button>
-                        <span class="datepicker-title"
-                          >{{ monthNames[calendarMonth()] }} {{ calendarYear() }}</span
-                        >
-                        <button type="button" class="datepicker-nav-btn" (click)="nextMonth()">
-                          ▶
-                        </button>
-                      </div>
-
-                      <div class="datepicker-weekdays">
-                        <span class="datepicker-weekday">Su</span>
-                        <span class="datepicker-weekday">Mo</span>
-                        <span class="datepicker-weekday">Tu</span>
-                        <span class="datepicker-weekday">We</span>
-                        <span class="datepicker-weekday">Th</span>
-                        <span class="datepicker-weekday">Fr</span>
-                        <span class="datepicker-weekday">Sa</span>
-                      </div>
-
-                      <div class="datepicker-days">
-                        @for (day of calendarDays(); track day.formattedStr) {
-                          <div
-                            class="datepicker-day-cell"
-                            [class.other-month]="!day.isCurrentMonth"
-                            [class.enabled]="day.isEnabled"
-                            [class.disabled]="!day.isEnabled"
-                            [class.selected]="reportingDate === day.formattedStr"
-                            (click)="selectCalendarDay(day)"
-                          >
-                            {{ day.dayNum }}
-                          </div>
-                        }
-                      </div>
-
-                      <div class="text-[10px] text-slate-500 mt-3 text-center italic">
-                        {{ availableReportingDates.length }} dates available in dim_date catalog
-                      </div>
-                    </div>
+                    ></app-calendar-picker>
                   }
                 </div>
               </div>
@@ -463,7 +459,31 @@ export interface FieldGroup {
               <div class="form-group timeframe-group-inline">
                 <label>Timeframe Limit</label>
                 <div class="timeframe-row">
-                  <input type="date" [(ngModel)]="timeframeStart" class="form-input tf-start" />
+                  <!-- Start Date Custom Calendar Picker -->
+                  <div class="custom-datepicker-wrapper tf-start">
+                    <button
+                      type="button"
+                      class="datepicker-trigger-btn"
+                      [class.active]="showTimeframeStartDatePicker()"
+                      (click)="showTimeframeStartDatePicker.set(!showTimeframeStartDatePicker())"
+                    >
+                      <span>{{ timeframeStart || '— select start date —' }}</span>
+                      <span class="calendar-icon">📅</span>
+                    </button>
+
+                    @if (showTimeframeStartDatePicker()) {
+                      <div class="datepicker-backdrop" (click)="showTimeframeStartDatePicker.set(false)"></div>
+                    }
+
+                    @if (showTimeframeStartDatePicker()) {
+                      <app-calendar-picker
+                        [availableDates]="availableReportingDates"
+                        [(selectedDate)]="timeframeStart"
+                        (dateSelected)="showTimeframeStartDatePicker.set(false)"
+                        (click)="$event.stopPropagation()"
+                      ></app-calendar-picker>
+                    }
+                  </div>
                   <span class="tf-arrow">→</span>
                   <div class="tf-end-group">
                     <div class="mode-btn-group" role="group">
@@ -524,47 +544,12 @@ export interface FieldGroup {
 
                         <!-- Datepicker Dropdown Grid overlay -->
                         @if (showTimeframeEndDatePicker()) {
-                          <div
-                            class="datepicker-dropdown animate-fade-in"
+                          <app-calendar-picker
+                            [availableDates]="availableReportingDates"
+                            [(selectedDate)]="timeframeEnd"
+                            (dateSelected)="showTimeframeEndDatePicker.set(false)"
                             (click)="$event.stopPropagation()"
-                          >
-                            <div class="datepicker-header">
-                              <button type="button" class="datepicker-nav-btn" (click)="prevTimeframeEndMonth()">
-                                ◀
-                              </button>
-                              <span class="datepicker-title"
-                                >{{ monthNames[calendarTimeframeEndMonth()] }} {{ calendarTimeframeEndYear() }}</span
-                              >
-                              <button type="button" class="datepicker-nav-btn" (click)="nextTimeframeEndMonth()">
-                                ▶
-                              </button>
-                            </div>
-
-                            <div class="datepicker-weekdays">
-                              <span class="datepicker-weekday">Su</span>
-                              <span class="datepicker-weekday">Mo</span>
-                              <span class="datepicker-weekday">Tu</span>
-                              <span class="datepicker-weekday">We</span>
-                              <span class="datepicker-weekday">Th</span>
-                              <span class="datepicker-weekday">Fr</span>
-                              <span class="datepicker-weekday">Sa</span>
-                            </div>
-
-                            <div class="datepicker-days">
-                              @for (day of calendarTimeframeEndDays(); track day.formattedStr) {
-                                <div
-                                  class="datepicker-day-cell"
-                                  [class.other-month]="!day.isCurrentMonth"
-                                  [class.enabled]="day.isEnabled"
-                                  [class.disabled]="!day.isEnabled"
-                                  [class.selected]="timeframeEnd === day.formattedStr"
-                                  (click)="selectTimeframeEndCalendarDay(day)"
-                                >
-                                  {{ day.dayNum }}
-                                </div>
-                              }
-                            </div>
-                          </div>
+                          ></app-calendar-picker>
                         }
                       </div>
                     } @else {
@@ -2790,6 +2775,84 @@ export interface FieldGroup {
         background: var(--color-apple-card);
         z-index: 2;
       }
+
+      /* ── Granularity sub-rows ─────────────────────────────────── */
+      .gran-subrow {
+        background: transparent;
+      }
+
+      .gran-subrow td {
+        padding: 3px 14px;
+        border-bottom: none;
+      }
+
+      /* Last sub-row of a group gets a faint bottom separator */
+      .gran-subrow:has(+ tr:not(.gran-subrow)) td,
+      .gran-subrow:last-child td {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 6px;
+      }
+
+      .gran-subrow-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--color-apple-card);
+      }
+
+      .gran-subrow-connector {
+        font-size: 11px;
+        color: var(--border-color);
+        font-family: monospace;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+
+      .gran-subrow-key {
+        font-size: 11px;
+        font-family: monospace;
+        font-weight: 600;
+        color: var(--color-apple-blue);
+        flex-shrink: 0;
+      }
+
+      .gran-subrow-path {
+        font-size: 10px;
+        font-family: monospace;
+        color: var(--color-apple-grey);
+        opacity: 0.7;
+      }
+
+      .gran-subrow-badge {
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--color-apple-blue);
+        background: rgba(0, 118, 223, 0.10);
+        border: 1px solid rgba(0, 118, 223, 0.20);
+        border-radius: 3px;
+        padding: 1px 5px;
+        white-space: nowrap;
+      }
+
+      .gran-subrow-cell {
+        background: transparent !important;
+        border-bottom: none !important;
+      }
+
+      /* Light theme overrides */
+      :host-context(html.light) .gran-subrow-label {
+        background: #FFFFFF;
+      }
+      :host-context(html.light) .gran-subrow-key { color: #4F46E5; }
+      :host-context(html.light) .gran-subrow-connector { color: #CBD5E1; }
+      :host-context(html.light) .gran-subrow-badge {
+        color: #4F46E5;
+        background: rgba(79, 70, 229, 0.08);
+        border-color: rgba(79, 70, 229, 0.20);
+      }
+
       .col-flag-header {
         text-align: center !important;
       }
@@ -4506,6 +4569,7 @@ export class ReportBuilderComponent implements OnInit {
   });
 
   // ── Timeframe End Date Picker signals & properties ────────────────
+  showTimeframeStartDatePicker = signal<boolean>(false);
   showTimeframeEndDatePicker = signal<boolean>(false);
   calendarTimeframeEndYear = signal<number>(new Date().getFullYear());
   calendarTimeframeEndMonth = signal<number>(new Date().getMonth());
@@ -4599,7 +4663,7 @@ export class ReportBuilderComponent implements OnInit {
         return true;
       }
 
-      // Rule 2: Financial Figures Exclusion Rule (numeric facts intended for aggregation)
+      // Rule 2: Financial/Numeric Figures Exclusion Rule (facts/measures intended for aggregation)
       const financials = new Set([
         'amount',
         'interest_rate',
@@ -4611,6 +4675,10 @@ export class ReportBuilderComponent implements OnInit {
         'expense',
         'salary',
         'balance',
+        'quantity',
+        'units',
+        'shares',
+        'volume',
       ]);
       if (financials.has(colLower)) {
         return true;
@@ -4679,13 +4747,15 @@ export class ReportBuilderComponent implements OnInit {
       }
     });
 
-    // Include current granularity if not already present
-    if (this.granularity && !options.some((o) => o.value === this.granularity)) {
-      options.unshift({
-        value: this.granularity,
-        label: `${this.granularity} (Current)`,
-      });
-    }
+    // Include current granularities if not already present
+    this.granularities().forEach((gran) => {
+      if (gran && !options.some((o) => o.value === gran)) {
+        options.unshift({
+          value: gran,
+          label: `${gran} (Current)`,
+        });
+      }
+    });
 
     if (options.length === 0) {
       return this.conformedKeys.map((k) => ({ value: k, label: k }));
@@ -4712,6 +4782,18 @@ export class ReportBuilderComponent implements OnInit {
     }
     return expanded;
   });
+
+  /** Derives one preview-column descriptor per selected granularity value. */
+  granularityPreviewCols = computed(() => {
+    return this.granularities().map((g) => ({
+      value: g,
+      // Short label: last segment after the final dot
+      shortLabel: g.includes('.') ? g.substring(g.lastIndexOf('.') + 1) : g,
+      // Full table.column path for the sub-label
+      fullPath: g,
+    }));
+  });
+
   successMessage = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
   sidebarOpen = signal(false);
@@ -4819,6 +4901,7 @@ export class ReportBuilderComponent implements OnInit {
         });
       }
     });
+
 
     // Set local errors immediately
     this.validationErrors.set(localErrors);
@@ -5150,7 +5233,42 @@ export class ReportBuilderComponent implements OnInit {
   reportVersion = 1;
   status = 'draft';
   sourceTable = '';
-  granularity = '';
+
+  private fb = inject(FormBuilder);
+
+  reportForm = this.fb.group({
+    granularity: [ [] as string[], [Validators.required, Validators.minLength(1)] ]
+  });
+
+  granularities = signal<string[]>([]);
+
+  get granularity(): string {
+    const val = this.reportForm.controls.granularity.value;
+    return Array.isArray(val) ? val.join(',') : '';
+  }
+  set granularity(val: string) {
+    const parsed = val ? val.split(',').map(s => s.trim()).filter(Boolean) : [];
+    this.reportForm.controls.granularity.setValue(parsed);
+    this.granularities.set(parsed);
+  }
+
+
+
+  getCombinedGranularityLabel(): string {
+    const grans = this.granularities();
+    if (grans.length === 0) {
+      return 'Label';
+    }
+    const shortGrans = grans.map(g => this.getGranularityLabelShort(g));
+    return `Label (${shortGrans.join(', ')})`;
+  }
+
+  getGranularityLabelShort(g: string): string {
+    if (g.includes('.')) {
+      return g.substring(g.lastIndexOf('.') + 1);
+    }
+    return g;
+  }
   timeframeStart = '2022-01-01';
   timeframeEnd = '';
   timeframeMode: 'custom' | 'today_minus_2' | 'today_minus_1' | 'today' = 'today_minus_2';
@@ -5244,6 +5362,13 @@ export class ReportBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadReportingDates();
+
+    this.reportForm.controls.granularity.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((val) => {
+        this.granularities.set(Array.isArray(val) ? val : []);
+        this.triggerValidationDebounced();
+      });
 
     this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params['id'];
