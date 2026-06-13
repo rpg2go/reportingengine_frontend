@@ -82,17 +82,18 @@ export function serializeMeasure(row: any): any {
   }
 }
 
-export function parseRowFilterExpr(filterExpr: string): { rowFilters: RowFilterCondition[]; legacyFilterExpr: string } {
-  if (!filterExpr) return { rowFilters: [], legacyFilterExpr: '' };
+export function parseRowFilterExpr(filterExpr: string): { rowFilters: RowFilterCondition[]; legacyFilterExpr: string; isFilterRawMode: boolean } {
+  if (!filterExpr) return { rowFilters: [], legacyFilterExpr: '', isFilterRawMode: false };
   try {
     const parsed = JSON.parse(filterExpr);
-    if (Array.isArray(parsed)) return { rowFilters: parsed, legacyFilterExpr: '' };
+    if (Array.isArray(parsed)) return { rowFilters: parsed, legacyFilterExpr: '', isFilterRawMode: false };
   } catch { /* not JSON */ }
-  return { rowFilters: [], legacyFilterExpr: filterExpr };
+  return { rowFilters: [], legacyFilterExpr: filterExpr, isFilterRawMode: true };
 }
 
 export function serializeRowFilters(row: any): string {
   if (row.rowType !== 'data') return '';
+  if (row.isFilterRawMode) return row.legacyFilterExpr || '';
   if (row.rowFilters && row.rowFilters.length > 0) return JSON.stringify(row.rowFilters);
   return row.legacyFilterExpr || '';
 }

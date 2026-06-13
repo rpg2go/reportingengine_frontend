@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, computed, signal, ElementRef, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal, ElementRef, inject, OnInit, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReportService } from '../services/report.service';
@@ -310,6 +310,74 @@ import { ValuePickerComponent } from './value-picker';
       background: #F8FAFC;
       color: #0F172A;
     }
+
+    .conjunction-select {
+      background: var(--color-apple-blue);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 4px;
+      font-size: 9px;
+      font-weight: 700;
+      cursor: pointer;
+      outline: none;
+      text-transform: uppercase;
+    }
+    .conjunction-select:hover {
+      filter: brightness(1.1);
+    }
+    .conjunction-badge {
+      display: inline-flex;
+      align-items: center;
+      margin: 0 2px;
+    }
+    .raw-expression-display {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+    .raw-expression-badge {
+      background: var(--color-apple-grey);
+      color: white;
+      font-size: 8px;
+      font-weight: bold;
+      padding: 2px 4px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .raw-expression-input {
+      flex: 1;
+      min-width: 150px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    .switch-mode-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--color-apple-grey);
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .switch-mode-btn:hover {
+      background: var(--border-color);
+      color: var(--color-apple-text);
+    }
+    :host-context(html.light) .raw-expression-badge {
+      background: #64748B;
+    }
+    :host-context(html.light) .switch-mode-btn {
+      border-color: #E2E8F0;
+      color: #64748B;
+    }
+    :host-context(html.light) .switch-mode-btn:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+    }
   `]
 })
 export class RowFilterComponent implements OnInit {
@@ -318,6 +386,7 @@ export class RowFilterComponent implements OnInit {
   linkedDimensions = input<string[]>([]);
   columnTypes = input<{ [tableName: string]: { [columnName: string]: string } }>({});
   rowFilters = input<any[]>([]);
+  legacyFilterExpr = model<string>('');
   
   onChange = output<any[]>();
 
@@ -325,7 +394,8 @@ export class RowFilterComponent implements OnInit {
   private reportService = inject(ReportService);
 
   isOpen = signal(false);
-  pendingFilter = signal<any>({ dimTable: '', attribute: '', operator: '=', value: '' });
+  isRawMode = model<boolean>(false);
+  pendingFilter = signal<any>({ dimTable: '', attribute: '', operator: '=', value: '', conjunction: 'AND' });
   pendingFilterValues = signal<string[]>([]);
   pendingFilterValuesSelected = signal<string[]>([]);
 
@@ -340,7 +410,72 @@ export class RowFilterComponent implements OnInit {
     { value: 'IN', label: 'in list' }
   ];
 
-  ngOnInit() {}
+  ngOnInit() {
+    if (this.legacyFilterExpr() && (!this.rowFilters() || this.rowFilters().length === 0)) {
+      this.isRawMode.set(true);
+    }
+  }
+
+  switchToRawMode() {
+    this.isRawMode.set(true);
+    if (this.rowFilters() && this.rowFilters().length > 0) {
+      const sql = this.compileRowFiltersToSqlString(this.rowFilters());
+      this.legacyFilterExpr.set(sql);
+    }
+  }
+
+  switchToStructuredMode() {
+    this.isRawMode.set(false);
+  }
+
+  onRawExpressionChange(val: string) {
+    this.legacyFilterExpr.set(val);
+  }
+
+  onConjunctionChange(index: number, val: 'AND' | 'OR') {
+    const current = this.rowFilters().map((f, i) => {
+      if (i === index) {
+        return { ...f, conjunction: val };
+      }
+      return f;
+    });
+    this.onChange.emit(current);
+  }
+
+  compileRowFiltersToSqlString(filters: any[]): string {
+    return filters.map((f, i) => {
+      const col = f.dimTable ? `${f.dimTable}.${f.attribute}` : f.attribute;
+      const val = f.value;
+      const table = f.dimTable || this.activeMeasureTable();
+      const colTypes = this.columnTypes()[table];
+      const type = colTypes ? colTypes[f.attribute] : '';
+      const isNumeric = type && (type.includes('int') || type.includes('decimal') || type.includes('numeric') || type.includes('double') || type.includes('float'));
+      
+      const op = f.operator || '=';
+      let formattedVal = val;
+      if (op === 'IN') {
+        const parts = val ? val.toString().split(',').map((p: string) => p.trim()) : [];
+        const formattedParts = parts.map((part: string) => {
+          if (isNumeric) {
+            return part;
+          } else {
+            let q = part;
+            if (!q.startsWith("'") && !q.endsWith("'")) {
+              q = `'${q}'`;
+            }
+            return q;
+          }
+        });
+        formattedVal = `(${formattedParts.join(', ')})`;
+      } else {
+        if (!isNumeric && val && !val.toString().startsWith("'") && !val.toString().endsWith("'")) {
+          formattedVal = `'${val}'`;
+        }
+      }
+      const conj = (i < filters.length - 1) ? ` ${f.conjunction || 'AND'} ` : '';
+      return `(${col} ${op} ${formattedVal})${conj}`;
+    }).join('');
+  }
 
   selectedTable = computed(() => {
     return this.pendingFilter().dimTable || this.activeMeasureTable();
@@ -402,6 +537,9 @@ export class RowFilterComponent implements OnInit {
     if (!this.pendingFilter().attribute) return;
     
     const current = [...this.rowFilters()];
+    if (current.length > 0 && !current[current.length - 1].conjunction) {
+      current[current.length - 1] = { ...current[current.length - 1], conjunction: 'AND' };
+    }
     current.push({ ...this.pendingFilter() });
     this.onChange.emit(current);
     this.close();

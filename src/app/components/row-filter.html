@@ -1,16 +1,49 @@
 <div class="row-filter-wrapper">
-  <!-- Structured filter chips -->
+  <!-- Structured filter chips or Raw SQL editor -->
   <div class="filter-chips-mini">
-    @for (f of rowFilters(); track $index; let fi = $index) {
-      <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f)">
-        @if (f.dimTable) {
-          <span class="ft-dim">{{ f.dimTable }}.</span>
+    @if (isRawMode()) {
+      <div class="raw-expression-display" (click)="$event.stopPropagation()">
+        <span class="raw-expression-badge">SQL</span>
+        <input 
+          type="text" 
+          [ngModel]="legacyFilterExpr()" 
+          (ngModelChange)="onRawExpressionChange($event)" 
+          placeholder="e.g. (a = 2 OR b = 3) AND c = 'AMZN'"
+          class="form-input raw-expression-input text-xs"
+        />
+        <button (click)="switchToStructuredMode()" class="switch-mode-btn" title="Switch to structured builder">
+          Builder
+        </button>
+      </div>
+    } @else {
+      @for (f of rowFilters(); track $index; let fi = $index) {
+        <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f)">
+          @if (f.dimTable) {
+            <span class="ft-dim">{{ f.dimTable }}.</span>
+          }
+          <span class="ft-attr">{{ f.attribute }}</span>
+          <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
+          <span class="ft-val">{{ f.value }}</span>
+          <button (click)="removeFilter(fi, $event)" class="ft-remove" aria-label="Remove filter condition">✕</button>
+        </span>
+        @if (fi < rowFilters().length - 1) {
+          <span class="conjunction-badge">
+            <select 
+              [ngModel]="f.conjunction || 'AND'" 
+              (ngModelChange)="onConjunctionChange(fi, $event)"
+              class="conjunction-select"
+            >
+              <option value="AND">AND</option>
+              <option value="OR">OR</option>
+            </select>
+          </span>
         }
-        <span class="ft-attr">{{ f.attribute }}</span>
-        <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
-        <span class="ft-val">{{ f.value }}</span>
-        <button (click)="removeFilter(fi, $event)" class="ft-remove" aria-label="Remove filter condition">✕</button>
-      </span>
+      }
+      @if (rowFilters().length > 0) {
+        <button (click)="switchToRawMode()" class="switch-mode-btn" title="Convert to Custom SQL">
+          SQL Mode
+        </button>
+      }
     }
   </div>
 
@@ -94,12 +127,19 @@
       </div>
     </div>
   } @else {
-    <button 
-      (click)="$event.stopPropagation(); openBuilder()" 
-      class="add-row-filter-btn" 
-      [disabled]="!activeMeasureTable()"
-    >
-      + Add Condition
-    </button>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button 
+        (click)="$event.stopPropagation(); openBuilder()" 
+        class="add-row-filter-btn" 
+        [disabled]="!activeMeasureTable() || isRawMode()"
+      >
+        + Add Condition
+      </button>
+      @if (!isRawMode() && rowFilters().length === 0) {
+        <button (click)="switchToRawMode()" class="switch-mode-btn">
+          + Custom SQL
+        </button>
+      }
+    </div>
   }
 </div>

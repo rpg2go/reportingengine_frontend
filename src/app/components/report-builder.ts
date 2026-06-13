@@ -1148,24 +1148,16 @@ export interface FieldGroup {
                       <td class="col-conditions filter-td">
                         @if (row.rowType === 'data') {
                           <div class="row-filter-wrapper">
-                            <!-- Legacy filter badge (backward compat) -->
-                            @if (row.legacyFilterExpr) {
-                              <div
-                                class="legacy-filter-badge"
-                                title="Legacy SQL filter — add structured conditions above to replace"
-                              >
-                                <span class="legacy-icon">⚠️</span>
-                                <code>{{ row.legacyFilterExpr }}</code>
-                              </div>
-                            }
-
                             <app-row-filter
                               [activeMeasureTable]="row.measureDefinition.tableName"
                               [dwhCatalog]="dwhCatalogCache()"
                               [linkedDimensions]="linkedDimensions"
                               [columnTypes]="columnTypesCache"
                               [rowFilters]="row.rowFilters"
+                              [(legacyFilterExpr)]="row.legacyFilterExpr"
+                              [(isRawMode)]="row.isFilterRawMode"
                               (onChange)="row.rowFilters = $event; triggerValidationDebounced()"
+                              (legacyFilterExprChange)="triggerValidationDebounced()"
                             >
                             </app-row-filter>
                           </div>
@@ -5495,7 +5487,7 @@ export class ReportBuilderComponent implements OnInit {
     // Rows — parse measure + rowFilters
     this.rows = (data.rows || []).map((r: any) => {
       const measure = this.parseMeasure(r.source);
-      const { rowFilters, legacyFilterExpr } = this.parseRowFilterExpr(r.filterExpr || '');
+      const { rowFilters, legacyFilterExpr, isFilterRawMode } = this.parseRowFilterExpr(r.filterExpr || '');
       rowFilters.forEach((f) => (f.operator = this.normalizeFilterOperator(f.operator)));
 
       let sourceStr = '';
@@ -5524,6 +5516,7 @@ export class ReportBuilderComponent implements OnInit {
         // Row filters
         rowFilters,
         legacyFilterExpr,
+        isFilterRawMode,
       };
       return this.initRowSignals(row);
     });
@@ -5714,6 +5707,7 @@ export class ReportBuilderComponent implements OnInit {
       customSqlMode: false,
       rowFilters: measure?.filters || [],
       legacyFilterExpr: '',
+      isFilterRawMode: false,
     };
     return this.initRowSignals(row);
   }
@@ -6469,6 +6463,7 @@ export class ReportBuilderComponent implements OnInit {
   private parseRowFilterExpr(filterExpr: string): {
     rowFilters: RowFilterCondition[];
     legacyFilterExpr: string;
+    isFilterRawMode: boolean;
   } {
     return parseRowFilterExpr(filterExpr);
   }

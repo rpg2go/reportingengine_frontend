@@ -128,6 +128,7 @@ describe('Report Parser Utilities', () => {
       expect(result.rowFilters).toHaveLength(1);
       expect(result.rowFilters[0].attribute).toBe('name');
       expect(result.legacyFilterExpr).toBe('');
+      expect(result.isFilterRawMode).toBe(false);
     });
 
     it('should treat invalid JSON as legacy filter expressions', () => {
@@ -135,10 +136,11 @@ describe('Report Parser Utilities', () => {
       const result = parseRowFilterExpr(legacy);
       expect(result.rowFilters).toHaveLength(0);
       expect(result.legacyFilterExpr).toBe(legacy);
+      expect(result.isFilterRawMode).toBe(true);
     });
 
     it('should return empty values for empty strings', () => {
-      expect(parseRowFilterExpr('')).toEqual({ rowFilters: [], legacyFilterExpr: '' });
+      expect(parseRowFilterExpr('')).toEqual({ rowFilters: [], legacyFilterExpr: '', isFilterRawMode: false });
     });
   });
 
@@ -147,12 +149,23 @@ describe('Report Parser Utilities', () => {
       expect(serializeRowFilters({ rowType: 'section' })).toBe('');
     });
 
-    it('should serialize rowFilters if present', () => {
+    it('should serialize rowFilters if present and isFilterRawMode is false', () => {
       const row = {
         rowType: 'data',
+        isFilterRawMode: false,
         rowFilters: [{ dimTable: 'dim_rm', attribute: 'name', operator: '=', value: 'John' }]
       };
       expect(serializeRowFilters(row)).toBe(JSON.stringify(row.rowFilters));
+    });
+
+    it('should serialize legacyFilterExpr if isFilterRawMode is true even if rowFilters is not empty', () => {
+      const row = {
+        rowType: 'data',
+        isFilterRawMode: true,
+        rowFilters: [{ dimTable: 'dim_rm', attribute: 'name', operator: '=', value: 'John' }],
+        legacyFilterExpr: 'dim_rm.name = \'John\''
+      };
+      expect(serializeRowFilters(row)).toBe('dim_rm.name = \'John\'');
     });
 
     it('should return legacy expression if rowFilters is empty', () => {
