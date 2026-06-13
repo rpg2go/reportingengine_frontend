@@ -896,4 +896,23 @@ describe('ReportBuilderComponent', () => {
       '40px 80px 350px 320px 140px 360px 240px 200px 50px',
     );
   });
+
+  it('should validate list values for numeric and other types correctly', () => {
+    createComponent({ id: 'new' });
+
+    // Single int
+    expect(component.validateFilterValue('integer', '1')).toBe(true);
+    expect(component.validateFilterValue('integer', 'abc')).toBe(false);
+
+    // List of ints
+    expect(component.validateFilterValue('integer', '1, 2, 5, 6')).toBe(true);
+    expect(component.validateFilterValue('integer', '1, 2, 5, abc')).toBe(false);
+
+    // Quoted list of ints
+    expect(component.validateFilterValue('integer', "'1', '2', '5', '6'")).toBe(true);
+
+    // Decimal list
+    expect(component.validateFilterValue('numeric', '1.2, 3.4, 5.0')).toBe(true);
+    expect(component.validateFilterValue('numeric', '1.2, abc')).toBe(false);
+  });
 });

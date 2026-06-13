@@ -6123,8 +6123,26 @@ export class ReportBuilderComponent implements OnInit {
   validateFilterValue(type: string, value: string): boolean {
     if (!type) return true;
     const lowerType = type.toLowerCase();
-    const trimmed = value.trim();
+    
+    if (value.includes(',')) {
+      const parts = value.split(',').map(p => p.trim());
+      return parts.every(part => {
+        let cleanPart = part;
+        if (cleanPart.startsWith("'") && cleanPart.endsWith("'") && cleanPart.length >= 2) {
+          cleanPart = cleanPart.substring(1, cleanPart.length - 1);
+        }
+        return this.validateSingleFilterValue(lowerType, cleanPart);
+      });
+    }
 
+    let cleanVal = value.trim();
+    if (cleanVal.startsWith("'") && cleanVal.endsWith("'") && cleanVal.length >= 2) {
+      cleanVal = cleanVal.substring(1, cleanVal.length - 1);
+    }
+    return this.validateSingleFilterValue(lowerType, cleanVal);
+  }
+
+  private validateSingleFilterValue(lowerType: string, trimmed: string): boolean {
     if (lowerType.includes('int') && !lowerType.includes('interval')) {
       return /^[+-]?\d+$/.test(trimmed);
     }
