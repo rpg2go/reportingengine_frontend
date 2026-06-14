@@ -574,8 +574,8 @@ describe('ReportBuilderComponent', () => {
     const prf = component['parseRowFilterExpr'](
       '[{"dimTable":"","attribute":"age","operator":"=","value":"25"}]',
     );
-    expect(prf.rowFilters.length).toBe(1);
-    expect(prf.rowFilters[0].attribute).toBe('age');
+    expect(prf.rowFilters.rules.length).toBe(1);
+    expect(prf.rowFilters.rules[0].columnName).toBe('age');
 
     // serializeMeasure
     const sm = component['serializeMeasure']({

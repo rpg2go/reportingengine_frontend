@@ -82,19 +82,55 @@ export function serializeMeasure(row: any): any {
   }
 }
 
-export function parseRowFilterExpr(filterExpr: string): { rowFilters: RowFilterCondition[]; legacyFilterExpr: string; isFilterRawMode: boolean } {
-  if (!filterExpr) return { rowFilters: [], legacyFilterExpr: '', isFilterRawMode: false };
+export function parseRowFilterExpr(filterExpr: string): { rowFilters: any; legacyFilterExpr: string; isFilterRawMode: boolean } {
+  if (!filterExpr) return { rowFilters: null, legacyFilterExpr: '', isFilterRawMode: false };
   try {
     const parsed = JSON.parse(filterExpr);
-    if (Array.isArray(parsed)) return { rowFilters: parsed, legacyFilterExpr: '', isFilterRawMode: false };
+    if (Array.isArray(parsed)) {
+      const rules = parsed.map((cond: any) => ({
+        tableName: cond.dimTable || '',
+        columnName: cond.attribute || '',
+        operator: mapLegacyOperator(cond.operator),
+        value: cond.value ? cond.value.toString().split(',').map((s: string) => s.trim()) : []
+      }));
+      const rootGroup = {
+        id: 'root',
+        logicalOperator: parsed.length > 0 && parsed[0].conjunction ? parsed[0].conjunction : 'AND',
+        rules: rules,
+        childGroups: []
+      };
+      return { rowFilters: rootGroup, legacyFilterExpr: '', isFilterRawMode: false };
+    } else if (parsed && typeof parsed === 'object') {
+      return { rowFilters: parsed, legacyFilterExpr: '', isFilterRawMode: false };
+    }
   } catch { /* not JSON */ }
-  return { rowFilters: [], legacyFilterExpr: filterExpr, isFilterRawMode: true };
+  return { rowFilters: null, legacyFilterExpr: filterExpr, isFilterRawMode: true };
+}
+
+function mapLegacyOperator(op: string): string {
+  if (!op) return 'is';
+  const clean = op.trim().toLowerCase();
+  if (clean === '=' || clean === 'is') return 'is';
+  if (clean === 'in') return 'in list';
+  if (clean === 'not in') return 'not in list';
+  return op;
 }
 
 export function serializeRowFilters(row: any): string {
   if (row.rowType !== 'data') return '';
   if (row.isFilterRawMode) return row.legacyFilterExpr || '';
-  if (row.rowFilters && row.rowFilters.length > 0) return JSON.stringify(row.rowFilters);
+  if (row.rowFilters) {
+    if (Array.isArray(row.rowFilters)) {
+      if (row.rowFilters.length > 0) {
+        return JSON.stringify(row.rowFilters);
+      }
+    } else {
+      const rootGroup = row.rowFilters;
+      if ((rootGroup.rules && rootGroup.rules.length > 0) || (rootGroup.childGroups && rootGroup.childGroups.length > 0)) {
+        return JSON.stringify(rootGroup);
+      }
+    }
+  }
   return row.legacyFilterExpr || '';
 }
 

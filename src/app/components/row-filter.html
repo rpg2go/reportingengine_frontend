@@ -1,9 +1,9 @@
 <div class="row-filter-wrapper">
-  <!-- Structured filter chips or Raw SQL editor -->
+  <!-- Structured filter summary or Raw SQL editor -->
   <div class="filter-chips-mini">
     @if (isRawMode()) {
       <div class="raw-expression-display" (click)="$event.stopPropagation()">
-        <span class="raw-expression-badge">SQL</span>
+        <span class="raw-expression-badge font-mono">SQL</span>
         <input 
           type="text" 
           [ngModel]="legacyFilterExpr()" 
@@ -16,30 +16,19 @@
         </button>
       </div>
     } @else {
-      @for (f of rowFilters(); track $index; let fi = $index) {
-        <span class="filter-tag-mini" [class.invalid-filter-tag]="isFilterValueInvalid(f)">
-          @if (f.dimTable) {
-            <span class="ft-dim">{{ f.dimTable }}.</span>
-          }
-          <span class="ft-attr">{{ f.attribute }}</span>
-          <span class="ft-op">{{ getOperatorLabel(f.operator) }}</span>
-          <span class="ft-val">{{ f.value }}</span>
-          <button (click)="removeFilter(fi, $event)" class="ft-remove" aria-label="Remove filter condition">✕</button>
+      @if (rowFilters()) {
+        <span 
+          class="filter-tag-mini cursor-pointer truncate max-w-[280px] font-mono text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-0.5" 
+          [title]="getFilterStringSummary(rowFilters())"
+          (click)="$event.stopPropagation(); openBuilder()"
+        >
+          {{ getFilterStringSummary(rowFilters()) }}
         </span>
-        @if (fi < rowFilters().length - 1) {
-          <span class="conjunction-badge">
-            <select 
-              [ngModel]="f.conjunction || 'AND'" 
-              (ngModelChange)="onConjunctionChange(fi, $event)"
-              class="conjunction-select"
-            >
-              <option value="AND">AND</option>
-              <option value="OR">OR</option>
-            </select>
-          </span>
-        }
+      } @else {
+        <span class="text-xs text-slate-400 italic">No filters</span>
       }
-      @if (rowFilters().length > 0) {
+      
+      @if (rowFilters()) {
         <button (click)="switchToRawMode()" class="switch-mode-btn" title="Convert to Custom SQL">
           SQL Mode
         </button>
@@ -49,81 +38,27 @@
 
   @if (isOpen()) {
     <div class="row-filter-builder" (click)="$event.stopPropagation()">
-      <div class="rfb-fields-grid">
-        <!-- Table selector -->
-        <div class="rfb-label-row">
-          <label for="rfb-table-comp-select">Filter Table</label>
-          <select
-            id="rfb-table-comp-select"
-            [ngModel]="pendingFilter().dimTable"
-            (ngModelChange)="pendingFilter.set({ ...pendingFilter(), dimTable: $event }); onTableChange()"
-            class="form-select"
-          >
-            @if (activeMeasureTable()) {
-              <option [value]="''">{{ activeMeasureTable().replace('analytics.', '') }} (Fact)</option>
-            } @else {
-              <option value="">Fact Table</option>
-            }
-            @for (dim of linkedDimensions(); track dim) {
-              <option [value]="dim">{{ dim }}</option>
-            }
-          </select>
-        </div>
+      <div class="text-xs font-semibold text-slate-800 mb-2 border-b border-slate-200 pb-1.5 flex justify-between items-center">
+        <span>Query Filter Builder</span>
+        <span class="text-[10px] text-slate-400 font-normal">Nested parenthetical builder</span>
+      </div>
 
-        <!-- Column selector -->
-        <div class="rfb-label-row">
-          <label for="rfb-attr-comp-select">Column</label>
-          <select
-            id="rfb-attr-comp-select"
-            [ngModel]="pendingFilter().attribute"
-            (ngModelChange)="pendingFilter.set({ ...pendingFilter(), attribute: $event }); onAttrChange()"
-            class="form-select"
-          >
-            <option value="">-- column --</option>
-            @for (col of availableColumns(); track col) {
-              <option [value]="col">{{ col }}</option>
-            }
-          </select>
-        </div>
-
-        <!-- Operator -->
-        <div class="rfb-label-row">
-          <label for="rfb-op-comp-select">Operator</label>
-          <select
-            id="rfb-op-comp-select"
-            [ngModel]="pendingFilter().operator"
-            (ngModelChange)="pendingFilter.set({ ...pendingFilter(), operator: $event })"
-            class="form-select"
-          >
-            @for (op of operators; track op.value) {
-              <option [value]="op.value">{{ op.label }}</option>
-            }
-          </select>
-        </div>
-
-        <!-- Value selection using custom combobox -->
-        <div class="rfb-label-row">
-          <label>Value</label>
-          <app-value-picker
-            [availableValues]="pendingFilterValues()"
-            [selectedValues]="pendingFilterValuesSelected()"
-            (selectedValuesChange)="onSelectedValuesChange($event)"
-            [placeholder]="'Select values...'"
-            [class.invalid-input]="isFilterValueInvalid(pendingFilter())"
-            [title]="isFilterValueInvalid(pendingFilter()) ? 'Value does not match the column type' : ''"
-          ></app-value-picker>
-        </div>
+      <div class="max-h-[380px] overflow-y-auto pr-1">
+        @if (rowFilters()) {
+          <app-row-condition-group
+            [group]="rowFilters()!"
+            [parentGroup]="null"
+            [activeMeasureTable]="activeMeasureTable()"
+            [dwhCatalog]="dwhCatalog()"
+            [linkedDimensions]="linkedDimensions()"
+            [columnTypes]="columnTypes()"
+            (groupChanged)="onGroupChanged()"
+          ></app-row-condition-group>
+        }
       </div>
 
       <div class="rfb-actions">
-        <button 
-          (click)="confirmFilter()" 
-          [disabled]="!pendingFilter().attribute" 
-          class="rfb-confirm-btn"
-        >
-          ✓ Add Condition
-        </button>
-        <button (click)="close()" class="rfb-cancel-btn">Cancel</button>
+        <button (click)="close()" class="rfb-confirm-btn">✓ Save & Close</button>
       </div>
     </div>
   } @else {
@@ -133,9 +68,9 @@
         class="add-row-filter-btn" 
         [disabled]="!activeMeasureTable() || isRawMode()"
       >
-        + Add Condition
+        + Edit Filters
       </button>
-      @if (!isRawMode() && rowFilters().length === 0) {
+      @if (!isRawMode() && !rowFilters()) {
         <button (click)="switchToRawMode()" class="switch-mode-btn">
           + Custom SQL
         </button>

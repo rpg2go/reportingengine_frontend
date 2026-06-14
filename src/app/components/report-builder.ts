@@ -5488,7 +5488,24 @@ export class ReportBuilderComponent implements OnInit {
     this.rows = (data.rows || []).map((r: any) => {
       const measure = this.parseMeasure(r.source);
       const { rowFilters, legacyFilterExpr, isFilterRawMode } = this.parseRowFilterExpr(r.filterExpr || '');
-      rowFilters.forEach((f) => (f.operator = this.normalizeFilterOperator(f.operator)));
+      const normalizeGroupOperators = (group: any) => {
+        if (!group) return;
+        if (Array.isArray(group)) {
+          group.forEach((f) => (f.operator = this.normalizeFilterOperator(f.operator)));
+          return;
+        }
+        if (group.rules) {
+          group.rules.forEach((rule: any) => {
+            rule.operator = this.normalizeFilterOperator(rule.operator);
+          });
+        }
+        if (group.childGroups) {
+          group.childGroups.forEach((child: any) => {
+            normalizeGroupOperators(child);
+          });
+        }
+      };
+      normalizeGroupOperators(rowFilters);
 
       let sourceStr = '';
       if (typeof r.source === 'string') {
@@ -6550,7 +6567,7 @@ export class ReportBuilderComponent implements OnInit {
         rowId: `R${this.rows.length + 1}`,
         label: `${sr.label} (Copy)`,
         selected: false,
-        rowFilters: [...(sr.rowFilters || [])],
+        rowFilters: sr.rowFilters ? JSON.parse(JSON.stringify(sr.rowFilters)) : null,
       };
       this.rows.push(this.initRowSignals(copied));
     });
@@ -6770,16 +6787,33 @@ export class ReportBuilderComponent implements OnInit {
     // Validate row filters
     for (const row of this.rows) {
       if (row.rowFilters) {
-        for (const filter of row.rowFilters) {
-          if (filter.attribute && filter.value && filter.value.trim() !== '') {
-            const table = filter.dimTable || row.sourceTable;
+        const collectRules = (group: any): any[] => {
+          if (!group) return [];
+          if (Array.isArray(group)) return group;
+          let rules = group.rules ? [...group.rules] : [];
+          if (group.childGroups) {
+            for (const child of group.childGroups) {
+              rules = rules.concat(collectRules(child));
+            }
+          }
+          return rules;
+        };
+
+        const flatRules = collectRules(row.rowFilters);
+        for (const rule of flatRules) {
+          const colName = rule.columnName || rule.attribute;
+          const tableName = rule.tableName !== undefined ? rule.tableName : rule.dimTable;
+          const valStr = rule.value ? (Array.isArray(rule.value) ? rule.value.join(', ') : rule.value.toString()) : '';
+
+          if (colName && valStr && valStr.trim() !== '') {
+            const table = tableName || row.sourceTable;
             if (table) {
               const colTypes = this.columnTypesCache[table];
               if (colTypes) {
-                const type = colTypes[filter.attribute];
-                if (type && !this.validateFilterValue(type, filter.value)) {
+                const type = colTypes[colName];
+                if (type && !this.validateFilterValue(type, valStr)) {
                   this.errorMessage.set(
-                    `Validation failed: Value "${filter.value}" is not valid for column "${filter.attribute}" of type "${type}" in row "${row.label || row.rowId}".`,
+                    `Validation failed: Value "${valStr}" is not valid for column "${colName}" of type "${type}" in row "${row.label || row.rowId}".`,
                   );
                   return;
                 }

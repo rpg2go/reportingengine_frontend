@@ -1,0 +1,146 @@
+<div 
+  class="p-3 bg-slate-50/50 border border-slate-200/60 rounded-xl my-1.5 shadow-sm"
+  [class.border-l-2]="true"
+  [class.border-l-indigo-500]="group().logicalOperator === 'AND'"
+  [class.border-l-amber-500]="group().logicalOperator === 'OR'"
+>
+  <!-- Minimal Header Toolbar Row -->
+  <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/40">
+    <!-- AND / OR Toggle Choices -->
+    <div class="inline-flex rounded-lg p-0.5 bg-slate-200/60 text-xs font-semibold">
+      <button 
+        type="button"
+        (click)="setOperator('AND')"
+        class="px-2 py-0.5 rounded-md transition-all duration-150 cursor-pointer"
+        [class.bg-white]="group().logicalOperator === 'AND'"
+        [class.text-indigo-600]="group().logicalOperator === 'AND'"
+        [class.shadow-sm]="group().logicalOperator === 'AND'"
+        [class.text-slate-500]="group().logicalOperator !== 'AND'"
+      >
+        AND
+      </button>
+      <button 
+        type="button"
+        (click)="setOperator('OR')"
+        class="px-2 py-0.5 rounded-md transition-all duration-150 cursor-pointer"
+        [class.bg-white]="group().logicalOperator === 'OR'"
+        [class.text-amber-600]="group().logicalOperator === 'OR'"
+        [class.shadow-sm]="group().logicalOperator === 'OR'"
+        [class.text-slate-500]="group().logicalOperator !== 'OR'"
+      >
+        OR
+      </button>
+    </div>
+
+    <!-- Right-aligned Actions -->
+    <div class="flex items-center gap-3 text-xs">
+      <button 
+        type="button" 
+        (click)="addCondition()"
+        class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors cursor-pointer"
+      >
+        + Condition
+      </button>
+      <button 
+        type="button" 
+        (click)="addSubGroup()"
+        class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors cursor-pointer"
+      >
+        + Sub-Group
+      </button>
+      @if (parentGroup()) {
+        <button 
+          type="button" 
+          (click)="removeSelf()"
+          class="text-slate-400 hover:text-red-500 font-medium transition-colors cursor-pointer"
+        >
+          ✕ Remove
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Rules List -->
+  @if (group().rules && group().rules.length > 0) {
+    <div class="flex flex-col gap-2 mb-2">
+      @for (rule of group().rules; track $index; let ri = $index) {
+        <div class="flex flex-wrap items-center gap-2 py-1.5 border-b border-slate-100 last:border-0">
+          <!-- Table Selection -->
+          <select 
+            [(ngModel)]="rule.tableName" 
+            (change)="onTableChange(rule)"
+            class="text-xs bg-white border border-slate-200 rounded px-2 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option [value]="''">{{ activeMeasureTable().replace('analytics.', '') }} (Fact)</option>
+            @for (dim of linkedDimensions(); track dim) {
+              <option [value]="dim">{{ dim }}</option>
+            }
+          </select>
+
+          <!-- Column Selection -->
+          <select 
+            [(ngModel)]="rule.columnName" 
+            (change)="onColumnChange(rule)"
+            class="text-xs bg-white border border-slate-200 rounded px-2 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="">-- column --</option>
+            @for (col of getAvailableColumns(rule.tableName); track col) {
+              <option [value]="col">{{ col }}</option>
+            }
+          </select>
+
+          <!-- Operator Selection -->
+          <select 
+            [(ngModel)]="rule.operator" 
+            (change)="onRuleChange(); onOperatorChange(rule)"
+            class="text-xs bg-white border border-slate-200 rounded px-2 py-1 max-w-[150px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            @for (op of operators; track op.value) {
+              <option [value]="op.value">{{ op.label }}</option>
+            }
+          </select>
+
+          <!-- Value Picker -->
+          @if (rule.requiresValueField) {
+            <div class="flex-grow min-w-[180px]">
+              <app-value-picker
+                [availableValues]="getRuleDistinctValues(rule)"
+                [selectedValues]="rule.value"
+                (selectedValuesChange)="onRuleValuesChange(rule, $event)"
+                [placeholder]="'Select values...'"
+              ></app-value-picker>
+            </div>
+          }
+
+          <!-- Remove Rule Button -->
+          <button 
+            type="button"
+            (click)="removeRule(ri)" 
+            class="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+            title="Remove Condition"
+          >
+            ✕
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Nested Child Groups (Recursive) -->
+  @if (group().childGroups && group().childGroups.length > 0) {
+    <div class="pl-4 border-l border-slate-200/50 flex flex-col gap-2 mt-2">
+      @for (child of group().childGroups; track child.id) {
+        <app-row-condition-group
+          [group]="child"
+          [parentGroup]="group()"
+          [activeMeasureTable]="activeMeasureTable()"
+          [dwhCatalog]="dwhCatalog()"
+          [linkedDimensions]="linkedDimensions()"
+          [columnTypes]="columnTypes()"
+          (removeGroup)="onRemoveChildGroup($event)"
+          (groupChanged)="onChildGroupChanged()"
+        ></app-row-condition-group>
+      }
+    </div>
+  }
+</div>

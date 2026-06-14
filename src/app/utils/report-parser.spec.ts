@@ -122,11 +122,11 @@ describe('Report Parser Utilities', () => {
   });
 
   describe('parseRowFilterExpr', () => {
-    it('should parse valid JSON arrays as rowFilters', () => {
+    it('should parse valid JSON arrays as rowFilters group', () => {
       const json = '[{"dimTable":"dim_rm","attribute":"name","operator":"=","value":"John"}]';
       const result = parseRowFilterExpr(json);
-      expect(result.rowFilters).toHaveLength(1);
-      expect(result.rowFilters[0].attribute).toBe('name');
+      expect(result.rowFilters.rules).toHaveLength(1);
+      expect(result.rowFilters.rules[0].columnName).toBe('name');
       expect(result.legacyFilterExpr).toBe('');
       expect(result.isFilterRawMode).toBe(false);
     });
@@ -134,13 +134,13 @@ describe('Report Parser Utilities', () => {
     it('should treat invalid JSON as legacy filter expressions', () => {
       const legacy = 'dim_rm.name = \'John\'';
       const result = parseRowFilterExpr(legacy);
-      expect(result.rowFilters).toHaveLength(0);
+      expect(result.rowFilters).toBeNull();
       expect(result.legacyFilterExpr).toBe(legacy);
       expect(result.isFilterRawMode).toBe(true);
     });
 
-    it('should return empty values for empty strings', () => {
-      expect(parseRowFilterExpr('')).toEqual({ rowFilters: [], legacyFilterExpr: '', isFilterRawMode: false });
+    it('should return null for empty strings', () => {
+      expect(parseRowFilterExpr('')).toEqual({ rowFilters: null, legacyFilterExpr: '', isFilterRawMode: false });
     });
   });
 

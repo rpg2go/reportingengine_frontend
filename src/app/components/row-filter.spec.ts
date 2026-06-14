@@ -42,11 +42,16 @@ describe('RowFilterComponent', () => {
     expect(component.isOpen()).toBe(false);
   });
 
-  it('should open builder and set pendingFilter if activeMeasureTable is provided', () => {
+  it('should open builder and set rowFilters if activeMeasureTable is provided', () => {
     vi.spyOn(component, 'activeMeasureTable').mockReturnValue('analytics.fact_sales');
     component.openBuilder();
     expect(component.isOpen()).toBe(true);
-    expect(component.pendingFilter()).toEqual({ dimTable: '', attribute: '', operator: '=', value: '' });
+    expect(component.rowFilters()).toEqual({
+      id: 'root',
+      logicalOperator: 'AND',
+      rules: [],
+      childGroups: []
+    });
   });
 
   it('should close builder', () => {
@@ -104,79 +109,84 @@ describe('RowFilterComponent', () => {
   });
 
   it('should switch to raw mode and compile existing filters to SQL', () => {
-    vi.spyOn(component, 'rowFilters').mockReturnValue([
-      { dimTable: 'dim_cust', attribute: 'segment', operator: '=', value: 'Retail', conjunction: 'AND' },
-      { dimTable: '', attribute: 'amount', operator: '>', value: '100', conjunction: 'OR' }
-    ]);
+    const filters = {
+      id: 'root',
+      logicalOperator: 'AND',
+      rules: [
+        { tableName: 'dim_cust', columnName: 'segment', operator: 'is', value: ['Retail'] }
+      ],
+      childGroups: [
+        {
+          id: 'child1',
+          logicalOperator: 'OR',
+          rules: [
+            { tableName: '', columnName: 'amount', operator: 'in list', value: ['100', '200'] }
+          ],
+          childGroups: []
+        }
+      ]
+    };
+    component.rowFilters.set(filters);
     vi.spyOn(component, 'activeMeasureTable').mockReturnValue('fact_sales');
-    vi.spyOn(component, 'columnTypes').mockReturnValue({
-      'dim_cust': { 'segment': 'varchar' },
-      'fact_sales': { 'amount': 'decimal' }
-    });
-
-    let emittedFilters: any[] | undefined;
-    component.onChange.subscribe(filters => emittedFilters = filters);
 
     component.switchToRawMode();
 
     expect(component.isRawMode()).toBe(true);
-    expect(component.legacyFilterExpr()).toBe("(dim_cust.segment = 'Retail') AND (amount > 100)");
-    expect(emittedFilters).toBeUndefined();
+    expect(component.legacyFilterExpr()).toBe("((dim_cust.segment = 'Retail') AND (amount IN ('100', '200')))");
   });
 
   it('should switch to structured mode', () => {
     component.isRawMode.set(true);
     component.legacyFilterExpr.set('(amount > 100)');
     
-    let emittedFilters: any[] | undefined;
-    component.onChange.subscribe(filters => emittedFilters = filters);
-
     component.switchToStructuredMode();
 
     expect(component.isRawMode()).toBe(false);
     expect(component.legacyFilterExpr()).toBe('(amount > 100)');
-    expect(emittedFilters).toBeUndefined();
   });
 
   it('should handle raw expression change', () => {
-    let emittedFilters: any[] | undefined;
-    component.onChange.subscribe(filters => emittedFilters = filters);
-
     component.onRawExpressionChange('c = 4');
-
     expect(component.legacyFilterExpr()).toBe('c = 4');
-    expect(emittedFilters).toBeUndefined();
   });
 
-  it('should handle conjunction change', () => {
-    vi.spyOn(component, 'rowFilters').mockReturnValue([
-      { dimTable: '', attribute: 'amount', operator: '>', value: '100', conjunction: 'AND' },
-      { dimTable: '', attribute: 'status', operator: '=', value: 'ACTIVE' }
-    ]);
-
-    let emittedFilters: any[] | undefined;
-    component.onChange.subscribe(filters => emittedFilters = filters);
-
-    component.onConjunctionChange(0, 'OR');
-
-    expect(emittedFilters).toEqual([
-      { dimTable: '', attribute: 'amount', operator: '>', value: '100', conjunction: 'OR' },
-      { dimTable: '', attribute: 'status', operator: '=', value: 'ACTIVE' }
-    ]);
-  });
-
-  it('should compile IN operators correctly with parentheses and individual quotes for lists', () => {
-    vi.spyOn(component, 'rowFilters').mockReturnValue([
-      { dimTable: '', attribute: 'ticker_symbol', operator: 'IN', value: 'AMZN, GOOGL', conjunction: 'AND' },
-      { dimTable: '', attribute: 'hier_id', operator: 'IN', value: '1, 2, 3' }
-    ]);
+  it('should compile not in list operators correctly', () => {
+    const filters = {
+      id: 'root',
+      logicalOperator: 'AND',
+      rules: [
+        { tableName: '', columnName: 'ticker_symbol', operator: 'not in list', value: ['AMZN', 'GOOGL'] }
+      ],
+      childGroups: []
+    };
+    component.rowFilters.set(filters);
     vi.spyOn(component, 'activeMeasureTable').mockReturnValue('fact_investments');
-    vi.spyOn(component, 'columnTypes').mockReturnValue({
-      'fact_investments': { 'ticker_symbol': 'varchar', 'hier_id': 'integer' }
-    });
 
     component.switchToRawMode();
 
-    expect(component.legacyFilterExpr()).toBe("(ticker_symbol IN ('AMZN', 'GOOGL')) AND (hier_id IN (1, 2, 3))");
+    expect(component.legacyFilterExpr()).toBe("(ticker_symbol NOT IN ('AMZN', 'GOOGL'))");
+  });
+
+  it('should generate a correct filter summary string', () => {
+    const filters = {
+      id: 'root',
+      logicalOperator: 'OR',
+      rules: [
+        { tableName: 'dim_cust', columnName: 'segment', operator: 'is', value: ['Retail'] }
+      ],
+      childGroups: [
+        {
+          id: 'child1',
+          logicalOperator: 'AND',
+          rules: [
+            { tableName: '', columnName: 'amount', operator: 'not in list', value: ['100'] }
+          ],
+          childGroups: []
+        }
+      ]
+    };
+
+    const summary = component.getFilterStringSummary(filters);
+    expect(summary).toBe("(dim_cust.segment = 'Retail' OR (amount not in list '100'))");
   });
 });
