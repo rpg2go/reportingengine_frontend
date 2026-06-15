@@ -1,17 +1,25 @@
 <div 
-  class="p-3 bg-slate-50/50 border border-slate-200/60 rounded-xl my-1.5 shadow-sm"
-  [class.border-l-2]="true"
-  [class.border-l-indigo-500]="group().logicalOperator === 'AND'"
-  [class.border-l-amber-500]="group().logicalOperator === 'OR'"
+  class="relative p-4 border bg-white shadow-sm rounded-xl my-2 border-l-4 pl-7 transition-all duration-200"
+  [class.border-l-indigo-600]="depth() % 4 === 0"
+  [class.border-l-emerald-600]="depth() % 4 === 1"
+  [class.border-l-amber-500]="depth() % 4 === 2"
+  [class.border-l-rose-500]="depth() % 4 === 3"
 >
+  <!-- Opening Parenthesis Marker -->
+  <span 
+    class="absolute left-2 top-3 text-sm font-black select-none pointer-events-none"
+    [ngClass]="getDepthColorClass(depth())"
+  >
+    (
+  </span>
   <!-- Minimal Header Toolbar Row -->
-  <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/40">
+  <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
     <!-- AND / OR Toggle Choices -->
-    <div class="inline-flex rounded-lg p-0.5 bg-slate-200/60 text-xs font-semibold">
+    <div class="inline-flex rounded-lg p-0.5 bg-slate-100 text-xs font-semibold border border-slate-200/50">
       <button 
         type="button"
         (click)="setOperator('AND')"
-        class="px-2 py-0.5 rounded-md transition-all duration-150 cursor-pointer"
+        class="px-3 py-1 rounded-md transition-all duration-150 cursor-pointer"
         [class.bg-white]="group().logicalOperator === 'AND'"
         [class.text-indigo-600]="group().logicalOperator === 'AND'"
         [class.shadow-sm]="group().logicalOperator === 'AND'"
@@ -22,7 +30,7 @@
       <button 
         type="button"
         (click)="setOperator('OR')"
-        class="px-2 py-0.5 rounded-md transition-all duration-150 cursor-pointer"
+        class="px-3 py-1 rounded-md transition-all duration-150 cursor-pointer"
         [class.bg-white]="group().logicalOperator === 'OR'"
         [class.text-amber-600]="group().logicalOperator === 'OR'"
         [class.shadow-sm]="group().logicalOperator === 'OR'"
@@ -33,28 +41,28 @@
     </div>
 
     <!-- Right-aligned Actions -->
-    <div class="flex items-center gap-3 text-xs">
+    <div class="flex items-center gap-4 text-xs">
       <button 
         type="button" 
         (click)="addCondition()"
-        class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors cursor-pointer"
+        class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
       >
-        + Condition
+        <span class="text-sm">+</span> Condition
       </button>
       <button 
         type="button" 
         (click)="addSubGroup()"
-        class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors cursor-pointer"
+        class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
       >
-        + Sub-Group
+        <span class="text-sm">+</span> Sub-Group
       </button>
       @if (parentGroup()) {
         <button 
           type="button" 
           (click)="removeSelf()"
-          class="text-slate-400 hover:text-red-500 font-medium transition-colors cursor-pointer"
+          class="text-slate-400 hover:text-rose-500 font-semibold transition-colors cursor-pointer flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-md"
         >
-          ✕ Remove
+          ✕ Remove Group
         </button>
       }
     </div>
@@ -62,14 +70,14 @@
 
   <!-- Rules List -->
   @if (group().rules && group().rules.length > 0) {
-    <div class="flex flex-col gap-2 mb-2">
+    <div class="flex flex-col gap-2.5 mb-3">
       @for (rule of group().rules; track $index; let ri = $index) {
-        <div class="flex flex-wrap items-center gap-2 py-1.5 border-b border-slate-100 last:border-0">
+        <div class="flex items-center gap-2.5 bg-slate-50/60 p-2 rounded-xl border border-slate-100/50">
           <!-- Table Selection -->
           <select 
             [(ngModel)]="rule.tableName" 
             (change)="onTableChange(rule)"
-            class="text-xs bg-white border border-slate-200 rounded px-2 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option [value]="''">{{ activeMeasureTable().replace('analytics.', '') }} (Fact)</option>
             @for (dim of linkedDimensions(); track dim) {
@@ -81,7 +89,7 @@
           <select 
             [(ngModel)]="rule.columnName" 
             (change)="onColumnChange(rule)"
-            class="text-xs bg-white border border-slate-200 rounded px-2 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option value="">-- column --</option>
             @for (col of getAvailableColumns(rule.tableName); track col) {
@@ -93,7 +101,7 @@
           <select 
             [(ngModel)]="rule.operator" 
             (change)="onRuleChange(); onOperatorChange(rule)"
-            class="text-xs bg-white border border-slate-200 rounded px-2 py-1 max-w-[150px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[160px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             @for (op of operators; track op.value) {
               <option [value]="op.value">{{ op.label }}</option>
@@ -102,7 +110,7 @@
 
           <!-- Value Picker -->
           @if (rule.requiresValueField) {
-            <div class="flex-grow min-w-[180px]">
+            <div class="flex-grow min-w-[200px]">
               <app-value-picker
                 [availableValues]="getRuleDistinctValues(rule)"
                 [selectedValues]="rule.value"
@@ -116,7 +124,7 @@
           <button 
             type="button"
             (click)="removeRule(ri)" 
-            class="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+            class="ml-auto text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
             title="Remove Condition"
           >
             ✕
@@ -128,11 +136,12 @@
 
   <!-- Nested Child Groups (Recursive) -->
   @if (group().childGroups && group().childGroups.length > 0) {
-    <div class="pl-4 border-l border-slate-200/50 flex flex-col gap-2 mt-2">
+    <div class="pl-5 border-l-2 border-slate-100 flex flex-col gap-3 mt-3">
       @for (child of group().childGroups; track child.id) {
         <app-row-condition-group
           [group]="child"
           [parentGroup]="group()"
+          [depth]="depth() + 1"
           [activeMeasureTable]="activeMeasureTable()"
           [dwhCatalog]="dwhCatalog()"
           [linkedDimensions]="linkedDimensions()"
@@ -143,4 +152,12 @@
       }
     </div>
   }
+
+  <!-- Closing Parenthesis Marker -->
+  <span 
+    class="absolute right-3 bottom-3 text-sm font-black select-none pointer-events-none"
+    [ngClass]="getDepthColorClass(depth())"
+  >
+    )
+  </span>
 </div>

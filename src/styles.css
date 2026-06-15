@@ -416,3 +416,73 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Bracket Rainbow Engine & Card Utility Classes ───────────── */
+.font-mono { font-family: 'JetBrains Mono', monospace !important; }
+.font-medium { font-weight: 500 !important; }
+.font-bold { font-weight: 700 !important; }
+.font-black { font-weight: 900 !important; }
+.break-all { word-break: break-all !important; }
+.leading-relaxed { line-height: 1.625 !important; }
+.relative { position: relative !important; }
+.absolute { position: absolute !important; }
+.select-none { user-select: none !important; -webkit-user-select: none !important; }
+.pointer-events-none { pointer-events: none !important; }
+
+/* Positions */
+.left-2 { left: 0.5rem !important; }
+.right-3 { right: 0.75rem !important; }
+.top-3 { top: 0.75rem !important; }
+.bottom-3 { bottom: 0.75rem !important; }
+.text-sm { font-size: 0.875rem !important; }
+
+/* Card Layout Container Utilities */
+.p-4 { padding: 1rem !important; }
+.pl-7 { padding-left: 1.75rem !important; }
+.border { border: 1px solid var(--border-color) !important; }
+.bg-white { background-color: var(--color-apple-card) !important; }
+.shadow-sm { box-shadow: var(--shadow-card) !important; }
+.rounded-xl { border-radius: 0.75rem !important; }
+.my-2 { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+.border-l-4 { border-left-width: 4px !important; border-left-style: solid !important; }
+.transition-all { transition: all var(--transition-base) !important; }
+
+/* Text slate helper mapping */
+.text-slate-700 { color: var(--color-apple-text) !important; opacity: 0.85; }
+
+/* Default (Dark Theme) Bracket Colors */
+.text-indigo-600 { color: #818cf8 !important; }
+.text-emerald-600 { color: #34d399 !important; }
+.text-amber-500 { color: #fbbf24 !important; }
+.text-rose-500 { color: #f87171 !important; }
+
+.border-l-indigo-600 { border-left-color: #818cf8 !important; }
+.border-l-emerald-600 { border-left-color: #34d399 !important; }
+.border-l-amber-500 { border-left-color: #fbbf24 !important; }
+.border-l-rose-500 { border-left-color: #f87171 !important; }
+
+/* Light Theme overrides */
+:root.light .text-indigo-600 { color: #4f46e5 !important; }
+:root.light .text-emerald-600 { color: #059669 !important; }
+:root.light .text-amber-500 { color: #d97706 !important; }
+:root.light .text-rose-500 { color: #e11d48 !important; }
+
+:root.light .border-l-indigo-600 { border-left-color: #4f46e5 !important; }
+:root.light .border-l-emerald-600 { border-left-color: #059669 !important; }
+:root.light .border-l-amber-500 { border-left-color: #d97706 !important; }
+:root.light .border-l-rose-500 { border-left-color: #e11d48 !important; }
+
+/* ── Common Flex & Layout Utility Helpers ──────────────────── */
+.flex { display: flex !important; }
+.flex-col { flex-direction: column !important; }
+.justify-between { justify-content: space-between !important; }
+.items-center { align-items: center !important; }
+.gap-0\.5 { gap: 0.125rem !important; }
+.mb-3 { margin-bottom: 0.75rem !important; }
+.pb-2\.5 { padding-bottom: 0.625rem !important; }
+.border-b { border-bottom: 1px solid var(--border-color) !important; }
+.text-slate-900 { color: var(--color-apple-text) !important; }
+.text-slate-400 { color: var(--color-apple-grey) !important; }
+.font-sans { font-family: inherit !important; }
+.font-normal { font-weight: 400 !important; }
+.font-semibold { font-weight: 600 !important; }

@@ -2,11 +2,12 @@ import { Component, ChangeDetectionStrategy, input, output, signal, ElementRef, 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RowConditionGroupComponent, RowFilterGroup, RowFilterRule } from './row-condition-group';
+import { BracketRainbowPipe } from '../pipes/bracket-rainbow.pipe';
 
 @Component({
   selector: 'app-row-filter',
   standalone: true,
-  imports: [CommonModule, FormsModule, RowConditionGroupComponent],
+  imports: [CommonModule, FormsModule, RowConditionGroupComponent, BracketRainbowPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',

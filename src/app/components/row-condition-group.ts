@@ -36,6 +36,7 @@ export interface RowFilterGroup {
 export class RowConditionGroupComponent implements OnInit {
   group = input.required<RowFilterGroup>();
   parentGroup = input<RowFilterGroup | null>(null);
+  depth = input<number>(0);
   activeMeasureTable = input<string>('');
   dwhCatalog = input<any[]>([]);
   linkedDimensions = input<string[]>([]);
@@ -43,6 +44,16 @@ export class RowConditionGroupComponent implements OnInit {
 
   removeGroup = output<string>();
   groupChanged = output<void>();
+
+  getDepthColorClass(depth: number): string {
+    const classes = [
+      'text-indigo-600',
+      'text-emerald-600',
+      'text-amber-500',
+      'text-rose-500'
+    ];
+    return classes[depth % classes.length];
+  }
 
   private reportService = inject(ReportService);
   distinctValuesCache: { [key: string]: string[] } = {};
