@@ -264,6 +264,7 @@ export class RowFilterComponent implements OnInit {
   rowFilters = model<any>(null);
   legacyFilterExpr = model<string>('');
   isRawMode = model<boolean>(false);
+  disabled = input<boolean>(false);
   
   onChange = output<any>();
 
@@ -443,6 +444,7 @@ export class RowFilterComponent implements OnInit {
   }
 
   openBuilder() {
+    if (this.disabled()) return;
     if (!this.activeMeasureTable()) return;
     this.isOpen.set(true);
     if (!this.rowFilters()) {

@@ -4,6 +4,29 @@ This guide outlines the automated testing architecture, standards, and patterns 
 
 ---
 
+## 📋 Test Coverage Inventory
+
+| Spec File | Covers |
+|-----------|--------|
+| [login.spec.ts](src/app/components/login.spec.ts) | `LoginComponent` — credential form, auth redirect |
+| [dashboard.spec.ts](src/app/components/dashboard.spec.ts) | `DashboardComponent` — catalog load, status filter, file upload |
+| [report-builder.spec.ts](src/app/components/report-builder.spec.ts) | `ReportBuilderComponent` — column/row CRUD, lifecycle transitions, SQL preview |
+| [report-detail.spec.ts](src/app/components/report-detail.spec.ts) | `ReportDetailComponent` — config load, Excel download |
+| [execution-hub.spec.ts](src/app/components/execution-hub.spec.ts) | `ExecutionHubComponent` — report selection, execution, grid pivot, sidebar toggles |
+| [row-filter.spec.ts](src/app/components/row-filter.spec.ts) | `RowFilterComponent` — condition group builder logic |
+| [semantic.spec.ts](src/app/components/semantic.spec.ts) | `SemanticViewerComponent` — explore/join and view metadata rendering |
+| [sidebar.spec.ts](src/app/components/sidebar.spec.ts) | `SidebarComponent` — navigation state, mobile overlay toggle |
+| [value-picker.spec.ts](src/app/components/value-picker.spec.ts) | `ValuePickerComponent` — fuzzy autocomplete and selection |
+| [auth.guard.spec.ts](src/app/guards/auth.guard.spec.ts) | `authGuard` — route protection, unauthenticated redirect |
+| [auth.interceptor.spec.ts](src/app/interceptors/auth.interceptor.spec.ts) | `AuthInterceptor` — Basic Auth header injection |
+| [bracket-rainbow.pipe.spec.ts](src/app/pipes/bracket-rainbow.pipe.spec.ts) | `BracketRainbowPipe` — nested bracket colorization |
+| [auth.service.spec.ts](src/app/services/auth.service.spec.ts) | `AuthService` — session storage, credential encoding |
+| [report.service.spec.ts](src/app/services/report.service.spec.ts) | `ReportService` — HTTP method mapping, lifecycle endpoints |
+| [date-formatter.spec.ts](src/app/utils/date-formatter.spec.ts) | `DateFormatter` — date parsing, rolling sub-column expansion |
+| [report-parser.spec.ts](src/app/utils/report-parser.spec.ts) | `ReportParser` — filter/measure expression serialization |
+
+---
+
 ## 🚀 Running the Test Suite
 
 We use **Vitest** in a standard Node environment for maximum speed and execution efficiency.

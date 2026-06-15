@@ -49,11 +49,11 @@ import { SidebarComponent } from './sidebar';
               <h1 style="display: flex; align-items: center; gap: 8px;">
                 {{ report.reportId }}
                 @if (running()) {
-                  <span class="report-status-badge running">
+                  <span class="status-lozenge running font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-blue-500 text-blue-400 bg-blue-500/10">
                     <span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> Running
                   </span>
                 } @else {
-                  <span class="report-status-badge" [class]="report.status.toLowerCase()">
+                  <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [class]="report.status.toLowerCase()">
                     {{ report.status }}
                   </span>
                 }

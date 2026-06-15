@@ -18,8 +18,10 @@
     <div class="inline-flex rounded-lg p-0.5 bg-slate-100 text-xs font-semibold border border-slate-200/50">
       <button 
         type="button"
-        (click)="setOperator('AND')"
-        class="px-3 py-1 rounded-md transition-all duration-150 cursor-pointer"
+        (click)="!disabled() && setOperator('AND')"
+        [disabled]="disabled()"
+        class="px-3 py-1 rounded-md transition-all duration-150"
+        [class.cursor-pointer]="!disabled()"
         [class.bg-white]="group().logicalOperator === 'AND'"
         [class.text-indigo-600]="group().logicalOperator === 'AND'"
         [class.shadow-sm]="group().logicalOperator === 'AND'"
@@ -29,8 +31,10 @@
       </button>
       <button 
         type="button"
-        (click)="setOperator('OR')"
-        class="px-3 py-1 rounded-md transition-all duration-150 cursor-pointer"
+        (click)="!disabled() && setOperator('OR')"
+        [disabled]="disabled()"
+        class="px-3 py-1 rounded-md transition-all duration-150"
+        [class.cursor-pointer]="!disabled()"
         [class.bg-white]="group().logicalOperator === 'OR'"
         [class.text-amber-600]="group().logicalOperator === 'OR'"
         [class.shadow-sm]="group().logicalOperator === 'OR'"
@@ -41,31 +45,33 @@
     </div>
 
     <!-- Right-aligned Actions -->
-    <div class="flex items-center gap-4 text-xs">
-      <button 
-        type="button" 
-        (click)="addCondition()"
-        class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
-      >
-        <span class="text-sm">+</span> Condition
-      </button>
-      <button 
-        type="button" 
-        (click)="addSubGroup()"
-        class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
-      >
-        <span class="text-sm">+</span> Sub-Group
-      </button>
-      @if (parentGroup()) {
+    @if (!disabled()) {
+      <div class="flex items-center gap-4 text-xs">
         <button 
           type="button" 
-          (click)="removeSelf()"
-          class="text-slate-400 hover:text-rose-500 font-semibold transition-colors cursor-pointer flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-md"
+          (click)="addCondition()"
+          class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
         >
-          ✕ Remove Group
+          <span class="text-sm">+</span> Condition
         </button>
-      }
-    </div>
+        <button 
+          type="button" 
+          (click)="addSubGroup()"
+          class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
+        >
+          <span class="text-sm">+</span> Sub-Group
+        </button>
+        @if (parentGroup()) {
+          <button 
+            type="button" 
+            (click)="removeSelf()"
+            class="text-slate-400 hover:text-rose-500 font-semibold transition-colors cursor-pointer flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-md"
+          >
+            ✕ Remove Group
+          </button>
+        }
+      </div>
+    }
   </div>
 
   <!-- Rules List -->
@@ -77,6 +83,7 @@
           <select 
             [(ngModel)]="rule.tableName" 
             (change)="onTableChange(rule)"
+            [disabled]="disabled()"
             class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option [value]="''">{{ activeMeasureTable().replace('analytics.', '') }} (Fact)</option>
@@ -89,6 +96,7 @@
           <select 
             [(ngModel)]="rule.columnName" 
             (change)="onColumnChange(rule)"
+            [disabled]="disabled()"
             class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             <option value="">-- column --</option>
@@ -101,6 +109,7 @@
           <select 
             [(ngModel)]="rule.operator" 
             (change)="onRuleChange(); onOperatorChange(rule)"
+            [disabled]="disabled()"
             class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[160px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           >
             @for (op of operators; track op.value) {
@@ -116,19 +125,22 @@
                 [selectedValues]="rule.value"
                 (selectedValuesChange)="onRuleValuesChange(rule, $event)"
                 [placeholder]="'Select values...'"
+                [disabled]="disabled()"
               ></app-value-picker>
             </div>
           }
 
           <!-- Remove Rule Button -->
-          <button 
-            type="button"
-            (click)="removeRule(ri)" 
-            class="ml-auto text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
-            title="Remove Condition"
-          >
-            ✕
-          </button>
+          @if (!disabled()) {
+            <button 
+              type="button"
+              (click)="removeRule(ri)" 
+              class="ml-auto text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
+              title="Remove Condition"
+            >
+              ✕
+            </button>
+          }
         </div>
       }
     </div>
@@ -146,6 +158,7 @@
           [dwhCatalog]="dwhCatalog()"
           [linkedDimensions]="linkedDimensions()"
           [columnTypes]="columnTypes()"
+          [disabled]="disabled()"
           (removeGroup)="onRemoveChildGroup($event)"
           (groupChanged)="onChildGroupChanged()"
         ></app-row-condition-group>

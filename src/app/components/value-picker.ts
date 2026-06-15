@@ -314,6 +314,7 @@ export class ValuePickerComponent {
   availableValues = input<string[]>([]);
   selectedValues = model<string[]>([]);
   placeholder = input<string>('Select values...');
+  disabled = input<boolean>(false);
 
   isOpen = signal<boolean>(false);
   searchText = signal<string>('');
@@ -330,6 +331,7 @@ export class ValuePickerComponent {
   });
 
   toggleValueSelection(value: string) {
+    if (this.disabled()) return;
     const current = this.selectedValues() || [];
     if (current.includes(value)) {
       this.selectedValues.set(current.filter(val => val !== value));
@@ -340,6 +342,7 @@ export class ValuePickerComponent {
 
   removeValue(value: string, event: MouseEvent) {
     event.stopPropagation();
+    if (this.disabled()) return;
     const current = this.selectedValues() || [];
     this.selectedValues.set(current.filter(val => val !== value));
   }

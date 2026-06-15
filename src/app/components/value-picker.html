@@ -3,20 +3,24 @@
   <div 
     class="picker-input-housing" 
     [class.is-focused]="isOpen()" 
-    (click)="isOpen.set(!isOpen())"
+    [style.opacity]="disabled() ? '0.5' : '1'"
+    [style.cursor]="disabled() ? 'not-allowed' : 'pointer'"
+    (click)="!disabled() && isOpen.set(!isOpen())"
   >
     <div class="chips-container">
       @for (val of selectedValues(); track val) {
         <span class="value-chip" (click)="$event.stopPropagation()">
           {{ val }}
-          <button 
-            type="button" 
-            class="chip-delete-btn" 
-            (click)="removeValue(val, $event)" 
-            aria-label="Remove value"
-          >
-            ✕
-          </button>
+          @if (!disabled()) {
+            <button 
+              type="button" 
+              class="chip-delete-btn" 
+              (click)="removeValue(val, $event)" 
+              aria-label="Remove value"
+            >
+              ✕
+            </button>
+          }
         </span>
       }
       @if (!selectedValues() || selectedValues().length === 0) {

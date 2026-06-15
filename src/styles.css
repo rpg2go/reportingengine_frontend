@@ -486,3 +486,62 @@ body {
 .font-sans { font-family: inherit !important; }
 .font-normal { font-weight: 400 !important; }
 .font-semibold { font-weight: 600 !important; }
+
+/* Jira-Style State Machine Lozenge Utilities */
+.uppercase { text-transform: uppercase !important; }
+.tracking-wider { letter-spacing: 0.05em !important; }
+.text-xs { font-size: 0.75rem !important; }
+.px-2\.5 { padding-left: 0.625rem !important; padding-right: 0.625rem !important; }
+.py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+.rounded-lg { border-radius: 0.5rem !important; }
+
+/* Status-specific lozenge classes */
+.status-lozenge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+}
+
+.status-lozenge.draft {
+  border: 1px solid #64748b !important;
+  color: #94a3b8 !important;
+  background-color: rgba(100, 116, 139, 0.15) !important;
+}
+.status-lozenge.in-review, .status-lozenge.in_review {
+  border: 1px solid #f59e0b !important;
+  color: #fbbf24 !important;
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+.status-lozenge.published {
+  border: 1px solid #10b981 !important;
+  color: #34d399 !important;
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+.status-lozenge.running {
+  border: 1px solid #0076df !important;
+  color: #38bdf8 !important;
+  background-color: rgba(0, 118, 223, 0.15) !important;
+}
+
+:root.light .status-lozenge.draft {
+  border: 1px solid #94a3b8 !important;
+  color: #475569 !important;
+  background-color: #f1f5f9 !important;
+}
+:root.light .status-lozenge.in-review, :root.light .status-lozenge.in_review {
+  border: 1px solid #d97706 !important;
+  color: #b45309 !important;
+  background-color: #fef3c7 !important;
+}
+:root.light .status-lozenge.published {
+  border: 1px solid #059669 !important;
+  color: #047857 !important;
+  background-color: #ecfdf5 !important;
+}
+:root.light .status-lozenge.running {
+  border: 1px solid #0076df !important;
+  color: #0076df !important;
+  background-color: rgba(0, 118, 223, 0.08) !important;
+}
+

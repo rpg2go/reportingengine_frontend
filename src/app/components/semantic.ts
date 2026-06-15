@@ -6,11 +6,12 @@ import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from './sidebar';
+import { SemanticNetworkComponent } from './semantic-network';
 
 @Component({
   selector: 'app-semantic',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent, SemanticNetworkComponent],
   template: `
     <div class="dashboard-container">
       <!-- Mobile topbar -->
@@ -128,36 +129,13 @@ import { SidebarComponent } from './sidebar';
                     }
 
                     <div class="joins-section mt-4">
-                      <div class="joins-header flex-header">
-                        <h4 class="section-title">🔗 Join Relationships</h4>
-                        <span class="joins-count-badge">
-                          {{ getJoinsForExplore(explore.name).length }} {{ getJoinsForExplore(explore.name).length === 1 ? 'Join' : 'Joins' }}
-                        </span>
+                      <div class="joins-header flex-header mb-3">
+                        <h4 class="section-title">🔗 Star Schema Data Relationship Explorer Tree</h4>
                       </div>
-                      @if (getJoinsForExplore(explore.name).length === 0) {
-                        <p class="no-data-msg">No dimensions joined to this explore. It queries the fact view directly.</p>
-                      } @else {
-                        <div class="table-wrapper mt-2">
-                          <table class="grid-table">
-                            <thead>
-                              <tr>
-                                <th>Type</th>
-                                <th>Dimension View</th>
-                                <th>Join Condition (ON)</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (join of getJoinsForExplore(explore.name); track join.join_id) {
-                                <tr>
-                                  <td class="bold-text"><span class="join-type-badge">{{ join.join_type }}</span></td>
-                                  <td><code class="code-highlight dim-view-code">{{ join.to_view }}</code></td>
-                                  <td class="sql-cell"><code>{{ join.join_sql }}</code></td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                      }
+                      <app-semantic-network
+                        [factTable]="explore.fact_view_name"
+                        [joins]="getJoinsForExplore(explore.name)"
+                      ></app-semantic-network>
                     </div>
                   </div>
                 }

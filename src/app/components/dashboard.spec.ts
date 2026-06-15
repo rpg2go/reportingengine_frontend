@@ -155,7 +155,7 @@ describe('DashboardComponent', () => {
 
   it('should navigate to report details view', () => {
     component.viewReport('R1');
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/reports', 'R1']);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/reports', 'R1', 'edit'], { queryParams: { view: 'true' } });
   });
 
   it('should navigate to report edit view', () => {

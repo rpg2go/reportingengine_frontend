@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, combineLatest } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   parseMeasure,
@@ -147,18 +147,57 @@ export interface FieldGroup {
               </svg>
               <span>Preview SQL</span>
             </button>
-            <button (click)="saveConfig()" [disabled]="saving()" class="save-btn">
-              @if (saving()) {
-                <span class="spinner"></span> Saving...
+            @if (viewOnlyMode) {
+              @if (status === 'published') {
+                <span class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-emerald-500 text-emerald-400 bg-emerald-500/10">
+                  👁️ View Only Mode (PUBLISHED v{{ reportVersion }})
+                </span>
+              } @else if (status === 'in_review') {
+                <span class="status-lozenge in-review font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-amber-500 text-amber-400 bg-amber-500/10">
+                  👁️ View Only Mode (IN REVIEW v{{ reportVersion }})
+                </span>
               } @else {
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                  <polyline points="17 21 17 13 7 13 7 21"/>
-                  <polyline points="7 3 7 8 15 8"/>
-                </svg>
-                <span>Save Definition</span>
+                <span class="status-lozenge draft font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-slate-500 text-slate-400 bg-slate-500/10">
+                  👁️ View Only Mode (DRAFT v{{ reportVersion }})
+                </span>
               }
-            </button>
+            } @else {
+              @if (status === 'draft') {
+                <button (click)="saveConfig()" [disabled]="saving()" class="save-btn">
+                  @if (saving()) {
+                    <span class="spinner"></span> Saving...
+                  } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                      <polyline points="17 21 17 13 7 13 7 21"/>
+                      <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    <span>Save Definition</span>
+                  }
+                </button>
+                <button (click)="submitForReview()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; cursor: pointer;">
+                  <span>Submit for Review</span>
+                </button>
+              }
+
+              @if (status === 'in_review') {
+                <button (click)="rejectReport()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; cursor: pointer; margin-right: 8px;">
+                  <span>Reject to Draft</span>
+                </button>
+                <button (click)="publishReport()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; cursor: pointer;">
+                  <span>Publish Release</span>
+                </button>
+              }
+
+              @if (status === 'published') {
+                <span class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-emerald-500 text-emerald-400 bg-emerald-500/10" style="margin-right: 8px;">
+                  🔒 Published & Frozen (v{{ reportVersion }})
+                </span>
+                <button (click)="createDraftFromPublished()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; cursor: pointer;">
+                  <span>✏️ Create New Draft Version</span>
+                </button>
+              }
+            }
           </div>
         </header>
 
@@ -364,7 +403,7 @@ export interface FieldGroup {
                 type="text"
                 id="report-id"
                 [(ngModel)]="reportId"
-                [disabled]="!isNewReport"
+                [disabled]="!isNewReport || isLocked"
                 placeholder="e.g. RPT_001"
                 class="form-input"
               />
@@ -376,6 +415,7 @@ export interface FieldGroup {
                 type="text"
                 id="report-name"
                 [(ngModel)]="reportName"
+                [disabled]="isLocked"
                 placeholder="e.g. Sales Weekly Report"
                 class="form-input"
               />
@@ -394,16 +434,22 @@ export interface FieldGroup {
             </div>
 
             <div class="form-group">
-              <label for="report-status">Report Status</label>
-              <select
-                id="report-status"
-                [ngModel]="status"
-                (ngModelChange)="onStatusChange($event)"
-                class="form-select"
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-              </select>
+              <label>Report Status</label>
+              <div class="status-badge-container" style="margin-top: 6px;">
+                @if (status === 'published') {
+                  <span class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border">
+                    🔒 Published
+                  </span>
+                } @else if (status === 'in_review' || status === 'in-review') {
+                  <span class="status-lozenge in-review font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border">
+                    ⏳ In Review
+                  </span>
+                } @else {
+                  <span class="status-lozenge draft font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border">
+                    📝 Draft
+                  </span>
+                }
+              </div>
             </div>
 
             <!-- Granularity (bound to conformed keys / dynamic granularity fields) -->
@@ -432,7 +478,8 @@ export interface FieldGroup {
                     id="reporting-date"
                     class="datepicker-trigger-btn"
                     [class.active]="showDatePicker()"
-                    (click)="toggleDatePicker()"
+                    (click)="!isLocked && toggleDatePicker()"
+                    [disabled]="isLocked"
                   >
                     <span>{{ reportingDate || '— select a reporting date —' }}</span>
                     <span class="calendar-icon">📅</span>
@@ -465,7 +512,8 @@ export interface FieldGroup {
                       type="button"
                       class="datepicker-trigger-btn"
                       [class.active]="showTimeframeStartDatePicker()"
-                      (click)="showTimeframeStartDatePicker.set(!showTimeframeStartDatePicker())"
+                      (click)="!isLocked && showTimeframeStartDatePicker.set(!showTimeframeStartDatePicker())"
+                      [disabled]="isLocked"
                     >
                       <span>{{ timeframeStart || '— select start date —' }}</span>
                       <span class="calendar-icon">📅</span>
@@ -491,7 +539,8 @@ export interface FieldGroup {
                         type="button"
                         class="mode-btn"
                         [class.active]="timeframeMode === 'today_minus_2'"
-                        (click)="setTimeframeMode('today_minus_2')"
+                        (click)="!isLocked && setTimeframeMode('today_minus_2')"
+                        [disabled]="isLocked"
                         title="Today minus 2 calendar days"
                       >
                         Today − 2
@@ -500,7 +549,8 @@ export interface FieldGroup {
                         type="button"
                         class="mode-btn"
                         [class.active]="timeframeMode === 'today_minus_1'"
-                        (click)="setTimeframeMode('today_minus_1')"
+                        (click)="!isLocked && setTimeframeMode('today_minus_1')"
+                        [disabled]="isLocked"
                         title="Today minus 1 calendar day"
                       >
                         Today − 1
@@ -509,7 +559,8 @@ export interface FieldGroup {
                         type="button"
                         class="mode-btn"
                         [class.active]="timeframeMode === 'today'"
-                        (click)="setTimeframeMode('today')"
+                        (click)="!isLocked && setTimeframeMode('today')"
+                        [disabled]="isLocked"
                         title="Today (current date)"
                       >
                         Today
@@ -518,7 +569,8 @@ export interface FieldGroup {
                         type="button"
                         class="mode-btn"
                         [class.active]="timeframeMode === 'custom'"
-                        (click)="setTimeframeMode('custom')"
+                        (click)="!isLocked && setTimeframeMode('custom')"
+                        [disabled]="isLocked"
                         title="Pick a specific date from dim_date or calendar"
                       >
                         Custom ▾
@@ -531,7 +583,8 @@ export interface FieldGroup {
                           type="button"
                           class="datepicker-trigger-btn"
                           [class.active]="showTimeframeEndDatePicker()"
-                          (click)="toggleTimeframeEndDatePicker()"
+                          (click)="!isLocked && toggleTimeframeEndDatePicker()"
+                          [disabled]="isLocked"
                         >
                           <span>{{ timeframeEnd || '— select end date —' }}</span>
                           <span class="calendar-icon">📅</span>
@@ -900,15 +953,15 @@ export interface FieldGroup {
               </p>
             </div>
             <div class="table-actions">
-              <button (click)="addRow()" class="action-btn-sm add">+ Add Row</button>
-              <button (click)="deleteSelectedRows()" class="action-btn-sm delete-selected">
+              <button (click)="addRow()" [disabled]="isLocked" class="action-btn-sm add">+ Add Row</button>
+              <button (click)="deleteSelectedRows()" [disabled]="isLocked" class="action-btn-sm delete-selected">
                 🗑️ Delete Selected
               </button>
-              <button (click)="resetRows()" class="action-btn-sm reset">↻ Reset</button>
-              <button (click)="duplicateSelectedRow()" class="action-btn-sm duplicate">
+              <button (click)="resetRows()" [disabled]="isLocked" class="action-btn-sm reset">↻ Reset</button>
+              <button (click)="duplicateSelectedRow()" [disabled]="isLocked" class="action-btn-sm duplicate">
                 📄 Duplicate
               </button>
-              <button (click)="reorderRows()" class="action-btn-sm reorder">➔ Reorder</button>
+              <button (click)="reorderRows()" [disabled]="isLocked" class="action-btn-sm reorder">➔ Reorder</button>
             </div>
           </div>
 
@@ -1025,7 +1078,7 @@ export interface FieldGroup {
                     >
                       <!-- Track 1: Checkbox -->
                       <td class="col-checkbox sticky-col-1">
-                        <input type="checkbox" [(ngModel)]="row.selected" />
+                        <input type="checkbox" [(ngModel)]="row.selected" [disabled]="isLocked" />
                       </td>
 
                       <!-- Track 2: Row ID -->
@@ -1034,6 +1087,7 @@ export interface FieldGroup {
                           <input
                             type="text"
                             [(ngModel)]="row.rowId"
+                            [disabled]="isLocked"
                             (ngModelChange)="triggerValidationDebounced()"
                             placeholder="R1"
                             class="cell-input center"
@@ -1052,6 +1106,7 @@ export interface FieldGroup {
                         <div class="indent-btns-cell">
                           <button
                             (click)="changeIndent(row, -1); triggerValidationDebounced()"
+                            [disabled]="isLocked"
                             class="indent-btn"
                             title="Decrease indent"
                           >
@@ -1059,6 +1114,7 @@ export interface FieldGroup {
                           </button>
                           <button
                             (click)="changeIndent(row, 1); triggerValidationDebounced()"
+                            [disabled]="isLocked"
                             class="indent-btn"
                             title="Increase indent"
                           >
@@ -1076,6 +1132,7 @@ export interface FieldGroup {
                           <input
                             type="text"
                             [(ngModel)]="row.label"
+                            [disabled]="isLocked"
                             (ngModelChange)="triggerValidationDebounced()"
                             placeholder="Row Label"
                             class="cell-input"
@@ -1088,6 +1145,7 @@ export interface FieldGroup {
                         <div class="style-cell">
                           <select
                             [(ngModel)]="row.rowType"
+                            [disabled]="isLocked"
                             (change)="onRowTypeChange(row); triggerValidationDebounced()"
                             class="cell-select"
                           >
@@ -1098,6 +1156,7 @@ export interface FieldGroup {
                           </select>
                           <select
                             [(ngModel)]="row.style"
+                            [disabled]="isLocked"
                             (ngModelChange)="triggerValidationDebounced()"
                             class="cell-select"
                           >
@@ -1118,6 +1177,7 @@ export interface FieldGroup {
                             <select
                               [(ngModel)]="row.aggregation"
                               class="w-[140px] border border-slate-700 rounded-lg bg-slate-950 px-2 py-1"
+                              [disabled]="isLocked"
                             >
                               @for (opt of aggregationOptions; track opt.value) {
                                 <option [value]="opt.value">{{ opt.label }}</option>
@@ -1129,6 +1189,7 @@ export interface FieldGroup {
                             <app-field-picker
                               [dwhCatalog]="dwhCatalogCache()"
                               [selectedValue]="row.targetField"
+                              [disabled]="isLocked"
                               (onSelect)="updateRowField(row.rowId, $event)"
                             >
                             </app-field-picker>
@@ -1138,6 +1199,7 @@ export interface FieldGroup {
                             type="text"
                             [(ngModel)]="row.formulaExpr"
                             class="w-full font-mono text-sm bg-slate-950 rounded-lg border border-slate-700 px-3 py-1 text-blue-400"
+                            [disabled]="isLocked"
                           />
                         } @else {
                           <span class="cell-na">—</span>
@@ -1156,6 +1218,7 @@ export interface FieldGroup {
                               [rowFilters]="row.rowFilters"
                               [(legacyFilterExpr)]="row.legacyFilterExpr"
                               [(isRawMode)]="row.isFilterRawMode"
+                              [disabled]="isLocked"
                               (onChange)="row.rowFilters = $event; triggerValidationDebounced()"
                               (legacyFilterExprChange)="triggerValidationDebounced()"
                             >
@@ -1170,21 +1233,21 @@ export interface FieldGroup {
 
                       <!-- Active Columns toggles -->
                       <td class="col-active-cols">
-                        <div class="col-enable-toggles">
+                        <div class="col-enable-toggles" [style.pointer-events]="isLocked ? 'none' : 'auto'">
                           @for (col of columns; track col.colId) {
                             <span
                               class="col-badge"
                               [class.active]="row.activeCols.includes(col.colId.toUpperCase())"
-                              (click)="toggleColForRow(row, col.colId)"
-                              >{{ col.colId }}</span
-                            >
+                              [style.opacity]="isLocked ? '0.7' : '1'"
+                              (click)="!isLocked && toggleColForRow(row, col.colId)"
+                              >{{ col.colId }}</span>
                           }
                         </div>
                       </td>
 
                       <!-- Actions -->
                       <td class="col-actions" style="text-align:center">
-                        <button (click)="deleteRow(idx)" class="remove-btn" title="Delete Row">
+                        <button (click)="deleteRow(idx)" [disabled]="isLocked" class="remove-btn" title="Delete Row">
                           🗑️
                         </button>
                       </td>
@@ -1209,15 +1272,15 @@ export interface FieldGroup {
               </p>
             </div>
             <div class="table-actions">
-              <button (click)="addColumn()" class="action-btn-sm add">+ Add Col</button>
-              <button (click)="deleteSelectedCols()" class="action-btn-sm delete-selected">
+              <button (click)="addColumn()" [disabled]="isLocked" class="action-btn-sm add">+ Add Col</button>
+              <button (click)="deleteSelectedCols()" [disabled]="isLocked" class="action-btn-sm delete-selected">
                 🗑️ Delete Selected
               </button>
-              <button (click)="resetColumns()" class="action-btn-sm reset">↻ Reset</button>
-              <button (click)="duplicateSelectedColumn()" class="action-btn-sm duplicate">
+              <button (click)="resetColumns()" [disabled]="isLocked" class="action-btn-sm reset">↻ Reset</button>
+              <button (click)="duplicateSelectedColumn()" [disabled]="isLocked" class="action-btn-sm duplicate">
                 📄 Duplicate
               </button>
-              <button (click)="reorderColumns()" class="action-btn-sm reorder">➔ Reorder</button>
+              <button (click)="reorderColumns()" [disabled]="isLocked" class="action-btn-sm reorder">➔ Reorder</button>
             </div>
           </div>
 
@@ -1246,12 +1309,13 @@ export interface FieldGroup {
                     [class.has-warning]="hasError(col.colId, 'WARNING')"
                     [title]="hasError(col.colId) ? getErrorMessage(col.colId) : ''"
                   >
-                    <td><input type="checkbox" [(ngModel)]="col.selected" /></td>
+                    <td><input type="checkbox" [(ngModel)]="col.selected" [disabled]="isLocked" /></td>
                     <td>
                       <div class="row-id-cell">
                         <input
                           type="text"
                           [(ngModel)]="col.colId"
+                          [disabled]="isLocked"
                           (ngModelChange)="triggerValidationDebounced()"
                           placeholder="C1"
                           class="cell-input center"
@@ -1268,6 +1332,7 @@ export interface FieldGroup {
                       <input
                         type="text"
                         [(ngModel)]="col.label"
+                        [disabled]="isLocked"
                         (ngModelChange)="triggerValidationDebounced()"
                         placeholder="Column Header Label"
                         class="cell-input"
@@ -1276,6 +1341,7 @@ export interface FieldGroup {
                     <td>
                       <select
                         [(ngModel)]="col.colType"
+                        [disabled]="isLocked"
                         (ngModelChange)="onColTypeChange(col); triggerValidationDebounced()"
                         class="cell-select"
                       >
@@ -1289,6 +1355,7 @@ export interface FieldGroup {
                     <td>
                       <select
                         [(ngModel)]="col.headerLayout"
+                        [disabled]="isLocked"
                         (ngModelChange)="triggerValidationDebounced()"
                         class="cell-select"
                       >
@@ -1302,7 +1369,7 @@ export interface FieldGroup {
                         type="number"
                         [(ngModel)]="col.periodOffset"
                         (ngModelChange)="triggerValidationDebounced()"
-                        [disabled]="col.colType === 'CALC'"
+                        [disabled]="col.colType === 'CALC' || isLocked"
                         class="cell-input center"
                       />
                     </td>
@@ -1313,7 +1380,7 @@ export interface FieldGroup {
                           type="number"
                           [(ngModel)]="col.rollingN"
                           (ngModelChange)="triggerValidationDebounced()"
-                          [disabled]="col.colType !== 'ROLLING'"
+                          [disabled]="col.colType !== 'ROLLING' || isLocked"
                           placeholder="e.g. 3"
                           class="cell-input center rolling-n-input"
                           title="Number of periods to look back"
@@ -1325,6 +1392,7 @@ export interface FieldGroup {
                             (ngModelChange)="triggerValidationDebounced()"
                             class="cell-select rolling-grain-select"
                             title="Time grain for this rolling window"
+                            [disabled]="isLocked"
                           >
                             <option value="DAY">Days</option>
                             <option value="WEEK">Weeks</option>
@@ -1339,12 +1407,12 @@ export interface FieldGroup {
                         [(ngModel)]="col.formulaExpr"
                         (ngModelChange)="triggerValidationDebounced()"
                         [placeholder]="col.colType === 'CALC' ? 'e.g. (C1-C2)/C2' : '-'"
-                        [disabled]="col.colType !== 'CALC'"
+                        [disabled]="col.colType !== 'CALC' || isLocked"
                         class="cell-input code"
                       />
                     </td>
                     <td style="text-align:center">
-                      <button (click)="deleteColumn(idx)" class="remove-btn" title="Delete Column">
+                      <button (click)="deleteColumn(idx)" [disabled]="isLocked" class="remove-btn" title="Delete Column">
                         🗑️
                       </button>
                     </td>
@@ -4465,6 +4533,8 @@ export interface FieldGroup {
 })
 export class ReportBuilderComponent implements OnInit {
   isNewReport = true;
+  isLocked = false;
+  viewOnlyMode = false;
   aggregationOptions = [
     { value: 'SUM', label: 'SUM (Total)' },
     { value: 'AVG', label: 'AVG (Average)' },
@@ -5362,15 +5432,22 @@ export class ReportBuilderComponent implements OnInit {
         this.triggerValidationDebounced();
       });
 
-    this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+    combineLatest({
+      params: this.route.params,
+      queryParams: this.route.queryParams
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ params, queryParams }) => {
       const id = params['id'];
+      const versionVal = queryParams['version'];
+      const version = versionVal ? parseInt(versionVal, 10) : undefined;
+      this.viewOnlyMode = queryParams['view'] === 'true' || queryParams['readOnly'] === 'true';
+
       if (id && id !== 'new') {
         this.isNewReport = false;
         this.reportId = id;
         // Fire both fetches in parallel
         forkJoin({
           tables: this.reportService.getTables(),
-          config: this.reportService.getReportConfig(id, '2025-12-31'),
+          config: this.reportService.getReportConfig(id, '2025-12-31', version),
         })
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
@@ -5405,6 +5482,12 @@ export class ReportBuilderComponent implements OnInit {
     this.reportName = data.name;
     this.reportVersion = data.version || 1;
     this.status = data.status || 'draft';
+    this.isLocked = this.status === 'published' || this.status === 'in_review' || this.viewOnlyMode;
+    if (this.isLocked) {
+      this.reportForm.disable();
+    } else {
+      this.reportForm.enable();
+    }
     this.sourceTable = data.sourceTable || '';
     this.granularity = data.granularity || '';
     this.reportingDate = data.reportingDate || this.dateOffsetString(-1);
@@ -5550,6 +5633,9 @@ export class ReportBuilderComponent implements OnInit {
     this.reportId = '';
     this.reportName = '';
     this.reportVersion = 1;
+    this.isLocked = false;
+    this.viewOnlyMode = false;
+    this.reportForm.enable();
     this.sourceTable = '';
     this.granularity = '';
     this.reportingDate = this.dateOffsetString(-1);
@@ -6898,6 +6984,109 @@ export class ReportBuilderComponent implements OnInit {
     });
   }
 
+  submitForReview(): void {
+    if (!this.reportId) return;
+    this.saving.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.reportService.submitReview(this.reportId, this.reportVersion)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.saving.set(false);
+          this.status = 'in_review';
+          this.isLocked = true;
+          this.reportForm.disable();
+          this.successMessage.set('Report submitted for review successfully.');
+          setTimeout(() => this.successMessage.set(null), 3000);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.errorMessage.set(err.error?.message || 'Failed to submit report for review.');
+        }
+      });
+  }
+
+  rejectReport(): void {
+    if (!this.reportId) return;
+    this.saving.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.reportService.rejectReport(this.reportId, this.reportVersion)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.saving.set(false);
+          this.status = 'draft';
+          this.isLocked = false;
+          this.reportForm.enable();
+          this.successMessage.set('Report rejected back to draft successfully.');
+          setTimeout(() => this.successMessage.set(null), 3000);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.errorMessage.set(err.error?.message || 'Failed to reject report.');
+        }
+      });
+  }
+
+  publishReport(): void {
+    if (!this.reportId) return;
+    if (!confirm('Are you sure you want to publish this report version? Once published, this version will be permanently locked.')) {
+      return;
+    }
+    this.saving.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.reportService.publishReport(this.reportId, this.reportVersion)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: any) => {
+          this.saving.set(false);
+          this.status = 'published';
+          this.isLocked = true;
+          this.reportForm.disable();
+          this.successMessage.set(`Report v${res.publishedVersion || this.reportVersion} published successfully! Auto-forking new draft version v${res.nextDraftVersion}...`);
+          
+          setTimeout(() => {
+            this.successMessage.set(null);
+            this.router.navigate(['/reports', this.reportId, 'edit'], { 
+              queryParams: { version: res.nextDraftVersion } 
+            });
+          }, 3000);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.errorMessage.set(err.error?.message || 'Failed to publish report.');
+        }
+      });
+  }
+
+  createDraftFromPublished(): void {
+    if (!this.reportId) return;
+    this.saving.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.reportService.forkReport(this.reportId, this.reportVersion)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: any) => {
+          this.saving.set(false);
+          this.successMessage.set(`New draft version v${res.nextDraftVersion} created successfully! Redirecting to the editable draft...`);
+          setTimeout(() => {
+            this.successMessage.set(null);
+            this.router.navigate(['/reports', this.reportId, 'edit'], { 
+              queryParams: { version: res.nextDraftVersion } 
+            });
+          }, 1500);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.errorMessage.set(err.error?.message || 'Failed to create new draft version.');
+        }
+      });
+  }
+
   toggleSidebar(): void {
     this.sidebarOpen.update((v) => !v);
   }
@@ -6906,6 +7095,10 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   goBack(): void {
+    if (this.viewOnlyMode) {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
     if (confirm('Discard changes and exit?')) {
       this.router.navigate(this.isNewReport ? ['/dashboard'] : ['/reports', this.reportId]);
     }

@@ -153,33 +153,6 @@ import { ThemeService } from '../services/theme.service';
             <span class="menu-text animate-fade-in">Reports Execution Hub</span>
           }
         </a>
-        <a
-          routerLink="/semantic"
-          routerLinkActive="active"
-          class="menu-item"
-          [title]="!isSidebarExpanded() ? 'Semantic Layer' : ''"
-        >
-          <span class="menu-icon">
-            <svg
-              class="icon-svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="16" y="16" width="6" height="6" rx="1" />
-              <rect x="2" y="16" width="6" height="6" rx="1" />
-              <rect x="9" y="2" width="6" height="6" rx="1" />
-              <path d="M12 8v4" />
-              <path d="M12 12H5v4" />
-              <path d="M12 12h7v4" />
-            </svg>
-          </span>
-          @if (isSidebarExpanded()) {
-            <span class="menu-text animate-fade-in">Semantic Layer</span>
-          }
-        </a>
       </nav>
 
       <!-- Theme toggle -->

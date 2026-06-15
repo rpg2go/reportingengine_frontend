@@ -41,6 +41,7 @@ export class RowConditionGroupComponent implements OnInit {
   dwhCatalog = input<any[]>([]);
   linkedDimensions = input<string[]>([]);
   columnTypes = input<{ [tableName: string]: { [columnName: string]: string } }>({});
+  disabled = input<boolean>(false);
 
   removeGroup = output<string>();
   groupChanged = output<void>();

@@ -6,6 +6,7 @@ import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { DateFormatter } from '../utils/date-formatter';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest } from 'rxjs';
 import { SidebarComponent } from './sidebar';
 import { CalendarPickerComponent } from './calendar-picker';
 
@@ -156,23 +157,27 @@ export class ExecutionHubComponent implements OnInit {
             this.syncCalendarToSelectedDate();
           }
 
-          // 3. Check for route params
-          this.route.paramMap.subscribe((params) => {
-            const id = params.get('id');
-            if (id) {
-              this.selectedReportId.set(id);
-              this.loadReportConfig(id);
-            }
-          });
+          // 3. Check for route params and query params
+          combineLatest([this.route.paramMap, this.route.queryParamMap])
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(([params, queryParams]) => {
+              const id = params.get('id');
+              if (id) {
+                this.selectedReportId.set(id);
+                const versionStr = queryParams.get('version');
+                const version = versionStr ? parseInt(versionStr, 10) : undefined;
+                this.loadReportConfig(id, version);
+              }
+            });
         },
       });
   }
 
-  loadReportConfig(id: string): void {
+  loadReportConfig(id: string, version?: number): void {
     this.loadingConfig.set(true);
     const refDate = this.selectedReportingDate() || new Date().toISOString().split('T')[0];
     this.reportService
-      .getReportConfig(id, refDate)
+      .getReportConfig(id, refDate, version)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (config) => {
@@ -229,7 +234,7 @@ export class ExecutionHubComponent implements OnInit {
       });
   }
 
-  onReportSelected(reportId: string): void {
+  onReportSelected(reportId: string, version?: number): void {
     if (!reportId) {
       this.selectedReportId.set('');
       this.reportConfig.set(null);
@@ -241,8 +246,9 @@ export class ExecutionHubComponent implements OnInit {
       return;
     }
     this.selectedReportId.set(reportId);
-    this.router.navigate(['/viewer', reportId]);
-    this.loadReportConfig(reportId);
+    const queryParams = version != null ? { version } : {};
+    this.router.navigate(['/viewer', reportId], { queryParams });
+    this.loadReportConfig(reportId, version);
   }
 
   runExecution(): void {
@@ -260,8 +266,10 @@ export class ExecutionHubComponent implements OnInit {
       })),
     };
 
+    const version = this.reportConfig()?.version;
+
     this.reportService
-      .executeReport(reportId, payload)
+      .executeReport(reportId, payload, version)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (data) => {
@@ -293,9 +301,10 @@ export class ExecutionHubComponent implements OnInit {
     this.exportingExcel.set(true);
     this.executionError.set(null);
     const refDate = this.selectedReportingDate() || new Date().toISOString().split('T')[0];
+    const version = this.reportConfig()?.version;
 
     this.reportService
-      .runReport(reportId, refDate)
+      .runReport(reportId, refDate, version)
       .subscribe({
         next: (blob) => {
           this.exportingExcel.set(false);

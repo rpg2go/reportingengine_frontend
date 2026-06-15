@@ -58,10 +58,10 @@
         </div>
 
         <div class="explorer-list">
-          @for (rep of filteredReports(); track rep.reportId) {
+          @for (rep of filteredReports(); track rep.reportId + '_' + rep.version) {
             <div
-              (click)="onReportSelected(rep.reportId)"
-              [class.active-light-explorer-row]="selectedReportId() === rep.reportId"
+              (click)="onReportSelected(rep.reportId, rep.version)"
+              [class.active-light-explorer-row]="selectedReportId() === rep.reportId && (reportConfig()?.version === rep.version)"
               class="explorer-row group"
             >
               <!-- Wrapping layout that prevents overlap between long names and badges -->
@@ -69,7 +69,7 @@
                 <span class="report-code font-mono text-[10px] font-bold text-slate-400 group-hover:text-indigo-600">
                   {{ rep.reportId }} <span class="text-slate-500 font-sans font-normal" style="font-size: 9px; margin-left: 6px;">(v{{ rep.version || 1 }})</span>
                 </span>
-                <span class="status-badge-explorer shrink-0" [class]="rep.status || 'draft'">
+                <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border shrink-0" [class]="rep.status || 'draft'">
                   {{ rep.status || 'draft' }}
                 </span>
               </div>
@@ -96,7 +96,7 @@
                 </span>
               </h2>
             </div>
-            <div class="status-badge-explorer" [class]="reportConfig()?.status || 'draft'">
+            <div class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [class]="reportConfig()?.status || 'draft'">
               {{ reportConfig()?.status || 'draft' }}
             </div>
           </div>

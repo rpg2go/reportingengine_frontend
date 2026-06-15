@@ -1,43 +1,85 @@
 # Reporting Platform — Angular Frontend
 
-This is a modern, responsive single-page application (SPA) built using **Angular 21 (standalone components)**. It acts as the interactive user interface for the Reporting Engine, connecting to the Spring Boot Java backend.
+A premium, metadata-driven visual report layout builder built with **Angular 21 (standalone components)**. It serves as the interactive UI for the Reporting Engine, connecting to a Spring Boot Java backend over a proxied REST API.
 
-The interface features a **premium glassmorphic dark-mode design** with customized animations, layout structures, and real-time report configuration grids.
+The interface features a **deep-slate dark-mode design** with real-time reactive state via Angular Signals, drag-and-drop layout editing, and a Jira-style immutable release pipeline for report versioning.
 
 ---
 
 ## 🎨 Key Features & Components
 
-The application is structured into standalone components routed dynamically under [app.routes.ts](src/app/app.routes.ts):
+The application is structured into standalone components routed lazily under [app.routes.ts](src/app/app.routes.ts):
 
-1. **Sign In (`/login`)** — [LoginComponent](src/app/components/login.ts):
-   - Secure interface validating user credentials.
-   - Leverages Basic Auth headers via [AuthService](src/app/services/auth.service.ts).
+### 1. Sign In (`/login`) — [LoginComponent](src/app/components/login.ts)
 
-2. **Reports Catalog (`/dashboard`)** — [DashboardComponent](src/app/components/dashboard.ts):
-   - Browse a catalog of active and draft report templates loaded in the database metadata tables.
-   - Upload and ingest new Excel templates (`.xlsx`) directly using drag-and-drop or file selection.
-   - Auto-refreshes the catalog dynamically upon template ingestion.
+- Secure credential form with Basic Auth header injection.
+- Redirects authenticated users to the dashboard automatically.
 
-3. **Report Builder (`/reports/new/edit` or `/reports/:id/edit`)** — [ReportBuilderComponent](src/app/components/report-builder.ts):
-   - Interactive drag-and-drop template designer for configuring columns (`DATE`, `DATA`, `CALC`) and rows (`label`, `data`, `calc`).
-   - Integrates with [FieldPickerComponent](src/app/components/field-picker.ts) and [RowFilterComponent](src/app/components/row-filter.ts) to choose source fields and design query filter criteria.
-   - Dynamic real-time preview of the compiled SQL script.
+### 2. Reports Catalog (`/dashboard`) — [DashboardComponent](src/app/components/dashboard.ts)
 
-4. **Template Visualizer (`/reports/:id`)** — [ReportDetailComponent](src/app/components/report-detail.ts):
-   - View details of columns and rows for a specific report layout configuration.
-   - Select a Reference Date and run the reporting engine.
-   - Direct download of compiled and POI-styled spreadsheet binaries.
+- Browse all report templates grouped by lifecycle status (`draft`, `in_review`, `published`).
+- Filter reports by status using tab chips: **All / Published / Drafts**.
+- Upload and ingest new Excel report templates (`.xlsx`) via drag-and-drop or file picker.
+- Auto-refreshes the catalog dynamically upon successful template ingestion.
 
-5. **Reports Execution Hub (`/viewer` or `/viewer/:id`)** — [ReportViewerComponent](src/app/components/report-viewer.ts):
-   - Select a report template, override filters, choose a reporting date, and run execution in real-time.
-   - Render calculated report models as interactive datagrids with resizable columns via [ColResizerDirective](src/app/directives/col-resizer.directive.ts).
-   - Export calculated grids directly to CSV formats with built-in formula injection sanitization.
+### 3. Report Builder (`/reports/new/edit` or `/reports/:id/edit`) — [ReportBuilderComponent](src/app/components/report-builder.ts)
 
-6. **Semantic Layer Browser (`/semantic`)** — [SemanticViewerComponent](src/app/components/semantic.ts):
-   - Inspect the logical metadata definitions in the semantic registry.
-   - Browse **Explores & Joins** to see how fact and dimension tables are logically mapped together (e.g., join conditions).
-   - Browse **Views & Schema Mapping** to inspect defined **Dimensions** (with physical column names) and **Measures** (with SQL aggregation expressions and types).
+- Interactive drag-and-drop designer for configuring columns (`DATE`, `DATA`, `ROLLING`, `CALC`) and rows (`section`, `data`, `calc`, `blank`).
+- Full-screen field picker via [FieldPickerComponent](src/app/components/field-picker.ts) for selecting fact table measures and dimension attributes.
+- Advanced filter builder via [RowFilterComponent](src/app/components/row-filter.ts) and [RowConditionGroupComponent](src/app/components/row-condition-group.ts).
+- Granularity configuration via [GranularityPickerComponent](src/app/components/granularity-picker.ts) for group-by dimension breakdowns.
+- **Real-time SQL preview** with dynamic rainbow bracket highlighting via [BracketRainbowPipe](src/app/pipes/bracket-rainbow.pipe.ts).
+- **Lifecycle actions** driven by the current report status:
+  - `DRAFT` → **Submit for Review** button transitions to `IN_REVIEW`.
+  - `IN_REVIEW` → **Reject** (returns to `DRAFT`) or **Publish** (freezes version permanently).
+  - `PUBLISHED` → **Read-only view** with a **Fork to New Draft** button.
+- **Immutability enforcement**: `PUBLISHED` and `IN_REVIEW` versions are fully locked — all form fields are disabled.
+
+### 4. Report Detail (`/reports/:id`) — [ReportDetailComponent](src/app/components/report-detail.ts)
+
+- Read-only configuration inspector showing all columns, rows, and metadata for a report.
+- Displays the current lifecycle status badge.
+- Select a Reference Date and trigger a direct Excel download of the compiled report (POI-styled `.xlsx`).
+
+### 5. Reports Execution Hub (`/viewer` or `/viewer/:id`) — [ExecutionHubComponent](src/app/components/execution-hub.ts)
+
+- Split-pane explorer: left sidebar lists **one report entry per `reportId`** (always the latest version), right canvas shows the active workspace.
+- Select a reporting date via the [CalendarPickerComponent](src/app/components/calendar-picker.ts) popover (only dates available in the DWH `dim_date` table are selectable).
+- Override runtime quick-filters per report before execution.
+- Renders calculated report data as an interactive datagrid with resizable columns via [ColResizerDirective](src/app/directives/col-resizer.directive.ts).
+- Granularity sub-rows expand beneath parent data rows when group-by dimensions are configured.
+- Export executed grids to `.xlsx` with built-in formula-injection sanitization.
+
+### 6. Semantic Layer Browser (`/semantic`) — [SemanticViewerComponent](src/app/components/semantic.ts)
+
+- Browse **Explores & Joins**: inspect how fact and dimension tables are logically mapped (join type, join SQL).
+- Browse **Views & Schema Mapping**: inspect defined **Dimensions** (physical column names) and **Measures** (SQL aggregation expressions and types).
+
+---
+
+## 🔄 Report Lifecycle State Machine
+
+Reports follow a three-tier immutable release pipeline:
+
+```
+ ┌─────────┐   Submit for Review   ┌───────────┐   Publish   ┌───────────┐
+ │  DRAFT  │ ─────────────────────>│ IN_REVIEW │────────────>│ PUBLISHED │
+ │(mutable)│<─────────────────────│  (locked) │             │  (frozen) │
+ └─────────┘        Reject         └───────────┘             └─────┬─────┘
+      ^                                                             │
+      └──────────────────── Auto-fork new DRAFT (v+1) ─────────────┘
+```
+
+| Status | Editable | Who Acts |
+|--------|----------|----------|
+| `draft` | Yes — full edit mode | Report author |
+| `in_review` | No — locked, read-only | Reviewer: Reject or Publish |
+| `published` | No — frozen, immutable row | Anyone: Fork to create new draft |
+
+**On publish**, the backend automatically:
+1. Freezes the current version row permanently (status = `published`).
+2. Clones all child records (columns, rows, metrics, formulas, column maps) to a new `draft` at `version + 1`.
+3. Redirects the UI to the new editable draft.
 
 ---
 
@@ -45,96 +87,74 @@ The application is structured into standalone components routed dynamically unde
 
 ### Prerequisites
 
-To build, test, and run the frontend, ensure your development environment has the following installed:
-
-*   **Node.js (LTS v24.x):** Runtimes for Angular compiling.
-*   **npm:** Package manager (specifically tested and packaged with `npm@11.8.0`).
-*   **Angular CLI:** (Installed globally or run via local project scripts).
-*   **Python v3.10+ & Pip:** Required for running the ADK validation agent.
+| Tool | Version | Notes |
+|------|---------|-------|
+| **Node.js** | LTS v24.x | Required runtime |
+| **npm** | 11.8.0 | Pinned in `packageManager` |
+| **Angular CLI** | ^21.2.12 | Installed in `devDependencies` |
 
 ---
 
-### Step-by-Step Multi-OS Environment Setup
+### macOS Setup (NVM)
 
-#### 🍎 macOS Setup (using Homebrew & NVM)
-1. **Install Homebrew** (if not installed):
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
-2. **Install NVM & Node.js v24**:
-   ```bash
-   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-   source ~/.zshrc # or ~/.bashrc depending on shell
-   nvm install 24
-   nvm use 24
-   ```
-3. **Install Angular CLI Globally (Optional)**:
-   ```bash
-   npm install -g @angular/cli
-   ```
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.zshrc
+nvm install 24 && nvm use 24
+npm install -g @angular/cli   # optional
+```
 
-#### 🐧 Ubuntu / Debian Setup (using apt & NodeSource)
-1. **Configure NodeSource and Install Node.js**:
-   ```bash
-   sudo apt update
-   sudo apt install -y curl git
-   curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-   sudo apt install -y nodejs
-   ```
-2. **Install Angular CLI Globally (Optional)**:
-   ```bash
-   sudo npm install -g @angular/cli
-   ```
+### Ubuntu / Debian Setup
 
-#### 🪟 Windows Setup (using winget via PowerShell Admin)
+```bash
+sudo apt update && sudo apt install -y curl git
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g @angular/cli   # optional
+```
+
+### Windows Setup (PowerShell Admin)
+
 ```powershell
-# Install Node.js LTS
 winget install --id OpenJS.NodeJS.LTS -e --source winget
-
-# Install Angular CLI globally
 npm install -g @angular/cli
 ```
 
 ---
 
-### Setup & Installation (Local Development)
+### Install & Run Locally
 
-1. **Install Dependencies**:
-   Because of a peer dependency conflict between the legacy `vitest` dependency (`^3.0.0`) and `@angular/build` (`^4.0.8` peer requirements), you **must** use the `--legacy-peer-deps` flag:
+1. **Install dependencies** — the `--legacy-peer-deps` flag is required due to a peer conflict between `vitest ^3.0.0` and `@angular/build ^21.2.12`:
+
    ```bash
    npm install --legacy-peer-deps
    ```
 
-2. **Start Angular Dev Server**:
-   Run the local server with backend proxy integration:
+2. **Start the Angular dev server** with backend proxy integration:
+
    ```bash
    npm start
    ```
-   *This runs `ng serve --proxy-config proxy.conf.json`. The application will be available at [http://127.0.0.1:4200/](http://127.0.0.1:4200/).*
 
-3. **Backend Connection**:
-   The application connects to the Spring Boot REST API at **`http://127.0.0.1:8101/api`**. Ensure the backend server is running in parallel.
+   Available at [http://127.0.0.1:4200/](http://127.0.0.1:4200/). All `/api/*` requests proxy to `http://127.0.0.1:8101`.
 
-4. **Building**:
-   To build the optimized production package:
+3. **Ensure the Spring Boot backend is running** on port `8101`.
+
+4. **Build for production**:
+
    ```bash
    npm run build
    ```
-   *Build artifacts will be written to `dist/frontend/browser/`.*
 
-5. **Run ADK Validation Agent**:
-   To validate the frontend build, styling guidelines, and accessibility rules:
-   ```bash
-   adk run .agents/validation
-   ```
-   *Prompt the agent with: `"Validate the Angular build and UI components"` or `"Audit CSS templates and lints"`.*
+   Output written to `dist/frontend/browser/`.
 
-6. **Unit Testing**:
-   Run the unit test suite using Vitest:
+5. **Run unit tests**:
+
    ```bash
    npm test
    ```
-   *This executes `vitest run` in the terminal.*
+
+   Executes `vitest run`. See [TESTING.md](TESTING.md) for full testing guidance.
 
 ---
 
@@ -142,86 +162,116 @@ npm install -g @angular/cli
 
 ```
 reportingengine_frontend/
-├── .agents/             # ADK validation agents configuration & code
-│   ├── agents/          # Validator specifications
-│   └── validation/      # Executable validation agent (agent.py, tools.py)
+├── .agents/                    # ADK validation agent configuration
+│   └── validation/             # Executable validation agent (agent.py, tools.py)
 ├── src/app/
-│   ├── components/      # Standalone view components and subcomponents
-│   │   ├── dashboard.ts # Main catalog page & spreadsheet uploader
-│   │   ├── field-picker.ts # Modal selector for fact & dimension fields
-│   │   ├── login.ts     # User auth view
-│   │   ├── report-builder.ts # Interactive drag-and-drop report layout builder
-│   │   ├── report-detail.ts # In-depth layout visualizer & run executor
-│   │   ├── report-viewer.ts # Reports Execution Hub for running reports
-│   │   ├── row-filter.ts # Advanced filter group builder component
-│   │   ├── semantic.ts  # LookML-equivalent metadata registry browser
-│   │   ├── sidebar.ts   # Collapsible responsive sidebar component
-│   │   └── value-picker.ts # Autocomplete fuzzy search dropdown component
+│   ├── components/             # Standalone view components
+│   │   ├── calendar-picker.ts      # Date selection popover (DWH-available dates only)
+│   │   ├── dashboard.ts            # Catalog overview & template uploader
+│   │   ├── execution-hub.ts        # Reports Execution Hub (run & inspect datagrid)
+│   │   ├── field-picker.ts         # Fact/dimension field selector modal
+│   │   ├── granularity-picker.ts   # Group-by dimension breakout configuration
+│   │   ├── login.ts                # User authentication view
+│   │   ├── report-builder.ts       # Drag-and-drop layout builder + lifecycle controls
+│   │   ├── report-detail.ts        # Read-only config inspector + Excel download
+│   │   ├── row-condition-group.ts  # Recursive condition group sub-component
+│   │   ├── row-filter.ts           # Query condition filter configuration
+│   │   ├── semantic.ts             # Semantic metadata registry browser
+│   │   ├── sidebar.ts              # Collapsible responsive navigation sidebar
+│   │   └── value-picker.ts         # Autocomplete fuzzy-search dropdown
 │   ├── directives/
-│   │   └── col-resizer.directive.ts # Visual column resizing directive
+│   │   └── col-resizer.directive.ts   # Datagrid column width resizing
 │   ├── guards/
-│   │   └── auth.guard.ts# Route guard to block unauthenticated access
+│   │   └── auth.guard.ts              # Route guard for authenticated-only access
 │   ├── interceptors/
-│   │   └── auth.interceptor.ts # Attaches Authorization header to HTTP calls
+│   │   └── auth.interceptor.ts        # Injects Basic Auth header on all API calls
 │   ├── pipes/
-│   │   ├── bracket-rainbow.pipe.ts # dynamic rainbow parenthesis tokenizer pipe
-│   │   └── bracket-rainbow.pipe.spec.ts # unit test suite for the rainbow pipe
+│   │   └── bracket-rainbow.pipe.ts    # Rainbow-colorized nested parenthesis renderer
 │   ├── services/
-│   │   ├── auth.service.ts # Session storage & authorization header manager
-│   │   └── report.service.ts # HTTP REST client mapping to the Spring Boot API
+│   │   ├── auth.service.ts            # Session management & credential storage
+│   │   └── report.service.ts          # Full REST API client (see table below)
 │   ├── utils/
-│   │   ├── date-formatter.ts # Date utilities and helpers
-│   │   ├── report-parser.ts # Serializes and deserializes report data
-│   │   └── search-analyzer.ts # Utility for query parsing and analyzer
-│   ├── app.config.ts    # Application providers (HttpClient, Router, etc.)
-│   ├── app.css          # Global and design token styles
-│   ├── app.html         # Shell containing <router-outlet>
-│   ├── app.routes.ts    # Standalone routing table definition
-│   └── app.ts           # Core app component bootloader
-├── angular.json         # Angular CLI configuration
-├── Dockerfile           # Serves built files via Nginx
-├── package.json         # Node.js dependencies configuration
-├── proxy.conf.json      # Development server backend proxy configuration
-├── run.sh               # Bootstrap script for Nginx container startup
-├── vitest.config.ts     # Vitest runner configuration
-└── GEMINI.md            # Frontend architecture reference and guide
+│   │   ├── date-formatter.ts          # Date parsing, normalization, rolling-column helpers
+│   │   ├── report-parser.ts           # Expression parser/serializer for filters & measures
+│   │   └── search-analyzer.ts        # Fuzzy token matcher and weight analyzer
+│   ├── app.config.ts           # Root providers (HttpClient, Router, interceptors)
+│   ├── app.css                 # Global design tokens and dark-mode CSS variables
+│   ├── app.html                # App shell (<router-outlet>)
+│   ├── app.routes.ts           # Lazy-loaded standalone routing table
+│   └── app.ts                  # Root component bootstrapper
+├── angular.json                # Angular CLI workspace configuration
+├── Dockerfile                  # Nginx container — serves built static assets on port 8080
+├── GEMINI.md                   # Architecture reference & agent handoff document
+├── nginx.conf.template         # Nginx config template (BACKEND_HOST injected at startup)
+├── package.json                # npm dependencies and scripts
+├── proxy.conf.json             # Dev-server proxy: /api/* -> http://127.0.0.1:8101
+├── run.sh                      # Docker entrypoint — patches nginx.conf and starts Nginx
+├── TESTING.md                  # Testing guide and patterns
+└── vitest.config.ts            # Vitest runner configuration
 ```
 
 ---
 
-## Troubleshooting Port Conflicts
+## 🔌 `ReportService` API Surface
 
-When running the application locally, you may encounter port conflicts if the processes are not terminated cleanly (e.g., when a terminal session is closed without stopping the servers).
+All calls use the relative base path `/api/reports`, proxied through Nginx or the dev-server proxy.
 
-### 1. Identify Running Processes
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `getReports()` | `GET /api/reports` | List all reports (latest version per reportId only) |
+| `getReportConfig(id, date, version?)` | `GET /api/reports/:id?date=&version=` | Load full config DTO |
+| `saveReport(id, config)` | `PUT /api/reports/:id` | Save column/row configuration |
+| `createReport(config)` | `POST /api/reports` | Create a new report record |
+| `deleteReport(id)` | `DELETE /api/reports/:id` | Delete a report |
+| `importTemplate(file)` | `POST /api/reports/import` | Ingest Excel template file |
+| `validateReport(config)` | `POST /api/reports/validate` | Validate a config before saving |
+| `previewSql(config)` | `POST /api/reports/preview-sql` | Generate live SQL preview |
+| `runReport(id, date, version?)` | `POST /api/reports/:id/run` | Download compiled Excel (Blob) |
+| `executeReport(id, payload, version?)` | `POST /api/reports/:id/execute` | Run report, return unpivoted grid |
+| `getTables()` | `GET /api/reports/tables` | List available fact tables |
+| `getTableColumns(table)` | `GET /api/reports/table-columns?table=` | List columns for a table |
+| `getColumnTypes(table)` | `GET /api/reports/column-types?table=` | Get column -> type map |
+| `getDistinctValues(table, column)` | `GET /api/reports/dimensions/values` | Get distinct dimension values |
+| `getReportingDates()` | `GET /api/reports/dimensions/values` | Fetch available DWH reporting dates |
+| `getDimensionJoins(factTable)` | `GET /api/reports/dimension-joins` | Get join metadata for a fact table |
+| `getSemanticModel()` | `GET /api/reports/semantic-model` | Load full semantic registry |
+| `submitReview(id, version)` | `POST /api/reports/:id/version/submit-review` | Transition DRAFT -> IN_REVIEW |
+| `rejectReport(id, version)` | `POST /api/reports/:id/version/reject` | Transition IN_REVIEW -> DRAFT |
+| `publishReport(id, version)` | `POST /api/reports/:id/version/publish` | Freeze version + auto-fork new draft |
+| `forkReport(id, version)` | `POST /api/reports/:id/version/fork` | Manually fork PUBLISHED -> new DRAFT |
+| `getReportVersions(id)` | `GET /api/reports/:id/version/list` | List all versions of a report |
 
-To find which process is listening on a specific port:
+---
 
-* **macOS / Linux**:
-  ```bash
-  lsof -i :8101   # For backend (Port 8101)
-  lsof -i :4200   # For frontend (Port 4200)
-  ```
-  This will print a list of running processes. Look for the `PID` column.
+## 🐛 Troubleshooting
 
-* **Windows**:
-  ```powershell
-  netstat -ano | findstr :8101
-  netstat -ano | findstr :4200
-  ```
-  The last column in the output represents the process ID (`PID`).
+### Port conflicts
 
-### 2. Kill the Process Manually
+```bash
+# macOS / Linux
+lsof -i :8101   # Backend
+lsof -i :4200   # Frontend dev server
+kill -9 <PID>
+```
 
-Once you have identified the process ID (`PID`):
+```powershell
+# Windows
+netstat -ano | findstr :8101
+taskkill /PID <PID> /F
+```
 
-* **macOS / Linux**:
-  ```bash
-  kill -9 <PID>
-  ```
+### `npm install` fails with peer dependency errors
 
-* **Windows**:
-  ```powershell
-  taskkill /PID <PID> /F
-  ```
+Always use the `--legacy-peer-deps` flag:
 
+```bash
+npm install --legacy-peer-deps
+```
+
+### Backend returns 401 Unauthorized
+
+The Spring Boot backend uses HTTP Basic Auth. Default local credentials: **username** `admin`, **password** `password`. Configure via `SECURITY_ADMIN_USERNAME` / `SECURITY_ADMIN_PASSWORD` environment variables.
+
+### Execution hub shows duplicate report entries
+
+Fixed in `ReportRepository.findLatestVersionPerReport()`. The `GET /api/reports` endpoint now returns only the **latest version per `reportId`**. Hard-refresh the browser (`Ctrl+Shift+R` / `Cmd+Shift+R`) to clear cached data.

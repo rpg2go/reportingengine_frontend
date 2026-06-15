@@ -77,6 +77,7 @@ describe('ReportBuilderComponent', () => {
     };
     mockRoute = {
       params: of({ id: 'new' }),
+      queryParams: of({}),
     };
     mockDestroyRef = {
       onDestroy: vi.fn().mockReturnValue(() => {}),
@@ -87,8 +88,9 @@ describe('ReportBuilderComponent', () => {
     vi.useRealTimers();
   });
 
-  const createComponent = (routeParams: any = { id: 'new' }) => {
+  const createComponent = (routeParams: any = { id: 'new' }, queryParams: any = {}) => {
     mockRoute.params = of(routeParams);
+    mockRoute.queryParams = of(queryParams);
     const injector = Injector.create({
       providers: [
         { provide: ReportService, useValue: mockReportService },
@@ -121,7 +123,7 @@ describe('ReportBuilderComponent', () => {
 
     expect(component.isNewReport).toBe(false);
     expect(component.reportId).toBe('R1');
-    expect(mockReportService.getReportConfig).toHaveBeenCalledWith('R1', '2025-12-31');
+    expect(mockReportService.getReportConfig).toHaveBeenCalledWith('R1', '2025-12-31', undefined);
     expect(component.reportName).toBe('Sales Report');
     expect(component.sourceTable).toBe('table1');
   });
@@ -914,5 +916,12 @@ describe('ReportBuilderComponent', () => {
     // Decimal list
     expect(component.validateFilterValue('numeric', '1.2, 3.4, 5.0')).toBe(true);
     expect(component.validateFilterValue('numeric', '1.2, abc')).toBe(false);
+  });
+
+  it('should initialize in viewOnlyMode and lock form controls', () => {
+    createComponent({ id: 'R1' }, { view: 'true' });
+    expect(component.viewOnlyMode).toBe(true);
+    expect(component.isLocked).toBe(true);
+    expect(component.reportForm.disabled).toBe(true);
   });
 });

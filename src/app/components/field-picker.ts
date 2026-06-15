@@ -329,6 +329,7 @@ export class FieldPickerComponent implements OnInit {
   value = input<string>('', { alias: 'selectedValue' });
   fields = input<any[]>([], { alias: 'dwhCatalog' });
   placeholder = input<string>('-- select field --');
+  disabled = input<boolean>(false);
   valueChange = output<string>({ alias: 'onSelect' });
 
   @ViewChild('comboboxInput') comboboxInputRef?: ElementRef<HTMLInputElement>;
@@ -439,6 +440,9 @@ export class FieldPickerComponent implements OnInit {
   }
 
   onInputFocus() {
+    if (this.disabled()) {
+      return;
+    }
     if (!this.isOpen()) {
       this.isOpen.set(true);
       this.localSearchQuery.set('');
@@ -476,6 +480,9 @@ export class FieldPickerComponent implements OnInit {
   }
 
   toggleDropdown(event: MouseEvent) {
+    if (this.disabled()) {
+      return;
+    }
     event.stopPropagation();
     if (this.isOpen()) {
       this.close();

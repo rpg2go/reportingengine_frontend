@@ -14,8 +14,9 @@ export class ReportService {
     return this.http.get<any[]>(this.apiUrl);
   }
 
-  getReportConfig(id: string, date: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${id}?date=${date}`);
+  getReportConfig(id: string, date: string, version?: number): Observable<any> {
+    const versionParam = version != null ? `&version=${version}` : '';
+    return this.http.get<any>(`${this.apiUrl}/${id}?date=${date}${versionParam}`);
   }
 
   importTemplate(file: File): Observable<any> {
@@ -25,8 +26,9 @@ export class ReportService {
     return this.http.post(`${this.apiUrl}/import`, formData);
   }
 
-  runReport(id: string, date: string): Observable<Blob> {
-    return this.http.post(`${this.apiUrl}/${id}/run?date=${date}`, null, {
+  runReport(id: string, date: string, version?: number): Observable<Blob> {
+    const versionParam = version != null ? `&version=${version}` : '';
+    return this.http.post(`${this.apiUrl}/${id}/run?date=${date}${versionParam}`, null, {
       responseType: 'blob'
     });
   }
@@ -92,7 +94,28 @@ export class ReportService {
     return this.getDistinctValues('dim_date', 'reporting_date');
   }
 
-  executeReport(id: string, payload: { reportingDate: string; runtimeFilters: any[] }): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/${id}/execute`, payload);
+  executeReport(id: string, payload: { reportingDate: string; runtimeFilters: any[] }, version?: number): Observable<any[]> {
+    const versionParam = version != null ? `?version=${version}` : '';
+    return this.http.post<any[]>(`${this.apiUrl}/${id}/execute${versionParam}`, payload);
+  }
+
+  submitReview(id: string, version: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${id}/version/submit-review?version=${version}`, null);
+  }
+
+  rejectReport(id: string, version: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${id}/version/reject?version=${version}`, null);
+  }
+
+  publishReport(id: string, version: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${id}/version/publish?version=${version}`, null);
+  }
+
+  forkReport(id: string, version: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${id}/version/fork?version=${version}`, null);
+  }
+
+  getReportVersions(id: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/${id}/version/list`);
   }
 }

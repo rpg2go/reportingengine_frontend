@@ -2,11 +2,14 @@
   <div class="input-wrapper">
     @if (!isOpen()) {
       <div 
-        class="picker-input cursor-pointer flex items-center justify-between" 
-        (click)="$event.stopPropagation(); onInputFocus()"
+        class="picker-input flex items-center justify-between" 
+        [class.cursor-pointer]="!disabled()"
+        [style.opacity]="disabled() ? '0.5' : '1'"
+        [style.cursor]="disabled() ? 'not-allowed' : 'pointer'"
+        (click)="!disabled() && onInputFocus(); $event.stopPropagation()"
         tabindex="0"
-        (keydown.enter)="onInputFocus()"
-        (keydown.space)="onInputFocus()"
+        (keydown.enter)="!disabled() && onInputFocus()"
+        (keydown.space)="!disabled() && onInputFocus()"
       >
         <span class="truncate font-medium flex items-center gap-1.5" [class.text-slate-500]="!value()" [class.text-sky-400]="value()">
           @if (value()) {
@@ -32,9 +35,10 @@
         role="combobox"
         [attr.aria-expanded]="isOpen()"
         aria-autocomplete="list"
+        [disabled]="disabled()"
       />
     }
-    <button type="button" class="arrow-btn" (click)="toggleDropdown($event)" aria-label="Toggle dropdown options">
+    <button type="button" class="arrow-btn" [disabled]="disabled()" (click)="!disabled() && toggleDropdown($event)" aria-label="Toggle dropdown options">
       <span class="arrow-icon">▾</span>
     </button>
   </div>

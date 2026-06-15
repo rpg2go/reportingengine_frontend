@@ -43,6 +43,9 @@ describe('ExecutionHubComponent', () => {
       paramMap: of({
         get: (key: string) => null,
       }),
+      queryParamMap: of({
+        get: (key: string) => null,
+      }),
     };
 
     mockRouter = {
@@ -81,6 +84,9 @@ describe('ExecutionHubComponent', () => {
     mockActivatedRoute.paramMap = of({
       get: (key: string) => 'RPT_001',
     });
+    mockActivatedRoute.queryParamMap = of({
+      get: (key: string) => null,
+    });
 
     component.ngOnInit();
     expect(component.selectedReportId()).toBe('RPT_001');
@@ -92,7 +98,7 @@ describe('ExecutionHubComponent', () => {
 
   it('should redirect and load config when a report is selected', () => {
     component.onReportSelected('RPT_001');
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/viewer', 'RPT_001']);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/viewer', 'RPT_001'], { queryParams: {} });
     expect(component.reportName()).toBe('Sales Report');
   });
 
@@ -106,7 +112,7 @@ describe('ExecutionHubComponent', () => {
     expect(mockReportService.executeReport).toHaveBeenCalledWith('RPT_001', {
       reportingDate: '2026-05-26',
       runtimeFilters: [{ tableColumn: 'dim_location.region', value: 'EMEA' }],
-    });
+    }, undefined);
 
     expect(component.getCellValue('R1', 'C1')).toBe('125.5');
     expect(component.getCellValue('R2', 'C1')).toBe('-'); // not in results

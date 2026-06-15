@@ -239,6 +239,9 @@ import { CalendarPickerComponent } from './calendar-picker';
                     }
                   </div>
                   <div class="inspector-action-buttons">
+                    <button (click)="viewReport(report.reportId)" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+                      👁️ View Definition
+                    </button>
                     <button [routerLink]="['/reports', report.reportId, 'edit']" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
                       ✏️ Edit Definition
                     </button>
@@ -1438,7 +1441,7 @@ export class DashboardComponent implements OnInit {
   }
 
   viewReport(reportId: string): void {
-    this.router.navigate(['/reports', reportId]);
+    this.router.navigate(['/reports', reportId, 'edit'], { queryParams: { view: 'true' } });
   }
 
   editReport(reportId: string, event: Event): void {

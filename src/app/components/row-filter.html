@@ -10,8 +10,9 @@
           (ngModelChange)="onRawExpressionChange($event)" 
           placeholder="e.g. (a = 2 OR b = 3) AND c = 'AMZN'"
           class="form-input raw-expression-input text-xs"
+          [disabled]="disabled()"
         />
-        <button (click)="switchToStructuredMode()" class="switch-mode-btn" title="Switch to structured builder">
+        <button (click)="switchToStructuredMode()" [disabled]="disabled()" class="switch-mode-btn" title="Switch to structured builder">
           Builder
         </button>
       </div>
@@ -20,7 +21,7 @@
         <span 
           class="filter-tag-mini cursor-pointer truncate max-w-[280px] font-mono text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-0.5" 
           [title]="getFilterStringSummary(rowFilters())"
-          (click)="$event.stopPropagation(); openBuilder()"
+          (click)="!disabled() && openBuilder(); $event.stopPropagation()"
         >
           {{ getFilterStringSummary(rowFilters()) }}
         </span>
@@ -29,7 +30,7 @@
       }
       
       @if (rowFilters()) {
-        <button (click)="switchToRawMode()" class="switch-mode-btn" title="Convert to Custom SQL">
+        <button (click)="switchToRawMode()" [disabled]="disabled()" class="switch-mode-btn" title="Convert to Custom SQL">
           SQL Mode
         </button>
       }
@@ -64,6 +65,7 @@
             [dwhCatalog]="dwhCatalog()"
             [linkedDimensions]="linkedDimensions()"
             [columnTypes]="columnTypes()"
+            [disabled]="disabled()"
             (groupChanged)="onGroupChanged()"
           ></app-row-condition-group>
         }
@@ -80,12 +82,12 @@
       <button 
         (click)="$event.stopPropagation(); openBuilder()" 
         class="add-row-filter-btn" 
-        [disabled]="!activeMeasureTable() || isRawMode()"
+        [disabled]="!activeMeasureTable() || isRawMode() || disabled()"
       >
         + Edit Filters
       </button>
       @if (!isRawMode() && !rowFilters()) {
-        <button (click)="switchToRawMode()" class="switch-mode-btn">
+        <button (click)="switchToRawMode()" [disabled]="disabled()" class="switch-mode-btn">
           + Custom SQL
         </button>
       }
