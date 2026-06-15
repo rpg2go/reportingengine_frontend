@@ -123,6 +123,10 @@ it('should toggle loading state during execution', () => {
 });
 ```
 
+### 6. Pipe & Pure Function Testing
+For Angular Pipes or standalone utility functions, avoid importing TestBed if not needed. Instead, instantiate the target class directly, supplying mock dependencies (like `DomSanitizer`). This ensures execution speed remains sub-millisecond.
+*Example:* See [bracket-rainbow.pipe.spec.ts](src/app/pipes/bracket-rainbow.pipe.spec.ts).
+
 ---
 
 ## 🏷️ Test Naming & Structure Conventions

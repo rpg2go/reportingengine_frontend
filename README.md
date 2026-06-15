@@ -163,6 +163,9 @@ reportingengine_frontend/
 │   │   └── auth.guard.ts# Route guard to block unauthenticated access
 │   ├── interceptors/
 │   │   └── auth.interceptor.ts # Attaches Authorization header to HTTP calls
+│   ├── pipes/
+│   │   ├── bracket-rainbow.pipe.ts # dynamic rainbow parenthesis tokenizer pipe
+│   │   └── bracket-rainbow.pipe.spec.ts # unit test suite for the rainbow pipe
 │   ├── services/
 │   │   ├── auth.service.ts # Session storage & authorization header manager
 │   │   └── report.service.ts # HTTP REST client mapping to the Spring Boot API

@@ -26,8 +26,6 @@ import { ThemeService } from '../services/theme.service';
       [class.collapsed]="!isSidebarExpanded()"
       [class.expanded]="isSidebarExpanded()"
       [class.open]="mobileOpen()"
-      (mouseenter)="onMouseEnter()"
-      (mouseleave)="onMouseLeave()"
     >
       <button
         class="sidebar-close-btn"
@@ -38,56 +36,64 @@ import { ThemeService } from '../services/theme.service';
       </button>
 
       <div class="sidebar-brand">
-        <span class="brand-icon">
-          @if (brandIcon() === '🛠️') {
-            <svg
-              class="icon-svg brand-logo-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-              />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          } @else if (brandIcon() === 'analytics-grid') {
-            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm transition-transform duration-200 hover:scale-105">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" />
-                <path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" />
-                <path d="m5 17 4-4 4 4 6-6" stroke-width="2.5" class="text-indigo-500" />
-              </svg>
-            </div>
-          } @else {
-            <svg
-              class="icon-svg brand-logo-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
-              />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
-          }
-        </span>
         @if (isSidebarExpanded()) {
+          <span class="brand-icon">
+            @if (brandIcon() === '🛠️') {
+              <svg
+                class="icon-svg brand-logo-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            } @else if (brandIcon() === 'analytics-grid') {
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm transition-transform duration-200 hover:scale-105">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" />
+                  <path d="m5 17 4-4 4 4 6-6" stroke-width="2.5" class="text-indigo-500" />
+                </svg>
+              </div>
+            } @else {
+              <svg
+                class="icon-svg brand-logo-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+            }
+          </span>
           <span class="brand-text animate-fade-in">{{ brandText() }}</span>
+          <button
+            class="menu-collapse-btn"
+            (click)="toggleExpand()"
+            title="Collapse Menu"
+          >
+            «
+          </button>
+        } @else {
+          <button
+            class="menu-collapse-btn-collapsed"
+            (click)="toggleExpand()"
+            title="Expand Menu"
+          >
+            ➔
+          </button>
         }
-        <button
-          class="menu-collapse-btn"
-          (click)="toggleExpand()"
-          [title]="isSidebarExpanded() ? 'Collapse Menu' : 'Expand Menu'"
-        >
-          {{ isSidebarExpanded() ? '«' : '➔' }}
-        </button>
       </div>
 
       <nav class="sidebar-menu">
@@ -377,10 +383,25 @@ import { ThemeService } from '../services/theme.service';
       background: var(--card-bg, rgba(30,41,59,0.7));
       color: var(--color-apple-text, #F5F5F7);
     }
-    .sidebar.collapsed .menu-collapse-btn {
-      margin-left: 0;
-      margin-top: 4px;
-      display: none;
+
+    .menu-collapse-btn-collapsed {
+      background: var(--input-bg, rgba(255,255,255,0.04));
+      border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+      color: var(--color-apple-grey, #94A3B8);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast, 150ms);
+      width: 36px;
+      height: 36px;
+      margin: 0 auto;
+    }
+    .menu-collapse-btn-collapsed:hover {
+      background: var(--card-bg, rgba(30,41,59,0.7));
+      color: var(--color-apple-text, #F5F5F7);
     }
 
     /* Nav menu */
@@ -674,12 +695,7 @@ export class SidebarComponent {
   mobileOpenChange = output<boolean>();
   backClick = output<void>();
 
-  isManuallyExpanded = signal<boolean>(false);
-  isHovered = signal<boolean>(false);
-
-  isSidebarExpanded = computed(() => {
-    return this.isManuallyExpanded() || this.isHovered();
-  });
+  isSidebarExpanded = signal<boolean>(false);
 
   constructor(
     private authService: AuthService,
@@ -689,16 +705,8 @@ export class SidebarComponent {
 
   username = computed(() => this.authService.getUsername());
 
-  onMouseEnter() {
-    this.isHovered.set(true);
-  }
-
-  onMouseLeave() {
-    this.isHovered.set(false);
-  }
-
   toggleExpand() {
-    this.isManuallyExpanded.update((v) => !v);
+    this.isSidebarExpanded.update((v) => !v);
   }
 
   closeMobileSidebar() {

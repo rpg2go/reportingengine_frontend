@@ -67,7 +67,7 @@
               <!-- Wrapping layout that prevents overlap between long names and badges -->
               <div class="flex items-center justify-between w-full">
                 <span class="report-code font-mono text-[10px] font-bold text-slate-400 group-hover:text-indigo-600">
-                  {{ rep.reportId }}
+                  {{ rep.reportId }} <span class="text-slate-500 font-sans font-normal" style="font-size: 9px; margin-left: 6px;">(v{{ rep.version || 1 }})</span>
                 </span>
                 <span class="status-badge-explorer shrink-0" [class]="rep.status || 'draft'">
                   {{ rep.status || 'draft' }}
@@ -91,7 +91,9 @@
             <div>
               <h2 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2" style="margin:0;">
                 <span>📊 {{ reportName() }}</span>
-                <span class="report-code font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" style="margin-left: 8px;">{{ selectedReportId() }}</span>
+                <span class="report-code font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" style="margin-left: 8px;">
+                  {{ selectedReportId() }} (v{{ reportConfig()?.version || 1 }})
+                </span>
               </h2>
             </div>
             <div class="status-badge-explorer" [class]="reportConfig()?.status || 'draft'">

@@ -36,6 +36,9 @@ This document serves as the UI/UX architecture reference, implementation state, 
    - The frontend leverages modern Angular signals (`signal`, `computed`, `model`, `input`, `output`) and `ChangeDetectionStrategy.OnPush` to manage application state reactively. This avoids unnecessary ZoneJS change detection cycles and drastically improves UI responsiveness.
 6. **Formula Injection Sanitization & Validation**:
    - The UI blocks layout configurations (saving columns or rows) where labels start with formula triggers (`=`, `+`, `-`, `@`). Additionally, the datagrid export to CSV sanitizes pivoted cell metrics to prevent client-side formula execution inside spreadsheet programs.
+7. **Dynamic Rainbow Parentheses Bracket Engine**:
+   - Tracks nested bracket characters sequentially to determine their active nesting depth layer and wraps matching parentheses in high-visibility color-coded classes (`text-indigo-600`, `text-emerald-600`, etc.).
+   - Synchronizes card container left-highlight borders and padding-aligned parentheses indicators based on nesting depth to visually map complex logical groupings.
 
 ---
 
@@ -55,10 +58,11 @@ Use the links below to navigate directly to the frontend source files:
 - [row-filter.ts](src/app/components/row-filter.ts) — Query condition filter configuration component.
 - [value-picker.ts](src/app/components/value-picker.ts) — Autocomplete lookup dropdown component.
 
-### Directives & Guards & Interceptors
+### Directives & Guards & Interceptors & Pipes
 - [col-resizer.directive.ts](src/app/directives/col-resizer.directive.ts) — Directive for adjusting datagrid column widths.
 - [auth.guard.ts](src/app/guards/auth.guard.ts) — Router guard to secure authenticated routes.
 - [auth.interceptor.ts](src/app/interceptors/auth.interceptor.ts) — Automatically injects Basic Auth header into API requests.
+- [bracket-rainbow.pipe.ts](src/app/pipes/bracket-rainbow.pipe.ts) — Tokenizes logic preview parenthetical characters to render nested rainbow bracket highlight spans.
 
 ### Data & State Services (`src/app/services/`)
 - [auth.service.ts](src/app/services/auth.service.ts) — Handles user sessions, local storage, and Auth header interceptor logic.
