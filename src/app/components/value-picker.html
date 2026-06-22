@@ -1,13 +1,13 @@
 <div class="value-picker-container" (click)="$event.stopPropagation()">
   <!-- Tagged Chip Input Housing Grid Layout -->
   <div 
-    class="picker-input-housing" 
+    class="picker-input-housing flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-1 flex items-center gap-1.5 overflow-x-auto custom-scrollbar whitespace-nowrap" 
     [class.is-focused]="isOpen()" 
     [style.opacity]="disabled() ? '0.5' : '1'"
     [style.cursor]="disabled() ? 'not-allowed' : 'pointer'"
     (click)="!disabled() && isOpen.set(!isOpen())"
   >
-    <div class="chips-container">
+    <div class="chips-container flex items-center gap-1.5 whitespace-nowrap">
       @for (val of selectedValues(); track val) {
         <span class="value-chip" (click)="$event.stopPropagation()">
           {{ val }}
@@ -34,7 +34,7 @@
 
   <!-- Multi-Select Checkbox Overlay Template Layout -->
   @if (isOpen()) {
-    <div class="picker-dropdown-overlay" (click)="$event.stopPropagation()">
+    <div class="picker-dropdown-overlay absolute left-0 right-0 z-[1050] mt-1 bg-white border border-slate-200 rounded-xl shadow-xl" (click)="$event.stopPropagation()">
       <!-- Search Input inside Dropdown -->
       <div class="dropdown-search-wrapper">
         <input
@@ -49,7 +49,7 @@
       </div>
 
       <!-- Scrollable list of distinct checkbox options -->
-      <div class="dropdown-options-list">
+      <div class="dropdown-options-list max-h-[220px] overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
         @for (val of filteredValues(); track val) {
           <div 
             class="dropdown-option-item" 

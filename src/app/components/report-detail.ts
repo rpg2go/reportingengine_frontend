@@ -53,7 +53,7 @@ import { SidebarComponent } from './sidebar';
                     <span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> Running
                   </span>
                 } @else {
-                  <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [class]="report.status.toLowerCase()">
+                  <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [ngClass]="(report.status || 'draft').toLowerCase()">
                     {{ report.status }}
                   </span>
                 }
@@ -102,6 +102,12 @@ import { SidebarComponent } from './sidebar';
 
           <!-- Tabs -->
           <div class="tabs-container animate-fade-in">
+            @if (running()) {
+              <div class="running-overlay">
+                <span class="spinner large"></span>
+                <p>Generating report spreadsheet...</p>
+              </div>
+            }
             <div class="tabs-header">
               <button 
                 [class.active]="activeTab() === 'columns'" 
@@ -488,12 +494,38 @@ import { SidebarComponent } from './sidebar';
 
     /* Tabs */
     .tabs-container {
+      position: relative;
       display: flex;
       flex-direction: column;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: 20px;
       overflow: hidden;
+    }
+
+    .running-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .running-overlay p {
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
     }
 
     .tabs-header {

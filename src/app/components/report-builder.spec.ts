@@ -215,6 +215,18 @@ describe('ReportBuilderComponent', () => {
     component.reportId = 'R2';
     component.reportName = 'Test Report';
     component.sourceTable = 'table1';
+    component.rows = [
+      {
+        rowId: 'R1',
+        label: 'Metric 1',
+        rowType: 'data',
+        source: 'SUM(amount)',
+        sourceTable: 'analytics.fact_sales',
+        measureAgg: 'SUM',
+        measureCol: 'amount',
+        activeCols: ['C1'],
+      },
+    ];
 
     const saveSubject = new Subject<any>();
     mockReportService.createReport.mockReturnValue(saveSubject);
@@ -284,6 +296,18 @@ describe('ReportBuilderComponent', () => {
     component.reportId = 'R2';
     component.reportName = 'Test Report';
     component.sourceTable = 'table1';
+    component.rows = [
+      {
+        rowId: 'R1',
+        label: 'Metric 1',
+        rowType: 'data',
+        source: 'SUM(amount)',
+        sourceTable: 'analytics.fact_sales',
+        measureAgg: 'SUM',
+        measureCol: 'amount',
+        activeCols: ['C1'],
+      },
+    ];
 
     mockReportService.createReport.mockReturnValue(of({}));
     mockReportService.saveReport.mockReturnValue(of({}));

@@ -20,6 +20,8 @@ import { SidebarComponent } from './sidebar';
 import { RowFilterComponent } from './row-filter';
 import { CalendarPickerComponent } from './calendar-picker';
 import { GranularityPickerComponent } from './granularity-picker';
+import { GeneralFilterModalComponent } from './general-filter-modal';
+import { TableFilterScope } from '../interfaces/general-filter.interface';
 interface CalendarDay {
   date: Date;
   dayNum: number;
@@ -93,6 +95,7 @@ export interface FieldGroup {
     RowFilterComponent,
     CalendarPickerComponent,
     GranularityPickerComponent,
+    GeneralFilterModalComponent,
   ],
 
   template: `
@@ -614,329 +617,87 @@ export interface FieldGroup {
             </div>
           </div>
 
-          <!-- ── Linked Dimensions (shown once a fact table is active) ───── -->
-          @if (allAvailableDimensions().length > 0) {
-            <div class="form-group">
-              <label>
-                🔗 Linked Dimensions
-                <span class="label-hint"
-                  >— click to enable dimension columns in filters &amp; measure builders</span
-                >
-              </label>
-              <div class="chip-container dim-chip-container">
-                @for (dim of allAvailableDimensions(); track dim) {
-                  <span
-                    class="dim-chip"
-                    [class.active]="isDimensionLinked(dim)"
-                    [class.conformed]="conformedDimensions().includes(dim)"
-                    [class.mismatched]="mismatchedDimensions().includes(dim)"
-                    (click)="toggleLinkedDimension(dim)"
-                    [title]="
-                      conformedDimensions().includes(dim)
-                        ? 'Conformed Dimension: Valid for cross-fact routing'
-                        : 'Mismatched Dimension: Not supported by all active fact tables'
-                    "
-                  >
-                    <span class="dim-chip-icon">{{ isDimensionLinked(dim) ? '✓' : '+' }}</span>
-                    {{ dim }}
-                    @if (conformedDimensions().includes(dim)) {
-                      <span class="dim-chip-status conformed-badge">Conformed</span>
-                    } @else {
-                      <span class="dim-chip-status mismatched-badge">Mismatched</span>
-                    }
-                  </span>
-                }
-              </div>
-            </div>
-          }
-          @if (allAvailableDimensions().length === 0) {
-            <p class="empty-filters">
-              Assign data columns to rows to discover linked dimensions in the semantic layer.
-            </p>
-          }
-
           <!-- ── Consolidated Filters Row ── -->
           <div class="filters-row-container">
             <!-- ── Quick Filters ──────────────────────────────────────────────── -->
-            <div class="form-group filters-builder">
+            <div [formGroup]="reportForm" class="form-group filters-builder">
               <div class="flex-header">
-                <label
-                  >Quick Filters
-                  <span class="label-hint">(runtime-exposed filter conditions)</span></label
-                >
-                <button (click)="addQuickFilter()" class="add-sub-btn">+ Add Filter Condition</button>
+                <label for="quickFiltersPicker" class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">
+                  Quick Filters
+                  <span class="text-[11px] text-slate-400 font-medium font-sans lowercase normal-case tracking-normal ml-1">(runtime-exposed filter dimensions)</span>
+                </label>
               </div>
-              @if (quickFilters.length === 0) {
-                <p class="empty-filters">
-                  No quick filters configured. Add conditions that users can tune at runtime.
-                </p>
-              } @else {
-                <div class="filters-list">
-                  @for (filter of quickFilters; track $index; let idx = $index; let last = $last) {
-                    <div class="filter-row animate-fade-in">
-                      <!-- Table selector -->
-                      <select
-                        [(ngModel)]="filter.dimTable"
-                        (change)="onQuickFilterTableChange(filter); onFilterFieldChanged(filter)"
-                        class="form-select sm dim-select"
-                      >
-                        <option value="">-- Table --</option>
-                        @for (dim of conformedDimensions(); track dim) {
-                          <option [value]="dim">{{ dim }} (Dim)</option>
-                        }
-                      </select>
-
-                      <!-- Column selector -->
-                      <select
-                        [(ngModel)]="filter.attribute"
-                        (change)="onFilterFieldChanged(filter)"
-                        class="form-select sm"
-                      >
-                        <option value="">-- Column --</option>
-                        @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
-                          <option [value]="col">{{ col }}</option>
-                        }
-                      </select>
-
-                      <!-- Operator -->
-                      <select [(ngModel)]="filter.operator" class="form-select sm operator">
-                        @for (op of operators; track op.value) {
-                          <option [value]="op.value">{{ op.label }}</option>
-                        }
-                      </select>
-
-                      <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
-                      <div class="custom-combobox-wrapper">
-                        <button
-                          type="button"
-                          class="combobox-trigger-btn"
-                          [class.active]="filter.showDropdown"
-                          (click)="filter.showDropdown = !filter.showDropdown"
-                          [title]="
-                            isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''
-                          "
-                          [class.invalid-input]="isFilterValueInvalid(filter)"
-                        >
-                          <span class="truncate">{{ filter.value || 'Select value…' }}</span>
-                          <span class="combobox-arrow">▼</span>
-                        </button>
-
-                        @if (filter.showDropdown) {
-                          <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
-                        }
-
-                        @if (filter.showDropdown) {
-                          <div
-                            class="combobox-dropdown z-50 animate-fade-in"
-                            (click)="$event.stopPropagation()"
-                          >
-                            @if (filter.availableValues && filter.availableValues.length > 0) {
-                              <div class="combobox-options-list">
-                                @for (val of filter.availableValues; track val) {
-                                  <div
-                                    class="combobox-option-item"
-                                    [class.selected]="filter.value === val"
-                                    (click)="
-                                      filter.value = val;
-                                      filter.selectedValue = val;
-                                      filter.showDropdown = false;
-                                      triggerValidationDebounced()
-                                    "
-                                  >
-                                    {{ val }}
-                                  </div>
-                                }
-                              </div>
-                            } @else {
-                              <div class="combobox-empty-state">
-                                {{
-                                  (!filter.dimTable && !sourceTable) || !filter.attribute
-                                    ? 'Select table and column first'
-                                    : 'No distinct values found'
-                                }}
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-
-                      <button
-                        (click)="removeQuickFilter(idx)"
-                        class="remove-btn"
-                        title="Remove condition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <!-- AND / OR conjunction between conditions -->
-                    @if (!last) {
-                      <div class="conjunction-row">
-                        <div class="conjunction-toggle-pill">
-                          <button
-                            type="button"
-                            class="conj-btn"
-                            [class.active]="filter.conjunction === 'AND'"
-                            (click)="filter.conjunction = 'AND'"
-                          >
-                            AND
-                          </button>
-                          <button
-                            type="button"
-                            class="conj-btn"
-                            [class.active]="filter.conjunction === 'OR'"
-                            (click)="filter.conjunction = 'OR'"
-                          >
-                            OR
-                          </button>
-                        </div>
-                      </div>
-                    }
-                  }
-                </div>
-              }
+              <div class="w-full mt-2">
+                <app-granularity-picker
+                  id="quickFiltersPicker"
+                  [options]="dynamicGranularityOptions()"
+                  formControlName="quickFilters"
+                ></app-granularity-picker>
+              </div>
             </div>
 
             <!-- ── General Filters ───────────────────────────────────────────── -->
             <div class="form-group filters-builder">
               <div class="flex-header">
-                <label
-                  >General Filters
-                  <span class="label-hint">(base scope constraints for entire report)</span></label
-                >
-                <button (click)="addGeneralFilter()" class="add-sub-btn">
-                  + Add Filter Condition
-                </button>
+                <label class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">
+                  General Filters
+                  <span class="text-[11px] text-slate-400 font-medium font-sans lowercase normal-case tracking-normal ml-1">(multi-table query constraints modal)</span>
+                </label>
               </div>
-              @if (generalFilters.length === 0) {
-                <p class="empty-filters">
-                  No general filters configured. Applies to entire database table scope.
-                </p>
-              } @else {
-                <div class="filters-list">
-                  @for (filter of generalFilters; track $index; let idx = $index; let last = $last) {
-                    <div class="filter-row animate-fade-in">
-                      <!-- Dimension table selector -->
-                      <select
-                        [(ngModel)]="filter.dimTable"
-                        (change)="onGeneralFilterTableChange(filter); onFilterFieldChanged(filter)"
-                        class="form-select sm dim-select"
-                      >
-                        <option value="">-- Table --</option>
-                        @for (dim of conformedDimensions(); track dim) {
-                          <option [value]="dim">{{ dim }} (Dim)</option>
-                        }
-                      </select>
-
-                      <!-- Attribute column selector -->
-                      <select
-                        [(ngModel)]="filter.attribute"
-                        (change)="onFilterFieldChanged(filter)"
-                        class="form-select sm"
-                      >
-                        <option value="">-- Column --</option>
-                        @for (col of getColumnsForFilterTable(filter.dimTable); track col) {
-                          <option [value]="col">{{ col }}</option>
-                        }
-                      </select>
-
-                      <!-- Operator -->
-                      <select [(ngModel)]="filter.operator" class="form-select sm operator">
-                        @for (op of operators; track op.value) {
-                          <option [value]="op.value">{{ op.label }}</option>
-                        }
-                      </select>
-
-                      <!-- Value (Controlled Distinct Values Lookup Dropdown List) -->
-                      <div class="custom-combobox-wrapper">
-                        <button
-                          type="button"
-                          class="combobox-trigger-btn"
-                          [class.active]="filter.showDropdown"
-                          (click)="filter.showDropdown = !filter.showDropdown"
-                          [title]="
-                            isFilterValueInvalid(filter) ? 'Value does not match the column type' : ''
-                          "
-                          [class.invalid-input]="isFilterValueInvalid(filter)"
-                        >
-                          <span class="truncate">{{ filter.value || 'Select value…' }}</span>
-                          <span class="combobox-arrow">▼</span>
-                        </button>
-
-                        @if (filter.showDropdown) {
-                          <div class="combobox-backdrop" (click)="filter.showDropdown = false"></div>
-                        }
-
-                        @if (filter.showDropdown) {
-                          <div
-                            class="combobox-dropdown z-50 animate-fade-in"
-                            (click)="$event.stopPropagation()"
-                          >
-                            @if (filter.availableValues && filter.availableValues.length > 0) {
-                              <div class="combobox-options-list">
-                                @for (val of filter.availableValues; track val) {
-                                  <div
-                                    class="combobox-option-item"
-                                    [class.selected]="filter.value === val"
-                                    (click)="
-                                      filter.value = val;
-                                      filter.selectedValue = val;
-                                      filter.showDropdown = false;
-                                      triggerValidationDebounced()
-                                    "
-                                  >
-                                    {{ val }}
-                                  </div>
-                                }
-                              </div>
-                            } @else {
-                              <div class="combobox-empty-state">
-                                {{
-                                  (!filter.dimTable && !sourceTable) || !filter.attribute
-                                    ? 'Select table and column first'
-                                    : 'No distinct values found'
-                                }}
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
-
-                      <button
-                        (click)="removeGeneralFilter(idx)"
-                        class="remove-btn"
-                        title="Remove condition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <!-- AND / OR conjunction between conditions -->
-                    @if (!last) {
-                      <div class="conjunction-row">
-                        <div class="conjunction-toggle-pill">
-                          <button
-                            type="button"
-                            class="conj-btn"
-                            [class.active]="filter.conjunction === 'AND'"
-                            (click)="filter.conjunction = 'AND'"
-                          >
-                            AND
-                          </button>
-                          <button
-                            type="button"
-                            class="conj-btn"
-                            [class.active]="filter.conjunction === 'OR'"
-                            (click)="filter.conjunction = 'OR'"
-                          >
-                            OR
-                          </button>
-                        </div>
-                      </div>
-                    }
-                  }
+              <div class="row-filter-wrapper flex flex-col gap-2 mt-2">
+                <div class="flex items-center justify-between">
+                  <button type="button" 
+                          (click)="isGeneralFilterModalOpen.set(true)" 
+                          [disabled]="isLocked"
+                          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm cursor-pointer whitespace-nowrap">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Configure General Filters
+                  </button>
+                  <span *ngIf="isGeneralFilterRawMode" class="font-sans text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">
+                    Custom SQL Mode Active
+                  </span>
                 </div>
-              }
+
+                <!-- Display active scopes summary -->
+                <div class="active-scopes-list grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <ng-container *ngIf="!isGeneralFilterRawMode && generalFilterScopes().length > 0">
+                    <div *ngFor="let sc of generalFilterScopes()" 
+                         class="border border-slate-200 bg-slate-50/40 rounded-xl p-3 flex flex-col gap-1 shadow-sm hover:shadow-md transition-all duration-200 ease-out">
+                      <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                        <span class="text-xs font-bold text-slate-800 font-sans tracking-tight uppercase">
+                          {{ sc.tableName.replace('analytics.', '') }}
+                        </span>
+                      </div>
+                      <div class="font-mono text-[11px] text-indigo-600 bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 font-medium tracking-tight whitespace-pre-wrap leading-relaxed">
+                        {{ getGeneralFilterSummary(sc.filtersGroup) }}
+                      </div>
+                    </div>
+                  </ng-container>
+                  
+                  <div *ngIf="isGeneralFilterRawMode && generalFilterExpr" 
+                       class="col-span-full border border-slate-200 bg-slate-50/40 rounded-xl p-3 flex flex-col gap-1 shadow-sm hover:shadow-md transition-all duration-200 ease-out">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <span class="text-xs font-bold text-slate-800 font-sans tracking-tight uppercase">
+                        CUSTOM SQL FORMULA
+                      </span>
+                      <span class="font-sans text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Raw SQL
+                      </span>
+                    </div>
+                    <div class="font-mono text-[11px] text-indigo-600 bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 font-medium tracking-tight whitespace-pre-wrap leading-relaxed">
+                      {{ generalFilterExpr }}
+                    </div>
+                  </div>
+
+                  <div *ngIf="!isGeneralFilterRawMode && generalFilterScopes().length === 0" 
+                       class="col-span-full p-6 text-center text-xs text-slate-400 italic bg-slate-50/30 border border-dashed border-slate-200 rounded-xl font-sans">
+                    No active general filter scopes configured.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1461,6 +1222,18 @@ export interface FieldGroup {
           </div>
         }
       </main>
+      <!-- Global General Filters Modal Overlay -->
+      <app-general-filter-modal
+        [(isOpen)]="isGeneralFilterModalOpen"
+        [(scopes)]="generalFilterScopes"
+        [(isRawMode)]="isGeneralFilterRawMode"
+        [(legacyFilterExpr)]="generalFilterExpr"
+        [dwhCatalog]="dwhCatalogCache()"
+        [linkedDimensions]="conformedDimensions()"
+        [columnTypes]="columnTypesCache"
+        [disabled]="isLocked"
+        (onApply)="triggerValidationDebounced()"
+      ></app-general-filter-modal>
     </div>
   `,
   styles: [
@@ -1925,55 +1698,6 @@ export interface FieldGroup {
         font-weight: 600;
         font-family: 'Fira Code', monospace;
         white-space: nowrap;
-      }
-
-      /* ── Linked Dimensions chips ────────────────────── */
-      .dim-chip-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        background: var(--input-bg);
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-      }
-
-      .dim-chip {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 14px;
-        background: var(--input-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: var(--color-apple-grey);
-      }
-      .dim-chip:hover {
-        background: rgba(0, 118, 223, 0.1);
-        border-color: rgba(0, 118, 223, 0.3);
-        color: var(--color-apple-blue);
-      }
-      .dim-chip.active {
-        background: rgba(0, 118, 223, 0.18);
-        border-color: rgba(0, 118, 223, 0.45);
-        color: var(--color-apple-blue);
-      }
-      .dim-chip-icon {
-        font-size: 11px;
-        font-weight: 800;
-      }
-      .dim-chip-join-badge {
-        font-size: 9px;
-        font-weight: 700;
-        padding: 1px 6px;
-        border-radius: 4px;
-        background: rgba(168, 85, 247, 0.15);
-        color: #d8b4fe;
-        text-transform: uppercase;
       }
 
       /* ── Quick & General Filters builder ──────────────────── */
@@ -3758,45 +3482,6 @@ export interface FieldGroup {
         color: #818cf8;
         margin-top: 4px;
       }
-      .dim-chip.conformed {
-        border-color: rgba(34, 197, 94, 0.4);
-        background: rgba(34, 197, 94, 0.08);
-        color: #86efac;
-        box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
-      }
-      .dim-chip.conformed.active {
-        background: rgba(34, 197, 94, 0.2);
-        border-color: rgba(34, 197, 94, 0.6);
-        box-shadow: 0 0 16px rgba(34, 197, 94, 0.4);
-      }
-      .dim-chip.mismatched {
-        opacity: 0.45;
-        border-color: rgba(239, 68, 68, 0.25);
-        background: rgba(239, 68, 68, 0.03);
-        color: #fca5a5;
-      }
-      .dim-chip.mismatched:hover {
-        opacity: 0.8;
-        background: rgba(239, 68, 68, 0.08);
-        border-color: rgba(239, 68, 68, 0.4);
-      }
-      .dim-chip-status {
-        font-size: 8px;
-        font-weight: 800;
-        padding: 1px 4px;
-        border-radius: 4px;
-        margin-left: 6px;
-        text-transform: uppercase;
-      }
-      .conformed-badge {
-        background: rgba(34, 197, 94, 0.2);
-        color: #4ade80;
-      }
-      .mismatched-badge {
-        background: rgba(239, 68, 68, 0.2);
-        color: #fca5a5;
-      }
-
       /* Custom date picker widget styling */
       .custom-datepicker-wrapper {
         position: relative;
@@ -4060,46 +3745,6 @@ export interface FieldGroup {
       :host-context(html.light) .form-input::placeholder {
         color: #94A3B8;
       }
-
-      /* Pill badges */
-      :host-context(html.light) .dim-chip {
-        background: #F8FAFC;
-        border-color: #E2E8F0;
-        color: #64748B;
-      }
-
-      :host-context(html.light) .dim-chip:hover {
-        background: rgba(79, 70, 229, 0.05);
-        border-color: rgba(79, 70, 229, 0.2);
-        color: #4F46E5;
-      }
-
-      :host-context(html.light) .dim-chip.conformed {
-        background: #F0FDF4;
-        border-color: #DCFCE7;
-        color: #166534;
-        box-shadow: none;
-      }
-
-      :host-context(html.light) .dim-chip.conformed.active {
-        background: #E6F4EA;
-        border-color: #A3E635;
-        color: #137333;
-        box-shadow: none;
-      }
-
-      :host-context(html.light) .dim-chip.mismatched {
-        background: #FCE8E6;
-        border-color: #F9D2CD;
-        color: #C5221F;
-        opacity: 0.85;
-      }
-
-      :host-context(html.light) .dim-chip.mismatched:hover {
-        background: #FAECEB;
-        opacity: 1;
-      }
-
       /* Step 1 Rows Setup Grid */
       :host-context(html.light) .grid-table.rows-grid {
         border-color: #E2E8F0;
@@ -4902,16 +4547,19 @@ export class ReportBuilderComponent implements OnInit {
   isValid = computed(() => !this.validationErrors().some((e) => e.errorSeverity === 'CRITICAL'));
 
   hasError(elementId: string, severity?: 'CRITICAL' | 'WARNING'): boolean {
+    const cleanId = elementId.toUpperCase().replace(/^(COLUMN-|ROW-)/, '');
     return this.validationErrors().some(
-      (e) =>
-        e.elementId.toUpperCase() === elementId.toUpperCase() &&
-        (!severity || e.errorSeverity === severity),
+      (e) => {
+        const cleanErrId = e.elementId.toUpperCase().replace(/^(COLUMN-|ROW-)/, '');
+        return cleanErrId === cleanId && (!severity || e.errorSeverity === severity);
+      }
     );
   }
 
   getErrorMessage(elementId: string): string {
+    const cleanId = elementId.toUpperCase().replace(/^(COLUMN-|ROW-)/, '');
     return this.validationErrors()
-      .filter((e) => e.elementId.toUpperCase() === elementId.toUpperCase())
+      .filter((e) => e.elementId.toUpperCase().replace(/^(COLUMN-|ROW-)/, '') === cleanId)
       .map((e) => `[${e.errorSeverity}] ${e.displayMessage}`)
       .join('\n');
   }
@@ -4980,7 +4628,7 @@ export class ReportBuilderComponent implements OnInit {
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
       quickFilters: JSON.stringify(this.quickFilters),
-      generalFilters: JSON.stringify(this.generalFilters),
+      generalFilters: this.serializeGeneralFilters(),
       linkedDimensions: this.linkedDimensions.join(','),
       columns: this.columns.map((c, i) => ({
         colId: c.colId,
@@ -5036,7 +4684,7 @@ export class ReportBuilderComponent implements OnInit {
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
       quickFilters: JSON.stringify(this.quickFilters),
-      generalFilters: JSON.stringify(this.generalFilters),
+      generalFilters: this.serializeGeneralFilters(),
       linkedDimensions: this.linkedDimensions.join(','),
       columns: this.columns.map((c, i) => ({
         colId: c.colId,
@@ -5096,7 +4744,7 @@ export class ReportBuilderComponent implements OnInit {
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
       quickFilters: JSON.stringify(this.quickFilters),
-      generalFilters: JSON.stringify(this.generalFilters),
+      generalFilters: this.serializeGeneralFilters(),
       linkedDimensions: this.linkedDimensions.join(','),
       columns: this.columns.map((c, i) => ({
         colId: c.colId,
@@ -5299,7 +4947,8 @@ export class ReportBuilderComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   reportForm = this.fb.group({
-    granularity: [ [] as string[], [Validators.required, Validators.minLength(1)] ]
+    granularity: [ [] as string[], [Validators.required, Validators.minLength(1)] ],
+    quickFilters: [ [] as string[] ]
   });
 
   granularities = signal<string[]>([]);
@@ -5335,7 +4984,118 @@ export class ReportBuilderComponent implements OnInit {
   timeframeEnd = '';
   timeframeMode: 'custom' | 'today_minus_2' | 'today_minus_1' | 'today' = 'today_minus_2';
   quickFilters: QuickFilterCondition[] = [];
-  generalFilters: FilterCondition[] = [];
+  generalFiltersGroup: any = null;
+  generalFilterExpr = '';
+  isGeneralFilterRawMode = false;
+  private _generalFiltersLegacy: FilterCondition[] = [];
+  generalFilterScopes = signal<TableFilterScope[]>([]);
+  isGeneralFilterModalOpen = signal<boolean>(false);
+
+  getGeneralFilterSummary(group: any): string {
+    if (!group) return '—';
+    if (Array.isArray(group)) {
+      return group.map(f => `${f.dimTable ? f.dimTable + '.' : ''}${f.attribute} ${f.operator} ${f.value}`).join(' AND ');
+    }
+    
+    const parts: string[] = [];
+    if (group.rules) {
+      for (const rule of group.rules) {
+        if (!rule.columnName) continue;
+        const col = rule.tableName ? `${rule.tableName}.${rule.columnName}` : rule.columnName;
+        const op = rule.operator || 'is';
+        const vals = rule.value || [];
+        
+        let summary = '';
+        if (op === 'is blank' || op === 'is not blank' || op === 'is null' || op === 'is not null') {
+          summary = `${col} ${op}`;
+        } else {
+          const displayOp = op === 'is' ? '=' : op;
+          const valStr = vals.length > 0 ? (vals.length === 1 ? `'${vals[0]}'` : `('${vals.join("', '")}')`) : 'NULL';
+          summary = `${col} ${displayOp} ${valStr}`;
+        }
+        parts.push(summary);
+      }
+    }
+    if (group.childGroups) {
+      for (const child of group.childGroups) {
+        const childStr = this.getGeneralFilterSummary(child);
+        if (childStr && childStr !== '—') {
+          parts.push(childStr);
+        }
+      }
+    }
+    if (parts.length === 0) return '—';
+    const conj = ` ${group.logicalOperator || 'AND'} `;
+    return parts.length === 1 ? parts[0] : `(${parts.join(conj)})`;
+  }
+
+  get generalFilters(): FilterCondition[] {
+    if (this.isGeneralFilterRawMode) {
+      return [];
+    }
+    const scopes = this.generalFilterScopes();
+    if (scopes && scopes.length > 0) {
+      const allRules: FilterCondition[] = [];
+      const collectRules = (group: any): any[] => {
+        if (!group) return [];
+        let rules = group.rules ? [...group.rules] : [];
+        if (group.childGroups) {
+          for (const child of group.childGroups) {
+            rules = rules.concat(collectRules(child));
+          }
+        }
+        return rules;
+      };
+      
+      for (const sc of scopes) {
+        const flat = collectRules(sc.filtersGroup);
+        const mapped = flat.map(r => ({
+          dimTable: r.tableName !== undefined ? r.tableName : (sc.tableName || ''),
+          attribute: r.columnName || r.attribute || '',
+          operator: r.operator || '=',
+          value: r.value ? (Array.isArray(r.value) ? r.value.join(', ') : r.value.toString()) : '',
+          conjunction: sc.filtersGroup.logicalOperator || 'AND'
+        }));
+        allRules.push(...mapped);
+      }
+      return allRules;
+    }
+    return this._generalFiltersLegacy;
+  }
+
+  set generalFilters(val: FilterCondition[]) {
+    this._generalFiltersLegacy = val;
+    if (val && val.length > 0) {
+      const mapOperator = (op: string): string => {
+        if (!op) return 'is';
+        const clean = op.trim().toLowerCase();
+        if (clean === '=' || clean === 'is') return 'is';
+        if (clean === 'in') return 'in list';
+        if (clean === 'not in') return 'not in list';
+        return op;
+      };
+      const rules = val.map((cond: any) => ({
+        tableName: cond.dimTable || '',
+        columnName: cond.attribute || '',
+        operator: mapOperator(cond.operator),
+        value: cond.value ? cond.value.toString().split(',').map((s: string) => s.trim()) : []
+      }));
+      this.generalFiltersGroup = {
+        id: 'root',
+        logicalOperator: val[0].conjunction || 'AND',
+        rules: rules,
+        childGroups: []
+      };
+      this.generalFilterScopes.set([{
+        tableName: val[0].dimTable || this.sourceTable || '',
+        filtersGroup: this.generalFiltersGroup
+      }]);
+      this.isGeneralFilterRawMode = false;
+    } else {
+      this.generalFiltersGroup = null;
+      this.generalFilterScopes.set([]);
+    }
+  }
 
   // ── Operators list ───────────────────────────────────────────────────────
   readonly operators = [
@@ -5429,6 +5189,14 @@ export class ReportBuilderComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((val) => {
         this.granularities.set(Array.isArray(val) ? val : []);
+        this.triggerValidationDebounced();
+      });
+
+    this.reportForm.controls.quickFilters.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((val) => {
+        const cols = Array.isArray(val) ? val : [];
+        this.updateQuickFiltersFromColumns(cols);
         this.triggerValidationDebounced();
       });
 
@@ -5536,17 +5304,76 @@ export class ReportBuilderComponent implements OnInit {
         : [];
     }
 
+    const initialPickerCols = this.quickFilters.map(f => {
+      if (f.dimTable) {
+        return `${f.dimTable}.${f.attribute}`;
+      } else {
+        const shortFact = this.sourceTable ? this.sourceTable.replace(/^analytics\./, '') : '';
+        return shortFact ? `${shortFact}.${f.attribute}` : f.attribute;
+      }
+    });
+    this.reportForm.controls.quickFilters.setValue(initialPickerCols, { emitEvent: false });
+
     try {
-      this.generalFilters = data.generalFilters ? JSON.parse(data.generalFilters) : [];
-      this.generalFilters.forEach((f) => {
-        if (!f.conjunction) {
-          f.conjunction = 'AND';
+      const gFiltersStr = data.generalFilters || '';
+      if (gFiltersStr.trim().startsWith('[') && gFiltersStr.trim().endsWith(']')) {
+        try {
+          const parsedScopes = JSON.parse(gFiltersStr);
+          if (Array.isArray(parsedScopes) && parsedScopes.length > 0 && (parsedScopes[0].tableName !== undefined || parsedScopes[0].filtersGroup !== undefined)) {
+            this.generalFilterScopes.set(parsedScopes);
+            this.isGeneralFilterRawMode = false;
+            this.generalFilterExpr = '';
+            this.generalFiltersGroup = parsedScopes[0].filtersGroup;
+          } else {
+            const parsed = parseRowFilterExpr(gFiltersStr);
+            this.isGeneralFilterRawMode = parsed.isFilterRawMode;
+            this.generalFilterExpr = parsed.legacyFilterExpr;
+            if (parsed.rowFilters) {
+              this.generalFiltersGroup = parsed.rowFilters;
+              this.generalFilterScopes.set([{
+                tableName: this.sourceTable || '',
+                filtersGroup: parsed.rowFilters
+              }]);
+            } else {
+              this.generalFiltersGroup = null;
+              this.generalFilterScopes.set([]);
+            }
+          }
+        } catch {
+          const parsed = parseRowFilterExpr(gFiltersStr);
+          this.isGeneralFilterRawMode = parsed.isFilterRawMode;
+          this.generalFilterExpr = parsed.legacyFilterExpr;
+          if (parsed.rowFilters) {
+            this.generalFiltersGroup = parsed.rowFilters;
+            this.generalFilterScopes.set([{
+              tableName: this.sourceTable || '',
+              filtersGroup: parsed.rowFilters
+            }]);
+          } else {
+            this.generalFiltersGroup = null;
+            this.generalFilterScopes.set([]);
+          }
         }
-        f.operator = this.normalizeFilterOperator(f.operator);
-        this.onFilterFieldChanged(f);
-      });
+      } else {
+        const parsed = parseRowFilterExpr(gFiltersStr);
+        this.isGeneralFilterRawMode = parsed.isFilterRawMode;
+        this.generalFilterExpr = parsed.legacyFilterExpr;
+        if (parsed.rowFilters) {
+          this.generalFiltersGroup = parsed.rowFilters;
+          this.generalFilterScopes.set([{
+            tableName: this.sourceTable || '',
+            filtersGroup: parsed.rowFilters
+          }]);
+        } else {
+          this.generalFiltersGroup = null;
+          this.generalFilterScopes.set([]);
+        }
+      }
     } catch {
-      this.generalFilters = [];
+      this.generalFilterScopes.set([]);
+      this.generalFiltersGroup = null;
+      this.isGeneralFilterRawMode = false;
+      this.generalFilterExpr = '';
     }
 
     // Linked dimensions
@@ -5644,6 +5471,10 @@ export class ReportBuilderComponent implements OnInit {
     this.timeframeEnd = this.dateOffsetString(-2);
     this.quickFilters = [];
     this.generalFilters = [];
+    this.generalFiltersGroup = null;
+    this.generalFilterExpr = '';
+    this.isGeneralFilterRawMode = false;
+    this.generalFilterScopes.set([]);
     this.linkedDimensions = [];
 
     // Default columns
@@ -5685,17 +5516,19 @@ export class ReportBuilderComponent implements OnInit {
       this.makeDefaultRow('R1', 'Report Header', 'section', 'section', 0),
       this.makeDefaultRow('R2', 'GBS gross', 'data', 'normal', 1, {
         agg: 'SUM',
-        col: 'amount',
-        table: 'analytics.fact_sales',
-        filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '2' }],
+        col: '',
+        table: '',
+        filters: [],
       }),
       this.makeDefaultRow('R3', 'GBS net', 'data', 'normal', 1, {
         agg: 'SUM',
-        col: 'amount',
-        table: 'analytics.fact_sales',
-        filters: [{ dimTable: '', attribute: 'lifecycle', operator: '=', value: '10' }],
+        col: '',
+        table: '',
+        filters: [],
       }),
     ];
+    this.reportForm.controls.granularity.setValue([], { emitEvent: false });
+    this.reportForm.controls.quickFilters.setValue([], { emitEvent: false });
     this.runValidation();
   }
 
@@ -5878,6 +5711,7 @@ export class ReportBuilderComponent implements OnInit {
       .subscribe({
         next: (cols) => {
           this.dimensionColumnsCache = { ...this.dimensionColumnsCache, [dimView]: cols };
+          this.previewTrigger.update((v) => v + 1); // trigger granularity/options recalculation
         },
       });
 
@@ -5887,6 +5721,7 @@ export class ReportBuilderComponent implements OnInit {
       .subscribe({
         next: (types) => {
           this.columnTypesCache = { ...this.columnTypesCache, [dimView]: types };
+          this.previewTrigger.update((v) => v + 1); // trigger granularity/options recalculation
         },
       });
   }
@@ -6085,6 +5920,45 @@ export class ReportBuilderComponent implements OnInit {
 
   removeQuickFilter(index: number): void {
     this.quickFilters.splice(index, 1);
+  }
+
+  updateQuickFiltersFromColumns(cols: string[]): void {
+    const currentMap = new Map<string, QuickFilterCondition>();
+    this.quickFilters.forEach(f => {
+      const key = f.dimTable ? `${f.dimTable}.${f.attribute}` : `${this.sourceTable.replace(/^analytics\./, '')}.${f.attribute}`;
+      currentMap.set(key, f);
+    });
+
+    const updatedFilters: QuickFilterCondition[] = [];
+    cols.forEach(col => {
+      if (currentMap.has(col)) {
+        updatedFilters.push(currentMap.get(col)!);
+      } else {
+        const parts = col.split('.');
+        let dimTable = '';
+        let attribute = col;
+        if (parts.length > 1) {
+          const tablePart = parts[0];
+          const colPart = parts.slice(1).join('.');
+          const shortFact = this.sourceTable ? this.sourceTable.replace(/^analytics\./, '') : '';
+          if (tablePart === shortFact || tablePart === this.sourceTable) {
+            dimTable = '';
+          } else {
+            dimTable = tablePart;
+          }
+          attribute = colPart;
+        }
+        updatedFilters.push({
+          dimTable,
+          attribute,
+          operator: '=',
+          value: '',
+          conjunction: 'AND'
+        });
+      }
+    });
+
+    this.quickFilters = updatedFilters;
   }
 
   onQuickFilterTableChange(filter: QuickFilterCondition): void {
@@ -6363,6 +6237,13 @@ export class ReportBuilderComponent implements OnInit {
             this.columnTypesCache = { ...this.columnTypesCache, [table]: types };
             this.factToDimensionsMap[table] = joins.map((j: any) => j.dimView);
 
+            // Cache dimension columns and types under their short names for granularity picker lookup
+            if (table.includes('dim_') || !table.includes('fact_')) {
+              const shortName = table.replace(/^analytics\./, '');
+              this.dimensionColumnsCache = { ...this.dimensionColumnsCache, [shortName]: cols };
+              this.columnTypesCache = { ...this.columnTypesCache, [shortName]: types };
+            }
+
             const fields = cols.map((col: string) => ({
               name: col,
               displayName: col
@@ -6522,10 +6403,14 @@ export class ReportBuilderComponent implements OnInit {
     const uniqueFacts = Array.from(new Set(activeFactTables));
 
     if (uniqueFacts.length === 0) {
-      this.conformedDimensions.set([]);
+      const allDimTables = this.dbTables
+        .filter((t) => t.includes('dim_') || !t.includes('fact_'))
+        .map((t) => t.replace(/^analytics\./, ''));
+      this.conformedDimensions.set(allDimTables);
       this.mismatchedDimensions.set([]);
-      this.allAvailableDimensions.set([]);
+      this.allAvailableDimensions.set(allDimTables);
       this.linkedDimensions = [];
+      allDimTables.forEach((dim) => this.loadDimensionColumns(dim));
       return;
     }
 
@@ -6595,6 +6480,15 @@ export class ReportBuilderComponent implements OnInit {
 
   private serializeRowFilters(row: any): string {
     return serializeRowFilters(row);
+  }
+
+  private serializeGeneralFilters(): string {
+    if (this.isGeneralFilterRawMode) return this.generalFilterExpr || '';
+    const scopes = this.generalFilterScopes();
+    if (scopes && scopes.length > 0) {
+      return JSON.stringify(scopes);
+    }
+    return '';
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -6935,7 +6829,7 @@ export class ReportBuilderComponent implements OnInit {
               : null,
       timeframeToday: this.timeframeMode === 'today', // backward-compat
       quickFilters: JSON.stringify(this.quickFilters),
-      generalFilters: JSON.stringify(this.generalFilters),
+      generalFilters: this.serializeGeneralFilters(),
       linkedDimensions: this.linkedDimensions.join(','),
       columns: this.columns.map((c, i) => ({
         colId: c.colId,

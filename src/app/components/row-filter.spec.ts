@@ -36,10 +36,16 @@ describe('RowFilterComponent', () => {
     expect(component.isOpen()).toBe(false);
   });
 
-  it('should not open builder if activeMeasureTable is empty', () => {
+  it('should open builder even if activeMeasureTable is empty', () => {
     vi.spyOn(component, 'activeMeasureTable').mockReturnValue('');
     component.openBuilder();
-    expect(component.isOpen()).toBe(false);
+    expect(component.isOpen()).toBe(true);
+    expect(component.rowFilters()).toEqual({
+      id: 'root',
+      logicalOperator: 'AND',
+      rules: [],
+      childGroups: []
+    });
   });
 
   it('should open builder and set rowFilters if activeMeasureTable is provided', () => {

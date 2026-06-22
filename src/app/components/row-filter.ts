@@ -97,29 +97,58 @@ import { BracketRainbowPipe } from '../pipes/bracket-rainbow.pipe';
 
     /* Floating Panel Overlay (Query Builder Tree Size) */
     .row-filter-builder {
-      position: absolute;
-      right: 0;
-      top: 100%;
-      margin-top: 8px;
-      width: 550px;
-      max-width: 90vw;
       background: var(--color-apple-card);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
-      box-shadow: var(--shadow-md);
+      border-radius: 16px;
+      box-shadow: var(--shadow-card);
       z-index: 50 !important;
-      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      gap: 16px;
       animation: fadeInPopover 0.15s ease-out;
     }
 
     @keyframes fadeInPopover {
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Mock Tailwind Utility Classes for Modal Layout */
+    .fixed { position: fixed !important; }
+    .inset-0 { top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; }
+    .z-\\[999\\] { z-index: 999 !important; }
+    .bg-slate-900\\/40 { background-color: rgba(15, 23, 42, 0.4) !important; }
+    .backdrop-blur-sm { backdrop-filter: blur(4px) !important; -webkit-backdrop-filter: blur(4px) !important; }
+    .flex { display: flex !important; }
+    .items-center { align-items: center !important; }
+    .justify-center { justify-content: center !important; }
+    .w-full { width: 100% !important; }
+    .max-w-7xl { max-width: 80rem !important; }
+    .rounded-2xl { border-radius: 1rem !important; }
+    .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; }
+    .bg-white { background-color: var(--color-apple-card) !important; }
+    .border { border: 1px solid var(--border-color) !important; }
+    .p-6 { padding: 1.5rem !important; }
+    .flex-col { flex-direction: column !important; }
+    .gap-4 { gap: 1rem !important; }
+    .max-h-\\[85vh\\] { max-height: 85vh !important; }
+    .overflow-y-auto { overflow-y: auto !important; }
+    .h-\\[640px\\] { height: 640px !important; }
+    .min-h-\\[440px\\] { min-height: 440px !important; }
+    .p-5 { padding: 1.25rem !important; }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: var(--color-apple-grey);
     }
 
     .form-input {
@@ -445,7 +474,6 @@ export class RowFilterComponent implements OnInit {
 
   openBuilder() {
     if (this.disabled()) return;
-    if (!this.activeMeasureTable()) return;
     this.isOpen.set(true);
     if (!this.rowFilters()) {
       const emptyRoot = {

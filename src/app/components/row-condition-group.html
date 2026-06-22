@@ -75,51 +75,60 @@
   </div>
 
   <!-- Rules List -->
+  <!-- Rules List -->
   @if (group().rules && group().rules.length > 0) {
     <div class="flex flex-col gap-2.5 mb-3">
       @for (rule of group().rules; track $index; let ri = $index) {
-        <div class="flex items-center gap-2.5 bg-slate-50/60 p-2 rounded-xl border border-slate-100/50">
-          <!-- Table Selection -->
-          <select 
-            [(ngModel)]="rule.tableName" 
-            (change)="onTableChange(rule)"
-            [disabled]="disabled()"
-            class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-          >
-            <option [value]="''">{{ activeMeasureTable().replace('analytics.', '') }} (Fact)</option>
-            @for (dim of linkedDimensions(); track dim) {
-              <option [value]="dim">{{ dim }}</option>
-            }
-          </select>
+        <div class="flex items-center gap-3 w-full bg-slate-50/60 p-2.5 rounded-xl whitespace-nowrap">
+          
+          <!-- Table Path Selector Wrapper (w-[200px]) -->
+          <div class="w-[200px] flex-shrink-0">
+            <select
+              [ngModel]="rule.tableName || activeMeasureTable().replace('analytics.', '')"
+              (ngModelChange)="rule.tableName = ($event === activeMeasureTable().replace('analytics.', '') ? '' : $event); onTableChange(rule)"
+              [disabled]="disabled()"
+              class="form-select w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
+            >
+              @for (opt of getGroupedCatalogOptions(); track opt.tableName) {
+                <option [value]="opt.tableName.replace('analytics.', '')">
+                  {{ opt.cleanTableName }}
+                </option>
+              }
+            </select>
+          </div>
 
-          <!-- Column Selection -->
-          <select 
-            [(ngModel)]="rule.columnName" 
-            (change)="onColumnChange(rule)"
-            [disabled]="disabled()"
-            class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-          >
-            <option value="">-- column --</option>
-            @for (col of getAvailableColumns(rule.tableName); track col) {
-              <option [value]="col">{{ col }}</option>
-            }
-          </select>
+          <!-- Column Attribute Selector Wrapper (w-[140px]) -->
+          <div class="w-[140px] flex-shrink-0">
+            <select
+              [(ngModel)]="rule.columnName"
+              (change)="onColumnChange(rule)"
+              [disabled]="disabled()"
+              class="form-select w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
+            >
+              <option value="" disabled>-- Select Column --</option>
+              @for (col of getAvailableColumns(rule.tableName || activeMeasureTable()); track col) {
+                <option [value]="col">{{ col }}</option>
+              }
+            </select>
+          </div>
 
           <!-- Operator Selection -->
-          <select 
-            [(ngModel)]="rule.operator" 
-            (change)="onRuleChange(); onOperatorChange(rule)"
-            [disabled]="disabled()"
-            class="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 max-w-[160px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-          >
-            @for (op of operators; track op.value) {
-              <option [value]="op.value">{{ op.label }}</option>
-            }
-          </select>
+          <div class="w-[140px] flex-shrink-0">
+            <select 
+              [(ngModel)]="rule.operator" 
+              (change)="onRuleChange(); onOperatorChange(rule)"
+              [disabled]="disabled()"
+              class="form-select w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            >
+              @for (op of operators; track op.value) {
+                <option [value]="op.value">{{ op.label }}</option>
+              }
+            </select>
+          </div>
 
-          <!-- Value Picker -->
-          @if (rule.requiresValueField) {
-            <div class="flex-grow min-w-[200px]">
+          <!-- Value Picker (flex-1 to take all remaining space) -->
+          <div class="flex-1 min-w-[200px]">
+            @if (rule.requiresValueField) {
               <app-value-picker
                 [availableValues]="getRuleDistinctValues(rule)"
                 [selectedValues]="rule.value"
@@ -127,15 +136,15 @@
                 [placeholder]="'Select values...'"
                 [disabled]="disabled()"
               ></app-value-picker>
-            </div>
-          }
+            }
+          </div>
 
-          <!-- Remove Rule Button -->
+          <!-- Remove Rule Button (flex-shrink-0 and ml-auto to push to the far right margin) -->
           @if (!disabled()) {
             <button 
               type="button"
               (click)="removeRule(ri)" 
-              class="ml-auto text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
+              class="flex-shrink-0 ml-auto text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
               title="Remove Condition"
             >
               ✕

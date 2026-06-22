@@ -40,30 +40,9 @@ import { CalendarPickerComponent } from './calendar-picker';
             <div class="pane-header">
               <div class="pane-title-row">
                 <h1>Reports Catalog</h1>
-                <button routerLink="/reports/new/edit" class="create-btn" style="padding: 6px 12px; min-height: 32px; font-size: 11px; border-radius: 8px;">
-                  <span>+ Create</span>
+                <button routerLink="/reports/new/edit" class="create-btn">
+                  <span>+ Create Report</span>
                 </button>
-              </div>
-
-              <!-- File Uploader -->
-              <div class="file-uploader" style="width: 100%;">
-                <label for="template-file" class="upload-label" [class.uploading]="uploading()" style="width: 100%; justify-content: center; min-height: 36px; padding: 8px 16px; border-radius: 8px; font-size: 12px; box-shadow: none;">
-                  @if (uploading()) {
-                    <span class="spinner" style="width: 14px; height: 14px;"></span>
-                    <span>Ingesting...</span>
-                  } @else {
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <span>Import (.xlsx)</span>
-                  }
-                  <input 
-                    type="file" 
-                    id="template-file" 
-                    (change)="onFileSelected($event)" 
-                    accept=".xlsx" 
-                    [disabled]="uploading()"
-                    style="display: none;"
-                  />
-                </label>
               </div>
 
               <!-- Search input wrapper -->
@@ -277,58 +256,6 @@ import { CalendarPickerComponent } from './calendar-picker';
                   </div>
                 </div>
 
-                <!-- Semantic Joins Mapping -->
-                <div class="inspector-section">
-                  <h3 class="inspector-section-title">🔗 Semantic Join Network</h3>
-                  <div class="semantic-schema-flow">
-                    <!-- Fact Table Root Node -->
-                    <div class="schema-node fact-node">
-                      <span class="node-icon">📊</span>
-                      <div class="node-details">
-                        <span class="node-type">Fact Table (Root)</span>
-                        <span class="node-name">{{ report.sourceTable ? (report.sourceTable.includes('.') ? report.sourceTable.split('.')[1] : report.sourceTable) : 'fact_sales' }}</span>
-                      </div>
-                    </div>
-
-                    @if (selectedReportJoins().length === 0) {
-                      <div class="schema-connector">
-                        <div class="connector-line"></div>
-                        <div class="connector-condition">
-                          <span class="connector-type">Direct Query</span>
-                          <code>Queries fact table directly</code>
-                        </div>
-                        <div class="connector-line"></div>
-                      </div>
-                      <div class="schema-node dim-node" style="border-left-color: var(--color-apple-grey);">
-                        <span class="node-icon">📐</span>
-                        <div class="node-details">
-                          <span class="node-type">Dimensions</span>
-                          <span class="node-name">No connected dimension tables found</span>
-                        </div>
-                      </div>
-                    } @else {
-                      @for (join of selectedReportJoins(); track join.join_id || $index) {
-                        <div class="schema-connector">
-                          <div class="connector-line"></div>
-                          <div class="connector-condition" [title]="join.join_sql">
-                            <span class="connector-type">{{ join.join_type }} Join</span>
-                            <code>ON {{ join.join_sql }}</code>
-                          </div>
-                          <div class="connector-line"></div>
-                        </div>
-
-                        <div class="schema-node dim-node">
-                          <span class="node-icon">📐</span>
-                          <div class="node-details">
-                            <span class="node-type">Dimension View</span>
-                            <span class="node-name">{{ join.to_view }}</span>
-                          </div>
-                        </div>
-                      }
-                    }
-                  </div>
-                </div>
-
                 <!-- Compilation Model Preview -->
                 <div class="inspector-section">
                   <h3 class="inspector-section-title">🧮 Compilation Layout Model</h3>
@@ -433,50 +360,25 @@ import { CalendarPickerComponent } from './calendar-picker';
     .create-btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      padding: 10px 20px;
-      background: var(--input-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 9999px;
-      color: var(--color-apple-text);
+      padding: 10px 24px;
+      background: var(--color-apple-blue);
+      border: none;
+      border-radius: 8px;
+      color: white;
       font-size: 13px;
       font-weight: 600;
-      min-height: 40px;
+      min-height: 44px;
       cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 118, 223, 0.25);
       transition: all var(--transition-base, 300ms);
     }
 
     .create-btn:hover {
-      background: var(--card-bg);
-      border-color: rgba(0, 118, 223, 0.35);
-      transform: translateY(-1px);
-    }
-
-    .upload-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      background: var(--color-apple-blue);
-      border-radius: 9999px;
-      color: white;
-      font-size: 13px;
-      font-weight: 600;
-      min-height: 40px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 118, 223, 0.30);
-      transition: all var(--transition-base, 300ms);
-    }
-
-    .upload-label:hover {
       filter: brightness(1.12);
-      box-shadow: 0 6px 20px rgba(0, 118, 223, 0.45);
+      box-shadow: 0 6px 20px rgba(0, 118, 223, 0.40);
       transform: translateY(-1px);
-    }
-
-    .upload-label.uploading {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
 
     .spinner {
@@ -806,102 +708,6 @@ import { CalendarPickerComponent } from './calendar-picker';
       font-size: 14px;
       font-weight: 600;
       color: var(--color-apple-text);
-    }
-
-    /* Semantic Schema Flow Diagram */
-    .semantic-schema-flow {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      background: rgba(11, 17, 32, 0.3);
-      border-radius: 12px;
-      padding: 20px;
-      border: 1px solid var(--border-color);
-    }
-
-    .schema-node {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(30, 41, 59, 0.5);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 12px 16px;
-    }
-
-    .schema-node.fact-node {
-      border-left: 3px solid var(--color-apple-blue);
-    }
-
-    .schema-node.dim-node {
-      border-left: 3px solid #a855f7;
-    }
-
-    .node-icon {
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .node-details {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .node-type {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-apple-grey);
-      font-weight: 600;
-    }
-
-    .node-name {
-      font-size: 13px;
-      font-weight: 600;
-      font-family: monospace;
-      color: var(--color-apple-text);
-    }
-
-    .schema-connector {
-      display: flex;
-      align-items: center;
-      height: 40px;
-      padding-left: 30px;
-    }
-
-    .connector-line {
-      width: 2px;
-      background: var(--border-color);
-      height: 100%;
-    }
-
-    .connector-condition {
-      background: rgba(30, 41, 59, 0.4);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 10px;
-      margin-left: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .connector-type {
-      font-size: 8px;
-      text-transform: uppercase;
-      font-weight: 700;
-      color: var(--color-apple-blue);
-    }
-
-    .connector-condition code {
-      font-family: monospace;
-      color: #f472b6;
-      border: none;
-      padding: 0;
-      background: none;
     }
 
     /* Model Compilation preview list */
@@ -1239,37 +1045,6 @@ import { CalendarPickerComponent } from './calendar-picker';
       color: #0F172A;
     }
 
-    :host-context(html.light) .semantic-schema-flow {
-      background: #F8FAFC;
-      border-color: #E2E8F0;
-    }
-
-    :host-context(html.light) .schema-node {
-      background: #FFFFFF;
-      border-color: #E2E8F0;
-    }
-
-    :host-context(html.light) .schema-node.fact-node {
-      border-left-color: #4F46E5;
-    }
-
-    :host-context(html.light) .schema-node.dim-node {
-      border-left-color: #A855F7;
-    }
-
-    :host-context(html.light) .node-name {
-      color: #0F172A;
-    }
-
-    :host-context(html.light) .connector-condition {
-      background: #FFFFFF;
-      border-color: #E2E8F0;
-    }
-
-    :host-context(html.light) .connector-type {
-      color: #4F46E5;
-    }
-
     :host-context(html.light) .compilation-summary {
       color: #64748B;
     }
@@ -1359,7 +1134,6 @@ export class DashboardComponent implements OnInit {
   selectedReportId = signal<string | null>(null);
   selectedReportConfig = signal<any | null>(null);
   selectedReportLoading = signal(false);
-  selectedReportJoins = signal<any[]>([]);
   referenceDate = signal<string>('2025-12-31');
   availableReportingDates = signal<string[]>([]);
   showDatePicker = signal<boolean>(false);
@@ -1464,7 +1238,6 @@ export class DashboardComponent implements OnInit {
     if (!id) {
       this.selectedReportId.set(null);
       this.selectedReportConfig.set(null);
-      this.selectedReportJoins.set([]);
       return;
     }
 
@@ -1481,41 +1254,15 @@ export class DashboardComponent implements OnInit {
         next: (config) => {
           this.selectedReportConfig.set(config);
           this.selectedReportLoading.set(false);
-
-          if (config.sourceTable) {
-            this.loadJoins(config.sourceTable);
-          } else {
-            this.selectedReportJoins.set([]);
-          }
         },
         error: (err) => {
           this.selectedReportLoading.set(false);
           this.selectedReportConfig.set(null);
-          this.selectedReportJoins.set([]);
           this.errorMessage.set(`Failed to load configuration for report ${id}`);
         }
       });
     } else {
       this.selectedReportLoading.set(false);
-    }
-  }
-
-  loadJoins(table: string): void {
-    // Extract base table name if it's qualified (analytics.fact_sales -> fact_sales)
-    const baseTable = table.includes('.') ? table.split('.')[1] : table;
-    if (this.reportService.getDimensionJoins) {
-      this.reportService.getDimensionJoins(baseTable).pipe(
-        takeUntilDestroyed(this.destroyRef)
-      ).subscribe({
-        next: (joins) => {
-          this.selectedReportJoins.set(joins || []);
-        },
-        error: (err) => {
-          this.selectedReportJoins.set([]);
-        }
-      });
-    } else {
-      this.selectedReportJoins.set([]);
     }
   }
 

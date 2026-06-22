@@ -48,10 +48,11 @@ import { FormsModule } from '@angular/forms';
 
     .chips-container {
       display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
+      flex-wrap: nowrap;
+      gap: 6px;
       align-items: center;
       flex: 1;
+      min-width: 0;
     }
 
     .placeholder-text {
@@ -307,6 +308,48 @@ import { FormsModule } from '@angular/forms';
     }
     :host-context(html.light) .no-options-message {
       color: #64748B;
+    }
+
+    /* Mock Tailwind classes for value wrapped input layout */
+    .flex-1 { flex: 1 1 0% !important; }
+    .bg-white { background-color: var(--color-apple-card) !important; }
+    .border { border: 1px solid var(--border-color) !important; }
+    .rounded-lg { border-radius: 0.5rem !important; }
+    .px-2\\.5 { padding-left: 0.625rem !important; padding-right: 0.625rem !important; }
+    .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+    .flex { display: flex !important; }
+    .flex-wrap { flex-wrap: wrap !important; }
+    .gap-1 { gap: 0.25rem !important; }
+    .items-center { align-items: center !important; }
+
+    /* Popover menu positioning & constraints classes */
+    .absolute { position: absolute !important; }
+    .left-0 { left: 0 !important; }
+    .right-0 { right: 0 !important; }
+    .z-\\[1050\\] { z-index: 1050 !important; }
+    .mt-1 { margin-top: 0.25rem !important; }
+    .border-slate-200 { border-color: var(--border-color) !important; }
+    .rounded-xl { border-radius: 0.75rem !important; }
+    .shadow-xl { box-shadow: var(--shadow-card) !important; }
+    .max-h-\\[220px\\] { max-height: 220px !important; }
+    .overflow-y-auto { overflow-y: auto !important; }
+    .p-1 { padding: 0.25rem !important; }
+    .flex-col { flex-direction: column !important; }
+    .gap-0\\.5 { gap: 0.125rem !important; }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: var(--color-apple-grey);
     }
   `]
 })

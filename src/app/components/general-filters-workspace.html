@@ -1,0 +1,111 @@
+<div *ngIf="isOpen()" class="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" (click)="close()">
+  <div class="bg-white w-full max-w-gfw h-[640px] max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-200 ease-out" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+      <div class="flex flex-col">
+        <h3 class="font-sans text-sm font-bold text-slate-800 tracking-tight">General Filters Workspace</h3>
+        <span class="text-[11px] text-slate-400 font-sans tracking-tight">Configure base scope constraints across multiple database entities</span>
+      </div>
+      <button (click)="close()" class="text-slate-400 hover:text-slate-600 transition-colors duration-200 ease-out p-1.5 rounded-lg hover:bg-slate-100 flex items-center justify-center" aria-label="Close modal">
+        <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- If Raw Custom SQL Mode is active -->
+      <ng-container *ngIf="isRawMode(); else builderLayout">
+        <div class="flex-1 flex flex-col p-6 gap-4 bg-white overflow-hidden">
+          <span class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">Custom SQL Expression Mode</span>
+          <textarea
+            [(ngModel)]="legacyFilterExpr"
+            class="flex-1 w-full p-4 font-mono text-[11px] bg-slate-950 text-blue-400 border border-slate-800 rounded-xl resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all duration-200 ease-out"
+            placeholder="e.g. (analytics.fact_sales.amount > 1000 AND dim_customers.region = 'US')">
+          </textarea>
+        </div>
+      </ng-container>
+
+      <!-- If Structured Builder Mode is active -->
+      <ng-template #builderLayout>
+        <!-- Left sidebar: Table Scope Matrix Selector -->
+        <div class="w-1/4 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-3 overflow-y-auto">
+          <span class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">Table Scopes</span>
+          
+          <div class="flex flex-col gap-1.5">
+            <div *ngFor="let scope of scopes(); let idx = index" 
+                 (click)="selectScope(idx)"
+                 class="scope-item p-3 rounded-lg border border-slate-200 cursor-pointer flex justify-between items-center bg-slate-50 hover:bg-white transition-all duration-200 ease-out"
+                 [class.active]="selectedScopeIndex() === idx">
+              <div class="flex flex-col overflow-hidden">
+                <span class="font-sans text-[11px] font-bold text-slate-700 truncate">{{ formatTableName(scope.tableName) }}</span>
+                <span class="text-[10px] text-slate-400 font-sans truncate">{{ scope.tableName }}</span>
+              </div>
+              <button (click)="removeScope(idx); $event.stopPropagation()" class="text-slate-400 hover:text-red-500 transition-colors duration-200 ease-out p-1.5 rounded-lg hover:bg-slate-100 flex items-center justify-center" title="Delete Scope">
+                <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Add Scope Trigger -->
+          <div class="mt-auto border-t border-slate-200 pt-3">
+            <select #tableSelect (change)="addScope(tableSelect.value); tableSelect.value = ''" 
+                    class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none focus:border-indigo-500 transition-all duration-200 ease-out">
+              <option value="">+ Add Table Scope</option>
+              <option *ngFor="let tbl of availableTables()" [value]="tbl">{{ formatTableName(tbl) }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Right Panel: Recursive Expression Canvas -->
+        <div class="flex-1 min-w-0 p-6 flex flex-col overflow-hidden bg-white">
+          <div *ngIf="activeScope(); else noActiveScope" class="flex-1 flex flex-col overflow-hidden">
+            <div class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-inner">
+              <span class="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-tight">Scope Context: {{ activeScope()!.tableName }}</span>
+              <div class="font-mono text-[11px] text-indigo-600 bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 font-medium tracking-tight break-all leading-relaxed shadow-inner">
+                {{ getFilterSummary(activeScope()!.filtersGroup) || 'No filters defined for this table.' }}
+              </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto overflow-x-auto pr-1 custom-scrollbar">
+              <app-row-condition-group
+                [group]="activeScope()!.filtersGroup"
+                [parentGroup]="null"
+                [activeMeasureTable]="activeScope()!.tableName"
+                [dwhCatalog]="dwhCatalog()"
+                [linkedDimensions]="linkedDimensions()"
+                [columnTypes]="columnTypes()"
+                [disabled]="disabled()"
+                (groupChanged)="onGroupChanged()"
+              ></app-row-condition-group>
+            </div>
+          </div>
+          <ng-template #noActiveScope>
+            <div class="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
+              <svg width="40" height="40" class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+              </svg>
+              <span class="font-sans text-xs text-slate-400">Select or add a table scope to begin building filters.</span>
+            </div>
+          </ng-template>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Actions Footer -->
+    <div class="px-6 py-3 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-b-2xl">
+      <button (click)="toggleRawMode()" class="font-sans text-xs text-indigo-600 font-semibold hover:underline transition-all duration-200 ease-out">
+        {{ isRawMode() ? 'Switch to Builder' : 'Switch to Custom SQL' }}
+      </button>
+      <button (click)="saveAndClose()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm transition-all duration-200 ease-out flex items-center gap-1.5">
+        <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        Apply Filters
+      </button>
+    </div>
+  </div>
+</div>

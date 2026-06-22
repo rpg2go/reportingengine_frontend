@@ -69,7 +69,7 @@
                 <span class="report-code font-mono text-[10px] font-bold text-slate-400 group-hover:text-indigo-600">
                   {{ rep.reportId }} <span class="text-slate-500 font-sans font-normal" style="font-size: 9px; margin-left: 6px;">(v{{ rep.version || 1 }})</span>
                 </span>
-                <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border shrink-0" [class]="rep.status || 'draft'">
+                <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border shrink-0" [ngClass]="(rep.status || 'draft').toLowerCase()">
                   {{ rep.status || 'draft' }}
                 </span>
               </div>
@@ -96,7 +96,7 @@
                 </span>
               </h2>
             </div>
-            <div class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [class]="reportConfig()?.status || 'draft'">
+            <div class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [ngClass]="(reportConfig()?.status || 'draft').toLowerCase()">
               {{ reportConfig()?.status || 'draft' }}
             </div>
           </div>
