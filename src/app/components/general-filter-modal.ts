@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, model, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, model, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RowConditionGroupComponent, RowFilterGroup } from './row-condition-group';
@@ -70,6 +70,9 @@ import { TableFilterScope } from '../interfaces/general-filter.interface';
     .text-slate-700 { color: #334155 !important; }
     .truncate { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
     .text-\\[10px\\] { font-size: 10px !important; }
+    .text-\\[11px\\] { font-size: 11px !important; }
+    .min-w-0 { min-width: 0 !important; }
+    .flex-1 { flex: 1 1 0% !important; }
     .hover\\:text-red-500:hover { color: #EF4444 !important; }
     .p-1 { padding: 0.25rem !important; }
     .mt-auto { margin-top: auto !important; }
@@ -108,11 +111,14 @@ import { TableFilterScope } from '../interfaces/general-filter.interface';
     }
     /* Left border specific style */
     .scope-item {
-      border-left: 4px solid transparent;
+      border-left: 4px solid transparent !important;
+      color: #334155 !important;
     }
     .scope-item.active {
       border-left-color: #4F46E5 !important;
+      border-left-width: 4px !important;
       background-color: #FFFFFF !important;
+      color: #334155 !important;
     }
   `]
 })
@@ -131,6 +137,17 @@ export class GeneralFilterModalComponent {
   onClose = output<void>();
 
   selectedScopeIndex = signal<number | null>(null);
+
+  constructor() {
+    // Auto-select the first scope when the modal opens if nothing is selected yet
+    effect(() => {
+      const open = this.isOpen();
+      const scopes = this.scopes();
+      if (open && scopes.length > 0 && this.selectedScopeIndex() === null) {
+        untracked(() => this.selectedScopeIndex.set(0));
+      }
+    });
+  }
 
   activeScope = computed(() => {
     const idx = this.selectedScopeIndex();
