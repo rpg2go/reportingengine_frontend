@@ -887,7 +887,7 @@ describe('ReportBuilderComponent', () => {
 
     // Initial states
     expect(component.isMainMenuCollapsed()).toBe(false);
-    expect(component.isFieldPickerOpen()).toBe(true);
+    expect(component.isFieldPickerOpen()).toBe(false);
 
     // Toggle Main Menu
     component.toggleMainMenu();
@@ -897,9 +897,9 @@ describe('ReportBuilderComponent', () => {
 
     // Toggle Field Picker
     component.toggleFieldPicker();
-    expect(component.isFieldPickerOpen()).toBe(false);
-    component.toggleFieldPicker();
     expect(component.isFieldPickerOpen()).toBe(true);
+    component.toggleFieldPicker();
+    expect(component.isFieldPickerOpen()).toBe(false);
   });
 
   it('should initialize columnWidths and update them on width changes', () => {

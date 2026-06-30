@@ -25,18 +25,21 @@ describe('DateFormatter Utility Tests', () => {
     expect(result[2].periodOffset).toBe(-3);
   });
 
-  it('should generate WEEK grain headers with calendar start-to-end date boundaries', () => {
+  it('should generate WEEK grain headers with ISO week-of-year labels', () => {
     const parentCol = { colId: 'C7', colType: 'ROLLING', rollingN: 2, rollingGrain: 'WEEK' };
     const result = DateFormatter.getRollingSubColumns(referenceDate, parentCol, 2, 'WEEK');
 
     expect(result).toHaveLength(2);
 
+    // ref date 2026-06-04: its Monday is 2026-06-01.
+    // offset -1: Monday is 2026-05-25 → ISO Thursday anchor 2026-05-28 → ISO WK22
     expect(result[0].colId).toBe('C7_1');
-    expect(result[0].label).toBe('25 May - 31 May');
+    expect(result[0].label).toBe('WK22');
     expect(result[0].periodOffset).toBe(-1);
 
+    // offset -2: Monday is 2026-05-18 → ISO Thursday anchor 2026-05-21 → ISO WK21
     expect(result[1].colId).toBe('C7_2');
-    expect(result[1].label).toBe('18 May - 24 May');
+    expect(result[1].label).toBe('WK21');
     expect(result[1].periodOffset).toBe(-2);
   });
 

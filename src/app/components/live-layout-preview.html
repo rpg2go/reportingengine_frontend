@@ -1,0 +1,233 @@
+<div class="space-y-6">
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+    <div>
+      <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <span>📊 Live Layout Preview</span>
+      </h3>
+      <p class="text-xs text-slate-500 mt-1">
+        Molded view of rows and active columns. Formula evaluations will execute during run output.
+      </p>
+    </div>
+    
+    <div class="flex bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/40">
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded-md text-xs font-semibold tracking-tight transition duration-150"
+        [class.bg-white]="activePreviewTab() === 'grid'"
+        [class.text-slate-800]="activePreviewTab() === 'grid'"
+        [class.shadow-sm]="activePreviewTab() === 'grid'"
+        [class.text-slate-500]="activePreviewTab() !== 'grid'"
+        [class.hover:text-slate-700]="activePreviewTab() !== 'grid'"
+        (click)="activePreviewTab.set('grid')"
+      >
+        ▦ Grid View
+      </button>
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded-md text-xs font-semibold tracking-tight transition duration-150"
+        [class.bg-white]="activePreviewTab() === 'sql'"
+        [class.text-slate-800]="activePreviewTab() === 'sql'"
+        [class.shadow-sm]="activePreviewTab() === 'sql'"
+        [class.text-slate-500]="activePreviewTab() !== 'sql'"
+        [class.hover:text-slate-700]="activePreviewTab() !== 'sql'"
+        (click)="activePreviewTab.set('sql')"
+      >
+        ‹› SQL Code Preview
+      </button>
+    </div>
+  </div>
+
+  @if (activePreviewTab() === 'grid') {
+    <div class="w-full overflow-x-auto custom-scrollbar border border-slate-200 rounded-xl bg-white shadow-sm">
+      <table class="w-auto table-fixed border-collapse text-left text-sm text-slate-500">
+        <colgroup>
+          <col style="width: 180px;" /> <!-- Row Label -->
+          <col style="width: 70px;" />  <!-- Row ID -->
+          <col style="width: 80px;" />  <!-- Type -->
+          @for (gran of granularityPreviewCols(); track gran.value) {
+            <col style="width: 100px;" />
+          }
+          @for (col of previewLeafColumns(); track col.colId) {
+            <col style="width: 130px;" />
+          }
+        </colgroup>
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50">
+            <th class="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-600 sticky left-0 bg-slate-50 z-10 border-r border-slate-200" rowspan="2" style="vertical-align: middle;">Row Label</th>
+            <th class="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-600 text-center border-r border-slate-200" rowspan="2" style="vertical-align: middle;">Row ID</th>
+            <th class="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-600 text-center border-r border-slate-200" rowspan="2" style="vertical-align: middle;">Type</th>
+            
+            @for (gran of granularityPreviewCols(); track gran.value) {
+              <th class="py-3 px-3 text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50/50 text-center border-r border-slate-200 font-mono" rowspan="2" style="vertical-align: middle;">
+                {{ gran.shortLabel }}
+              </th>
+            }
+            
+            @for (col of previewHeaderRows().row1; track col.colId) {
+              <th 
+                class="py-3 px-4 bg-slate-50/50"
+                [class.border-r-2]="col.isLastChild"
+                [class.border-r-slate-350]="col.isLastChild"
+                [class.border-r]="!col.isLastChild"
+                [class.border-r-slate-200]="!col.isLastChild"
+                [attr.colspan]="col.colSpan || col.colspan" 
+                [attr.rowspan]="col.rowSpan || col.rowspan" 
+                style="vertical-align: middle;"
+              >
+                <div class="flex flex-col items-center justify-center gap-1.5">
+                  <span class="font-mono text-[10px] font-bold text-slate-400">{{ col.colId }}</span>
+                  <span class="font-sans text-xs font-bold text-slate-800 tracking-tight text-center truncate max-w-[135px]" [title]="col.label">
+                    {{ col.label }}
+                  </span>
+                </div>
+              </th>
+            }
+          </tr>
+          
+          @if (previewHeaderRows().row2.length > 0) {
+            <tr class="border-b border-slate-200 bg-slate-50/20">
+              @for (col of previewHeaderRows().row2; track col.colId) {
+                <th 
+                  class="py-2 px-3 bg-white" 
+                  [class.border-r-2]="col.isLastChild"
+                  [class.border-r-slate-350]="col.isLastChild"
+                  [class.border-r]="!col.isLastChild"
+                  [class.border-r-slate-200]="!col.isLastChild"
+                  style="vertical-align: middle;"
+                >
+                  <div class="flex flex-col items-center justify-center">
+                    <span class="font-sans text-[11px] font-semibold text-slate-700 tracking-tight text-center truncate max-w-[120px]" [title]="col.label">
+                      {{ col.label }}
+                    </span>
+                  </div>
+                </th>
+              }
+            </tr>
+          }
+        </thead>
+        <tbody class="divide-y divide-slate-200 bg-white">
+          @for (row of rows(); track row.rowId) {
+            <!-- Main data/section/calc row -->
+            <tr 
+              class="hover:bg-slate-50/60 transition duration-105"
+              [class.bg-slate-50/30]="row.rowType === 'section'"
+              [class.font-semibold]="row.rowType === 'section' || row.rowType === 'calc'"
+            >
+              <td
+                class="py-3.5 px-4 sticky left-0 bg-white hover:bg-slate-50 transition duration-100 border-r border-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.02)] text-slate-900"
+                [style.padding-left.px]="16 + row.indentLevel * 16"
+              >
+                @if (row.rowType === 'section') {
+                  <span class="mr-1.5">📂</span><strong>{{ row.label }}</strong>
+                } @else if (row.rowType === 'calc') {
+                  <span class="mr-1.5 text-indigo-500">🧮</span>{{ row.label }}
+                } @else if (row.rowType === 'data') {
+                  <span class="mr-1.5 text-slate-400">📊</span>{{ row.label }}
+                } @else {
+                  &nbsp;
+                }
+              </td>
+              <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-500 border-r border-slate-100">
+                {{ row.rowId }}
+              </td>
+              <td class="py-3.5 px-4 text-center border-r border-slate-100">
+                <span 
+                  class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-tight uppercase"
+                  [class.bg-slate-100]="row.rowType === 'section'"
+                  [class.text-slate-600]="row.rowType === 'section'"
+                  [class.bg-indigo-50]="row.rowType === 'calc'"
+                  [class.text-indigo-600]="row.rowType === 'calc'"
+                  [class.bg-blue-50]="row.rowType === 'data'"
+                  [class.text-blue-600]="row.rowType === 'data'"
+                >
+                  {{ row.rowType }}
+                </span>
+              </td>
+              
+              @for (gran of granularityPreviewCols(); track gran.value) {
+                <td class="py-3.5 px-4 text-center font-mono text-slate-300 border-r border-slate-100 bg-slate-50/10">-</td>
+              }
+              
+              @for (col of previewLeafColumns(); track col.colId) {
+                <td 
+                  class="py-3.5 px-4 text-center"
+                  [class.border-r-2]="col.isLastChild"
+                  [class.border-r-slate-350]="col.isLastChild"
+                  [class.border-r]="!col.isLastChild"
+                  [class.border-r-slate-100]="!col.isLastChild"
+                >
+                  @if (
+                    row.activeCols &&
+                    (row.activeCols.includes(col.colId.toUpperCase()) ||
+                      (col.parentColId &&
+                        row.activeCols.includes(col.parentColId.toUpperCase())))
+                  ) {
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">✓</span>
+                  } @else {
+                    <span class="text-slate-300 text-xs font-mono">-</span>
+                  }
+                </td>
+              }
+            </tr>
+
+            <!-- Granularity sub-rows (data rows only) -->
+            @if (row.rowType === 'data' && granularityPreviewCols().length > 0) {
+              @for (subGran of granularityPreviewCols(); track subGran.value; let subIdx = $index; let last = $last) {
+                <tr class="bg-indigo-50/5 text-slate-500 hover:bg-slate-50/40">
+                  <td
+                    class="py-2.5 px-4 sticky left-0 bg-white hover:bg-slate-50 border-r border-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.02)] text-xs flex items-center font-medium"
+                    [style.padding-left.px]="16 + row.indentLevel * 16 + 24"
+                  >
+                    <span class="font-mono text-indigo-400 mr-2 select-none">{{ last ? '└──' : '├──' }}</span>
+                    <span>Grouped Row Segment</span>
+                  </td>
+                  <td class="py-2.5 px-4 border-r border-slate-100"></td>
+                  <td class="py-2.5 px-4 text-center border-r border-slate-100">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100/50 uppercase tracking-tight">
+                      by gran
+                    </span>
+                  </td>
+                  @for (gCol of granularityPreviewCols(); track gCol.value; let colIdx = $index) {
+                    <td class="py-2.5 px-4 text-center font-mono text-xs text-indigo-600 font-bold border-r border-slate-100 bg-indigo-50/20">
+                      @if (subIdx === colIdx) {
+                        <span>[{{ subGran.shortLabel }}]</span>
+                      } @else {
+                        <span class="text-slate-300 font-normal">-</span>
+                      }
+                    </td>
+                  }
+                  @for (col of previewLeafColumns(); track col.colId) {
+                    <td class="py-2.5 px-4 border-r border-slate-100"></td>
+                  }
+                </tr>
+              }
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (activePreviewTab() === 'sql') {
+    <div class="w-full border border-slate-200 rounded-xl bg-slate-900 shadow-inner p-4 min-h-[250px] relative">
+      @if (isLoadingSql()) {
+        <div class="absolute inset-0 flex items-center justify-center bg-slate-900/80 rounded-xl">
+          <div class="flex items-center gap-3 text-slate-300 font-semibold text-sm">
+            <svg class="animate-spin h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Loading SQL preview...</span>
+          </div>
+        </div>
+      }
+      
+      @if (compiledSql()) {
+        <pre class="font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto custom-scrollbar select-text"><code [innerHTML]="getHighlightedSql(compiledSql() || '')"></code></pre>
+      } @else {
+        <div class="flex flex-col items-center justify-center py-16 text-slate-500">
+          <span class="text-4xl mb-2">‹›</span>
+          <p class="text-xs">No compiled SQL preview available.</p>
+        </div>
+      }
+    </div>
+  }
+</div>

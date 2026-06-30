@@ -8,6 +8,8 @@ export interface HeaderConfig {
   formulaExpr: string;
   isExpandedSubCol: boolean;
   parentColId?: string;
+  periodType?: string;
+  isLastChild?: boolean;
 }
 
 export class DateFormatter {
@@ -40,6 +42,27 @@ export class DateFormatter {
     const endDay = end.getDate();
     const endMonth = end.toLocaleString('en-US', { month: 'short' });
     return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+  }
+
+  /**
+   * Returns the ISO 8601 week number (1–53) for a given date as "WK{n}".
+   * Covers the full 52-week year so week numbers are globally unambiguous.
+   *
+   * Algorithm: shift the date to the nearest Thursday (ISO rule), then compute
+   * how many complete weeks have elapsed since Jan 1 of that Thursday's year.
+   */
+  private static formatISOWeek(date: Date): string {
+    // Work in UTC to avoid DST-boundary surprises
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    // ISO weekday: Mon=1 … Sun=7
+    const dayOfWeek = d.getUTCDay() || 7;
+    // Shift to Thursday of the same ISO week (the anchor day for ISO week numbering)
+    d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek);
+    // Jan 1 of the year that owns this Thursday
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // Number of complete weeks elapsed
+    const isoWeek = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+    return `WK${isoWeek}`;
   }
 
   /**
@@ -91,16 +114,21 @@ export class DateFormatter {
           break;
         }
 
+        case 'YEAR': {
+          const target = new Date(ref.getFullYear() - i, 0, 1);
+          label = `${target.getFullYear()}`;
+          break;
+        }
+
         case 'WEEK':
         default: {
           const refMonday = this.getMonday(ref);
           const targetMonday = new Date(refMonday.getTime());
           targetMonday.setDate(refMonday.getDate() - i * 7);
 
-          const targetSunday = new Date(targetMonday.getTime());
-          targetSunday.setDate(targetMonday.getDate() + 6);
-
-          label = this.formatWeekRange(targetMonday, targetSunday);
+          // Use "WKn Mon" format (e.g. "WK4 Jun") instead of a full date range.
+          // The week number is the ordinal week within the Monday's calendar month.
+          label = this.formatISOWeek(targetMonday);
           break;
         }
       }

@@ -1,0 +1,210 @@
+<!-- Hierarchical Column Configuration Setup Grid -->
+<form [formGroup]="columnsForm" class="columns-setup-form w-full bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-6 overflow-hidden">
+  <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+    <div>
+      <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+        <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg text-lg">📊</span>
+        Hierarchical Column Setup
+      </h3>
+      <p class="text-sm text-slate-400 mt-1">
+        Configure L1 parent banner headers, map L2 child columns under them, or setup standalone spanned columns.
+      </p>
+    </div>
+    <div class="flex items-center gap-3 self-end md:self-auto">
+      <button 
+        type="button" 
+        (click)="addColumn()" 
+        class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none text-white text-sm font-semibold rounded-lg shadow-lg shadow-indigo-600/20 transition duration-150 ease-in-out"
+      >
+        <span>+ Add Column</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Dynamic Field Grid Table (Horizontally Scrollable) -->
+  <div class="w-full overflow-x-auto mt-6 rounded-lg border border-slate-800 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+    <table class="w-full text-left border-collapse min-w-[1200px]">
+      <thead>
+        <tr class="bg-slate-950/80 border-b border-slate-800">
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[100px]">Col ID *</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[240px]">Header Label *</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[120px]">Tier Level</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[180px]">Parent Selector</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[150px]">Formula / Expression</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[150px]">Style</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[100px] text-center">Offset</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[150px]">Timeframe Length</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[160px]">Period Type</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Math Formula / Calc Expression</th>
+          <th class="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider text-slate-400 w-[60px] text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody formArrayName="columns">
+        @for (colForm of columnsArray.controls; track colForm; let idx = $index) {
+          <tr 
+            [formGroupName]="idx"
+            [class.bg-indigo-950/20]="colForm.get('tierLevel')?.value === 'L2'"
+            [class.bg-slate-900]="colForm.get('tierLevel')?.value !== 'L2'"
+            class="border-b border-slate-800/60 hover:bg-slate-850/50 transition duration-150"
+          >
+            <!-- Column ID -->
+            <td class="p-3">
+              <input 
+                type="text" 
+                formControlName="colId" 
+                placeholder="e.g. C1"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm font-medium transition duration-150"
+                [class.border-rose-500]="colForm.get('colId')?.invalid && colForm.get('colId')?.touched"
+              />
+            </td>
+
+            <!-- Column Header Label (Tree prefix applied if L2) -->
+            <td class="p-3">
+              <div class="relative flex items-center">
+                @if (colForm.get('tierLevel')?.value === 'L2') {
+                  <span class="absolute left-2.5 text-indigo-400 font-mono select-none">└──</span>
+                }
+                <input 
+                  type="text" 
+                  formControlName="label" 
+                  placeholder="Column Header Label"
+                  class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150"
+                  [class.pl-11]="colForm.get('tierLevel')?.value === 'L2'"
+                  [class.border-rose-500]="colForm.get('label')?.invalid && colForm.get('label')?.touched"
+                />
+              </div>
+            </td>
+
+            <!-- Tier Level -->
+            <td class="p-3">
+              <select 
+                formControlName="tierLevel"
+                (change)="onTierLevelChange(idx)"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150 cursor-pointer"
+              >
+                <option value="L1">L1 Parent</option>
+                <option value="L2">L2 Child</option>
+              </select>
+            </td>
+
+            <!-- Parent Selector Dropdown (Active only for L2) -->
+            <td class="p-3">
+              <select 
+                formControlName="parentId"
+                [disabled]="colForm.get('tierLevel')?.value !== 'L2'"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <option value="">-- Select Parent L1 --</option>
+                @for (pCol of getL1Parents(idx); track pCol.colId) {
+                  <option [value]="pCol.colId">{{ pCol.colId }} - {{ pCol.label }}</option>
+                }
+              </select>
+            </td>
+
+            <!-- Column Type (Formula / Expression) -->
+            <td class="p-3">
+              <select 
+                formControlName="colType"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150 cursor-pointer"
+              >
+                <option value="WTD">WTD</option>
+                <option value="MTD">MTD</option>
+                <option value="YTD">YTD</option>
+                <option value="ROLLING">ROLLING</option>
+                <option value="CALC">CALC</option>
+                <option value="HEADER">HEADER</option>
+              </select>
+            </td>
+
+            <!-- Header Style -->
+            <td class="p-3">
+              <select 
+                formControlName="headerLayout"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150 cursor-pointer"
+              >
+                <option value="normal">Normal</option>
+                <option value="bold">Bold, Center</option>
+                <option value="border">Bold, Border</option>
+              </select>
+            </td>
+
+            <!-- Period Offset (Disabled for CALC/HEADER columns) -->
+            <td class="p-3 text-center">
+              <input 
+                type="number" 
+                formControlName="periodOffset" 
+                class="w-16 px-2 py-1.5 bg-slate-950 border border-slate-800 text-slate-100 text-center rounded-md text-sm disabled:opacity-45"
+                [disabled]="colForm.get('colType')?.value === 'CALC' || colForm.get('colType')?.value === 'HEADER'"
+              />
+            </td>
+
+            <!-- Timeframe Length -->
+            <td class="p-3">
+              <div class="flex items-center gap-1.5">
+                <input 
+                  type="number" 
+                  formControlName="rollingN" 
+                  placeholder="1"
+                  class="w-12 px-2 py-1.5 bg-slate-950 border border-slate-800 text-slate-100 text-center rounded-md text-sm disabled:opacity-45"
+                  [disabled]="colForm.get('colType')?.value === 'CALC' || colForm.get('colType')?.value === 'HEADER'"
+                />
+                @if (colForm.get('colType')?.value === 'WTD') {
+                  <span class="text-xs text-slate-400">wks</span>
+                } @else if (colForm.get('colType')?.value === 'MTD') {
+                  <span class="text-xs text-slate-400">mos</span>
+                } @else if (colForm.get('colType')?.value === 'YTD') {
+                  <span class="text-xs text-slate-400">yrs</span>
+                } @else if (colForm.get('colType')?.value === 'ROLLING') {
+                  <select 
+                    formControlName="rollingGrain"
+                    class="px-2 py-1.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-md text-xs cursor-pointer"
+                  >
+                    <option value="DAY">Days</option>
+                    <option value="WEEK">Weeks</option>
+                    <option value="MONTH">Months</option>
+                  </select>
+                }
+              </div>
+            </td>
+
+            <!-- Period Type -->
+            <td class="p-3">
+              <select 
+                formControlName="periodType"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150 cursor-pointer"
+              >
+                <option value="">-- None --</option>
+                <option value="CURRENT_YEAR">Current Year</option>
+                <option value="PREVIOUS_YEAR">Previous Year</option>
+                <option value="BOTH_YEARS">Both Years</option>
+              </select>
+            </td>
+
+            <!-- Formula (Disabled for L1 parent columns and non-CALC columns) -->
+            <td class="p-3">
+              <input 
+                type="text" 
+                formControlName="formulaExpr" 
+                [placeholder]="colForm.get('colType')?.value === 'CALC' ? 'e.g. (C1-C2)/C2' : '-'"
+                class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-300 font-mono rounded-md text-sm disabled:opacity-45"
+                [disabled]="colForm.get('tierLevel')?.value === 'L1' || colForm.get('colType')?.value !== 'CALC'"
+              />
+            </td>
+
+            <!-- Delete Action -->
+            <td class="p-3 text-center">
+              <button 
+                type="button"
+                (click)="deleteColumn(idx)"
+                class="p-2 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-lg transition duration-150"
+                title="Delete Column"
+              >
+                🗑️
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</form>

@@ -22,6 +22,7 @@ import { CalendarPickerComponent } from './calendar-picker';
 import { GranularityPickerComponent } from './granularity-picker';
 import { GeneralFilterModalComponent } from './general-filter-modal';
 import { TableFilterScope } from '../interfaces/general-filter.interface';
+import { LiveLayoutPreviewComponent } from './live-layout-preview';
 interface CalendarDay {
   date: Date;
   dayNum: number;
@@ -96,6 +97,7 @@ export interface FieldGroup {
     CalendarPickerComponent,
     GranularityPickerComponent,
     GeneralFilterModalComponent,
+    LiveLayoutPreviewComponent,
   ],
 
   template: `
@@ -253,143 +255,16 @@ export interface FieldGroup {
 
         <!-- ── Preview Modal ───────────────────────────────────── -->
         @if (showPreview()) {
-          <section class="preview-section card animate-fade-in">
-            <div class="preview-header-flex">
-              <div>
-                <h3 class="section-title">📊 Live Layout Preview</h3>
-                <p class="section-desc">
-                  Molded view of rows and active columns. Formula evaluations run during Phase 2.
-                </p>
-              </div>
-              <div class="preview-tabs">
-                <button
-                  type="button"
-                  class="tab-btn"
-                  [class.active]="activePreviewTab() === 'grid'"
-                  (click)="activePreviewTab.set('grid')"
-                >
-                  ▦ Grid View
-                </button>
-                <button
-                  type="button"
-                  class="tab-btn"
-                  [class.active]="activePreviewTab() === 'sql'"
-                  (click)="activePreviewTab.set('sql')"
-                >
-                  ‹› SQL Code Preview
-                </button>
-              </div>
-            </div>
-
-            @if (activePreviewTab() === 'grid') {
-              <div class="table-wrapper">
-                <table class="spreadsheet-table">
-                  <thead>
-                    <tr>
-                      <th class="sticky-col">Label</th>
-                      <th>ID</th>
-                      <th>Type</th>
-                      @for (gran of granularityPreviewCols(); track gran.value) {
-                        <th class="col-flag-header border-l border-slate-200 text-indigo-600 font-mono">
-                          {{ gran.shortLabel }}
-                        </th>
-                      }
-                      @for (col of expandedColumns(); track col.colId) {
-                        <th class="col-flag-header">
-                          <div><code>{{ col.colId }}</code></div>
-                          <div class="preview-col-label">{{ col.label }}</div>
-                        </th>
-                      }
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (row of rows; track row.rowId) {
-                      <!-- ── Main data/section/calc row ───────────────────────── -->
-                      <tr [class]="'row-style-' + (row.style || 'normal').toLowerCase()">
-                        <td
-                          class="sticky-col label-cell"
-                          [style.padding-left.px]="20 + row.indentLevel * 16"
-                        >
-                          @if (row.rowType === 'section') {
-                            📂 <strong>{{ row.label }}</strong>
-                          } @else if (row.rowType === 'calc') {
-                            🧮 {{ row.label }}
-                          } @else if (row.rowType === 'data') {
-                            📊 {{ row.label }}
-                          } @else {
-                            &nbsp;
-                          }
-                        </td>
-                        <td><code>{{ row.rowId }}</code></td>
-                        <td>
-                          <span class="row-type-badge" [class]="row.rowType">{{ row.rowType }}</span>
-                        </td>
-                        @for (gran of granularityPreviewCols(); track gran.value) {
-                          <td class="col-flag-cell border-l border-slate-200 font-mono text-slate-300 text-center">-</td>
-                        }
-                        @for (col of expandedColumns(); track col.colId) {
-                          <td class="col-flag-cell">
-                            @if (
-                              row.activeCols &&
-                              (row.activeCols.includes(col.colId.toUpperCase()) ||
-                                (col.parentColId &&
-                                  row.activeCols.includes(col.parentColId.toUpperCase())))
-                            ) {
-                              <span class="flag-dot">✓</span>
-                            } @else {
-                              <span class="flag-dash">-</span>
-                            }
-                          </td>
-                        }
-                      </tr>
-
-                      <!-- ── Granularity sub-rows (data rows only) ────────────── -->
-                      @if (row.rowType === 'data' && granularityPreviewCols().length > 0) {
-                        @for (subGran of granularityPreviewCols(); track subGran.value; let subIdx = $index; let last = $last) {
-                          <tr class="gran-subrow">
-                            <td
-                              class="sticky-col gran-subrow-label"
-                              [style.padding-left.px]="20 + row.indentLevel * 16 + 24"
-                            >
-                              <span class="gran-subrow-connector">{{ last ? '└' : '├' }}</span>
-                            </td>
-                            <td></td>
-                            <td>
-                              <span class="gran-subrow-badge">group by</span>
-                            </td>
-                            @for (gCol of granularityPreviewCols(); track gCol.value; let colIdx = $index) {
-                              <td class="col-flag-cell gran-subrow-cell border-l border-slate-200 font-mono text-slate-600 text-center">
-                                @if (subIdx === colIdx) {
-                                  <code>[{{ subGran.shortLabel }}]</code>
-                                } @else {
-                                  -
-                                }
-                              </td>
-                            }
-                            @for (col of expandedColumns(); track col.colId) {
-                              <td class="col-flag-cell gran-subrow-cell"></td>
-                            }
-                          </tr>
-                        }
-                      }
-                    }
-                  </tbody>
-                </table>
-              </div>
-            } @else if (activePreviewTab() === 'sql') {
-              <div class="sql-preview-container">
-                @if (isLoadingSql()) {
-                  <div class="loading-state">
-                    <span class="spinner"></span> Loading SQL preview...
-                  </div>
-                } @else if (compiledSql()) {
-                  <pre class="sql-code-block"><code [innerHTML]="getHighlightedSql(compiledSql())"></code></pre>
-                } @else {
-                  <div class="empty-state">No compiled SQL preview available.</div>
-                }
-              </div>
-            }
-          </section>
+          <app-live-layout-preview
+            [columns]="columns"
+            [rows]="rows"
+            [reportingDate]="reportingDate"
+            [granularities]="granularities()"
+            [compiledSql]="compiledSql()"
+            [isLoadingSql]="isLoadingSql()"
+            [(activePreviewTab)]="activePreviewTab"
+            [previewTrigger]="previewTrigger()"
+          ></app-live-layout-preview>
         }
 
         <!-- ══════════════════════════════════════════════════════
@@ -1054,11 +929,14 @@ export interface FieldGroup {
                   </th>
                   <th style="width:70px">Col ID</th>
                   <th>Column Name / Header Label*</th>
-                  <th style="width:140px">Col Type</th>
-                  <th style="width:160px">Header Style</th>
-                  <th style="width:100px">Period Offset</th>
-                  <th style="width:100px">Rolling N</th>
-                  <th style="width:200px">Formula / Expression</th>
+                  <th style="width:110px">Tier Level</th>
+                  <th style="width:140px">Parent L1</th>
+                  <th style="width:150px">Formula / Expression</th>
+                  <th style="width:130px">Header Style</th>
+                  <th style="width:90px">Period Offset</th>
+                  <th style="width:120px">Timeframe Length</th>
+                  <th style="width:130px">Period Type</th>
+                  <th style="width:180px">Math Formula / Calc Expression</th>
                   <th style="width:60px;text-align:center">Actions</th>
                 </tr>
               </thead>
@@ -1069,6 +947,7 @@ export interface FieldGroup {
                     [class.has-critical]="hasError(col.colId, 'CRITICAL')"
                     [class.has-warning]="hasError(col.colId, 'WARNING')"
                     [title]="hasError(col.colId) ? getErrorMessage(col.colId) : ''"
+                    [style.background]="col.tierLevel === 'L2' ? 'rgba(99, 102, 241, 0.08)' : ''"
                   >
                     <td><input type="checkbox" [(ngModel)]="col.selected" [disabled]="isLocked" /></td>
                     <td>
@@ -1090,14 +969,44 @@ export interface FieldGroup {
                       </div>
                     </td>
                     <td>
-                      <input
-                        type="text"
-                        [(ngModel)]="col.label"
+                      <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                        @if (col.tierLevel === 'L2') {
+                          <span style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #818CF8; font-family: monospace; pointer-events: none; font-weight: bold; font-size: 14px;">└──</span>
+                        }
+                        <input
+                          type="text"
+                          [(ngModel)]="col.label"
+                          [disabled]="isLocked"
+                          (ngModelChange)="triggerValidationDebounced()"
+                          placeholder="Column Header Label"
+                          class="cell-input"
+                          [style.padding-left]="col.tierLevel === 'L2' ? '32px' : '8px'"
+                        />
+                      </div>
+                    </td>
+                    <td>
+                      <select
+                        [(ngModel)]="col.tierLevel"
                         [disabled]="isLocked"
+                        (ngModelChange)="onTierLevelChange(col); triggerValidationDebounced()"
+                        class="cell-select"
+                      >
+                        <option value="L1">L1 Parent</option>
+                        <option value="L2">L2 Child</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        [(ngModel)]="col.parentId"
+                        [disabled]="col.tierLevel !== 'L2' || isLocked"
                         (ngModelChange)="triggerValidationDebounced()"
-                        placeholder="Column Header Label"
-                        class="cell-input"
-                      />
+                        class="cell-select"
+                      >
+                        <option value="">-- Select L1 --</option>
+                        @for (pCol of getL1Parents(col); track pCol.colId) {
+                          <option [value]="pCol.colId">{{ pCol.colId }} - {{ pCol.label }}</option>
+                        }
+                      </select>
                     </td>
                     <td>
                       <select
@@ -1106,11 +1015,12 @@ export interface FieldGroup {
                         (ngModelChange)="onColTypeChange(col); triggerValidationDebounced()"
                         class="cell-select"
                       >
-                        <option value="WEEK">WEEK</option>
+                        <option value="WTD">WTD</option>
                         <option value="MTD">MTD</option>
                         <option value="YTD">YTD</option>
                         <option value="ROLLING">ROLLING</option>
                         <option value="CALC">CALC</option>
+                        <option value="HEADER">HEADER</option>
                       </select>
                     </td>
                     <td>
@@ -1130,37 +1040,57 @@ export interface FieldGroup {
                         type="number"
                         [(ngModel)]="col.periodOffset"
                         (ngModelChange)="triggerValidationDebounced()"
-                        [disabled]="col.colType === 'CALC' || isLocked"
+                        [disabled]="col.colType === 'CALC' || col.colType === 'HEADER' || isLocked"
                         class="cell-input center"
                       />
                     </td>
                     <td>
-                      <!-- Rolling N + Grain selector — both active only for ROLLING columns -->
-                      <div class="rolling-cell">
+                      <div class="rolling-cell" style="display: flex; align-items: center; gap: 4px;">
                         <input
                           type="number"
                           [(ngModel)]="col.rollingN"
                           (ngModelChange)="triggerValidationDebounced()"
-                          [disabled]="col.colType !== 'ROLLING' || isLocked"
-                          placeholder="e.g. 3"
+                          [disabled]="col.colType === 'CALC' || col.colType === 'HEADER' || isLocked"
+                          placeholder="1"
                           class="cell-input center rolling-n-input"
-                          title="Number of periods to look back"
+                          style="width: 45px;"
+                          title="Timeframe length count"
                         />
-                        @if (col.colType === 'ROLLING') {
-                          <!-- Grain selector: visible and required only when colType is ROLLING -->
+                        @if (col.colType === 'WTD') {
+                          <span style="font-size: 11px; color: #94A3B8;">wks</span>
+                        } @else if (col.colType === 'MTD') {
+                          <span style="font-size: 11px; color: #94A3B8;">mos</span>
+                        } @else if (col.colType === 'YTD') {
+                          <span style="font-size: 11px; color: #94A3B8;">yrs</span>
+                        } @else if (col.colType === 'ROLLING') {
                           <select
                             [(ngModel)]="col.rollingGrain"
                             (ngModelChange)="triggerValidationDebounced()"
                             class="cell-select rolling-grain-select"
                             title="Time grain for this rolling window"
                             [disabled]="isLocked"
+                            style="width: 65px; font-size: 11px; padding: 2px;"
                           >
                             <option value="DAY">Days</option>
                             <option value="WEEK">Weeks</option>
                             <option value="MONTH">Months</option>
+                            <option value="YEAR">Years</option>
                           </select>
                         }
                       </div>
+                    </td>
+                    <td>
+                      <select
+                        [(ngModel)]="col.periodType"
+                        [disabled]="isLocked"
+                        (ngModelChange)="triggerValidationDebounced()"
+                        class="cell-select"
+                      >
+                        <option value="">-- None --</option>
+                        <option value="CURRENT_YEAR">Current Year</option>
+                        <option value="PREVIOUS_YEAR">Previous Year</option>
+                        <option value="BOTH_YEARS">Both Years</option>
+                      </select>
                     </td>
                     <td>
                       <input
@@ -1168,7 +1098,7 @@ export interface FieldGroup {
                         [(ngModel)]="col.formulaExpr"
                         (ngModelChange)="triggerValidationDebounced()"
                         [placeholder]="col.colType === 'CALC' ? 'e.g. (C1-C2)/C2' : '-'"
-                        [disabled]="col.colType !== 'CALC' || isLocked"
+                        [disabled]="col.tierLevel === 'L1' || col.colType !== 'CALC' || isLocked"
                         class="cell-input code"
                       />
                     </td>
@@ -4505,7 +4435,7 @@ export class ReportBuilderComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   sidebarOpen = signal(false);
   isMainMenuCollapsed = signal(false);
-  isFieldPickerOpen = signal(true);
+  isFieldPickerOpen = signal(false);
 
   // Resizable columns width state (Step 1 Rows Setup)
   // Bug fix #2: columnWidths and computedWidthsString are kept for the
@@ -4635,8 +4565,11 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: c.colType === 'ROLLING' ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
+        tierLevel: c.tierLevel || 'L1',
+        parentId: c.parentId || '',
+        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({
@@ -4691,8 +4624,12 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: c.colType === 'ROLLING' ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
+        rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
+        tierLevel: c.tierLevel || 'L1',
+        parentId: c.parentId || '',
+        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({
@@ -4751,8 +4688,12 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: c.colType === 'ROLLING' ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
+        rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
+        tierLevel: c.tierLevel || 'L1',
+        parentId: c.parentId || '',
+        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({
@@ -5385,12 +5326,15 @@ export class ReportBuilderComponent implements OnInit {
     this.columns = (data.columns || []).map((c: any) => ({
       colId: c.colId,
       label: c.label,
-      colType: c.colType,
+      colType: c.colType === 'WEEK' ? 'WTD' : c.colType, // backward-compat WEEK -> WTD
       headerLayout: c.headerLayout || 'border',
       periodOffset: c.periodOffset,
       rollingN: c.rollingN,
       rollingGrain: c.rollingGrain ?? null, // null for reports saved before this field existed
       formulaExpr: c.formulaExpr,
+      tierLevel: c.tierLevel || 'L1',
+      parentId: c.parentId || '',
+      periodType: c.periodType || '',
       selected: false,
     }));
 
@@ -6595,12 +6539,15 @@ export class ReportBuilderComponent implements OnInit {
     this.columns.push({
       colId: `C${n}`,
       label: `Column ${n}`,
-      colType: 'WEEK',
+      colType: 'WTD',
       headerLayout: 'border',
       periodOffset: 0,
       rollingN: null,
       rollingGrain: null, // populated when user picks ROLLING grain
       formulaExpr: '',
+      tierLevel: 'L1',
+      parentId: '',
+      periodType: '',
       selected: false,
     });
   }
@@ -6632,6 +6579,9 @@ export class ReportBuilderComponent implements OnInit {
     if (col.colType !== 'CALC') {
       col.formulaExpr = '';
     }
+    if (col.colType === 'HEADER') {
+      col.periodOffset = 0;
+    }
   }
 
   deleteSelectedCols(): void {
@@ -6647,6 +6597,17 @@ export class ReportBuilderComponent implements OnInit {
         if (row.activeCols)
           row.activeCols = row.activeCols.filter((id: string) => !ids.includes(id.toUpperCase()));
       });
+    }
+  }
+
+  getL1Parents(col: any): any[] {
+    return this.columns.filter((c) => c.tierLevel === 'L1' && c.colId !== col.colId);
+  }
+
+  onTierLevelChange(col: any): void {
+    if (col.tierLevel === 'L1') {
+      col.parentId = '';
+      col.formulaExpr = '';
     }
   }
 
@@ -6836,9 +6797,12 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: c.colType === 'ROLLING' ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
         rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
+        tierLevel: c.tierLevel || 'L1',
+        parentId: c.parentId || '',
+        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({
