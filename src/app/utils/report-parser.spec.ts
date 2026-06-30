@@ -57,6 +57,13 @@ describe('Report Parser Utilities', () => {
         customSqlMode: true,
         rawExpression: 'SUM(amount) / 100'
       });
+      expect(parseMeasure({ mode: 'raw', rawSql: 'COUNT_DISTINCT(ticker_symbol)', sourceTable: 'analytics.fact_investments' })).toEqual({
+        aggFunction: 'COUNT_DISTINCT',
+        measureCol: 'ticker_symbol',
+        sourceTable: 'analytics.fact_investments',
+        customSqlMode: false,
+        rawExpression: ''
+      });
     });
 
     it('should parse JSON strings correctly', () => {

@@ -1777,7 +1777,8 @@ export interface FieldGroup {
 
       .worksheet-fixed-row {
         display: flex;
-        width: max-content; /* Guarantees the row container never snaps or compresses prematurely */
+        width: 100%;
+        min-width: max-content; /* Guarantees the row container never snaps or compresses prematurely */
         align-items: center;
         gap: 16px; /* Clean, uniform horizontal separation between inputs */
       }
@@ -1809,6 +1810,7 @@ export interface FieldGroup {
       .col-row-name {
         width: 240px;
         flex-shrink: 0;
+        flex-grow: 1;
         display: flex;
         align-items: center;
         box-sizing: border-box;
@@ -1823,6 +1825,7 @@ export interface FieldGroup {
       .col-measure-def {
         width: 480px;
         flex-shrink: 0;
+        flex-grow: 2;
         display: flex;
         align-items: center;
         box-sizing: border-box;
@@ -1830,6 +1833,7 @@ export interface FieldGroup {
       .col-conditions {
         width: 260px;
         flex-shrink: 0;
+        flex-grow: 1;
         display: flex;
         align-items: center;
         box-sizing: border-box;
@@ -5532,6 +5536,7 @@ export class ReportBuilderComponent implements OnInit {
       get: () => aggregationSignal(),
       set: (val: string) => {
         aggregationSignal.set(val);
+        row.customSqlMode = false;
         this.onRowMeasureChange(row);
         this.triggerValidationDebounced();
       },
@@ -6335,6 +6340,7 @@ export class ReportBuilderComponent implements OnInit {
         row.measureCol = '';
       }
     }
+    row.customSqlMode = false;
     row.source = `${row.measureAgg || 'SUM'}(${row.measureCol || ''})`;
     this.triggerValidationDebounced();
     this.updateDimensionStates();
@@ -6904,14 +6910,11 @@ export class ReportBuilderComponent implements OnInit {
           this.status = 'published';
           this.isLocked = true;
           this.reportForm.disable();
-          this.successMessage.set(`Report v${res.publishedVersion || this.reportVersion} published successfully! Auto-forking new draft version v${res.nextDraftVersion}...`);
+          this.successMessage.set(`Report v${res.publishedVersion || this.reportVersion} has been successfully published and locked!`);
           
           setTimeout(() => {
             this.successMessage.set(null);
-            this.router.navigate(['/reports', this.reportId, 'edit'], { 
-              queryParams: { version: res.nextDraftVersion } 
-            });
-          }, 3000);
+          }, 4000);
         },
         error: (err) => {
           this.saving.set(false);

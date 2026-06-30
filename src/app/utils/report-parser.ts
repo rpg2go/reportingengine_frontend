@@ -25,12 +25,23 @@ export function parseMeasure(source: any): { aggFunction: string; measureCol: st
   if (typeof source === 'object') {
     const isRaw = (source.rawExpression != null && source.rawExpression !== '') || (source.rawSql != null && source.rawSql !== '') || source.mode === 'raw';
     if (isRaw) {
+      const rawExpr = (source.rawExpression || source.rawSql || '').trim();
+      const m = rawExpr.match(/^(SUM|COUNT|COUNT_DISTINCT|COUNTA|AVG|MIN|MAX)\((.+)\)$/i);
+      if (m) {
+        return {
+          aggFunction: m[1].toUpperCase(),
+          measureCol: m[2],
+          sourceTable: source.sourceTable || source.table || '',
+          customSqlMode: false,
+          rawExpression: ''
+        };
+      }
       return {
         aggFunction: 'SUM',
         measureCol: '',
         sourceTable: source.sourceTable || source.table || '',
         customSqlMode: true,
-        rawExpression: source.rawExpression || source.rawSql || ''
+        rawExpression: rawExpr
       };
     } else {
       return {
