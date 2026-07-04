@@ -17,7 +17,7 @@ describe('ReportService', () => {
   });
 
   it('should fetch all reports via getReports', () => {
-    const mockReports = [{ id: '1', name: 'Report 1' }];
+    const mockReports = [{ id: '1', reportName: 'Report 1' }];
     mockHttp.get.mockReturnValue(of(mockReports));
 
     service.getReports().subscribe((data) => {
@@ -28,7 +28,7 @@ describe('ReportService', () => {
   });
 
   it('should fetch report config via getReportConfig', () => {
-    const mockConfig = { id: '1', name: 'Report 1', rows: [] };
+    const mockConfig = { id: '1', reportName: 'Report 1', rows: [] };
     mockHttp.get.mockReturnValue(of(mockConfig));
 
     service.getReportConfig('1', '2025-12-31').subscribe((data) => {
@@ -85,7 +85,7 @@ describe('ReportService', () => {
   });
 
   it('should create a report configuration via createReport', () => {
-    const mockConfig = { name: 'New Report', rows: [] };
+    const mockConfig = { reportName: 'New Report', rows: [] };
     mockHttp.post.mockReturnValue(of({ id: '2', ...mockConfig }));
 
     service.createReport(mockConfig).subscribe();

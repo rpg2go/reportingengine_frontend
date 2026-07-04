@@ -275,24 +275,19 @@ export interface FieldGroup {
 
           <!-- Basic identity fields -->
           <div class="form-grid">
-            <div class="form-group">
-              <label for="report-id">Report ID* (unique)</label>
-              <input
-                type="text"
-                id="report-id"
-                [(ngModel)]="reportId"
-                [disabled]="!isNewReport || isLocked"
-                placeholder="e.g. RPT_001"
-                class="form-input"
-              />
-            </div>
+            <input
+              type="hidden"
+              id="report-id"
+              [(ngModel)]="reportId"
+            />
 
             <div class="form-group">
-              <label for="report-name">Report Title*</label>
+              <label for="report-name">Report Name*</label>
               <input
                 type="text"
                 id="report-name"
                 [(ngModel)]="reportName"
+                (ngModelChange)="triggerValidationDebounced()"
                 [disabled]="isLocked"
                 placeholder="e.g. Sales Weekly Report"
                 class="form-input"
@@ -5192,7 +5187,7 @@ export class ReportBuilderComponent implements OnInit {
 
   applyReportConfig(data: any): void {
     this.reportId = data.reportId;
-    this.reportName = data.name;
+    this.reportName = data.reportName;
     this.reportVersion = data.version || 1;
     this.status = data.status || 'draft';
     this.isLocked = this.status === 'published' || this.status === 'in_review' || this.viewOnlyMode;
@@ -5405,7 +5400,7 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   initializeDefaultCatalog(): void {
-    this.reportId = '';
+    this.reportId = crypto.randomUUID();
     this.reportName = '';
     this.reportVersion = 1;
     this.isLocked = false;
@@ -5426,54 +5421,11 @@ export class ReportBuilderComponent implements OnInit {
     this.linkedDimensions = [];
 
     // Default columns
-    this.columns = [
-      {
-        colId: 'C1',
-        label: 'Previous Weeks',
-        colType: 'WEEK',
-        headerLayout: 'border',
-        periodOffset: -1,
-        rollingN: null,
-        formulaExpr: '',
-        selected: false,
-      },
-      {
-        colId: 'C2',
-        label: 'WTD no.',
-        colType: 'WEEK',
-        headerLayout: 'bold',
-        periodOffset: 0,
-        rollingN: null,
-        formulaExpr: '',
-        selected: false,
-      },
-      {
-        colId: 'C3',
-        label: 'Budget WTD',
-        colType: 'WEEK',
-        headerLayout: 'border',
-        periodOffset: 0,
-        rollingN: null,
-        formulaExpr: '',
-        selected: false,
-      },
-    ];
+    this.columns = [];
 
     // Default rows
     this.rows = [
       this.makeDefaultRow('R1', 'Report Header', 'section', 'section', 0),
-      this.makeDefaultRow('R2', 'GBS gross', 'data', 'normal', 1, {
-        agg: 'SUM',
-        col: '',
-        table: '',
-        filters: [],
-      }),
-      this.makeDefaultRow('R3', 'GBS net', 'data', 'normal', 1, {
-        agg: 'SUM',
-        col: '',
-        table: '',
-        filters: [],
-      }),
     ];
     this.reportForm.controls.granularity.setValue([], { emitEvent: false });
     this.reportForm.controls.quickFilters.setValue([], { emitEvent: false });
@@ -6660,6 +6612,11 @@ export class ReportBuilderComponent implements OnInit {
       return;
     }
 
+    if (this.columns.length === 0) {
+      this.errorMessage.set('At least one column definition is required. Please add a column under Columns Setup.');
+      return;
+    }
+
     // Prevent saving if labels start with formula triggers (=, +, -, @)
     const formulaTriggers = ['=', '+', '-', '@'];
     for (const c of this.columns) {
@@ -6777,7 +6734,7 @@ export class ReportBuilderComponent implements OnInit {
 
     const payload = {
       reportId: this.reportId,
-      name: this.reportName,
+      reportName: this.reportName,
       version: this.reportVersion,
       exploreId: 1,
       status: this.status,

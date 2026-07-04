@@ -17,13 +17,13 @@ describe('ExecutionHubComponent', () => {
 
   beforeEach(() => {
     mockReportService = {
-      getReports: vi.fn().mockReturnValue(of([{ reportId: 'RPT_001', name: 'Sales Report' }])),
+      getReports: vi.fn().mockReturnValue(of([{ reportId: 'RPT_001', reportName: 'Sales Report' }])),
       getReportingDates: vi.fn().mockReturnValue(of(['2026-05-26', '2026-05-25'])),
       getReportConfig: vi.fn().mockReturnValue(
         of({
           reportId: 'RPT_001',
-          name: 'Sales Report',
-          columns: [{ colId: 'C1', label: 'Col 1', colType: 'WEEK' }],
+          reportName: 'Sales Report',
+          columns: [{ colId: 'C1', label: 'Col 1', colType: 'WTD' }],
           rows: [{ rowId: 'R1', label: 'Row 1', rowType: 'data', source: { table: 'fact_sales' } }],
           quickFilters: JSON.stringify([
             { dimTable: 'dim_location', attribute: 'region', operator: 'EQUALS', value: '' },

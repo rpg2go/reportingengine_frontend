@@ -184,7 +184,7 @@ export class ExecutionHubComponent implements OnInit {
           this.reportConfig.set(config);
           this.columns.set(config.columns || []);
           this.rows.set(config.rows || []);
-          this.reportName.set(config.name);
+          this.reportName.set(config.reportName);
 
           // Parse quick filters from JSON string
           let parsedFilters: any[] = [];

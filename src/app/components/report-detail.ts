@@ -58,7 +58,7 @@ import { SidebarComponent } from './sidebar';
                   </span>
                 }
               </h1>
-              <p class="report-subtitle">{{ report.name }}</p>
+              <p class="report-subtitle">{{ report.reportName }}</p>
             </div>
 
             <!-- Running Action Bar -->

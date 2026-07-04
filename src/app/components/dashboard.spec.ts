@@ -15,8 +15,8 @@ describe('DashboardComponent', () => {
   let mockDestroyRef: any;
 
   const mockReports = [
-    { reportId: 'R1', name: 'Sales Report', status: 'published', description: 'Monthly sales', exploreId: 'sales', sourceTable: 'fact_sales' },
-    { reportId: 'R2', name: 'Inventory Report', status: 'draft', description: 'Stock details', exploreId: 'inventory', sourceTable: 'fact_inventory' }
+    { reportId: 'R1', reportName: 'Sales Report', status: 'published', description: 'Monthly sales', exploreId: 'sales', sourceTable: 'fact_sales' },
+    { reportId: 'R2', reportName: 'Inventory Report', status: 'draft', description: 'Stock details', exploreId: 'inventory', sourceTable: 'fact_inventory' }
   ];
 
   beforeEach(() => {

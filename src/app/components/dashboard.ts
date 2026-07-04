@@ -116,7 +116,7 @@ import { CalendarPickerComponent } from './calendar-picker';
                         {{ report.status }}
                       </span>
                     </div>
-                    <h3 class="hd-card-title">{{ report.name }}</h3>
+                    <h3 class="hd-card-title">{{ report.reportName }}</h3>
                     <p class="hd-card-desc">{{ report.description || 'No description provided.' }}</p>
                     <div class="hd-card-footer">
                       <span>Table: {{ report.sourceTable ? (report.sourceTable.includes('.') ? report.sourceTable.split('.')[1] : report.sourceTable) : 'N/A' }}</span>
@@ -156,7 +156,7 @@ import { CalendarPickerComponent } from './calendar-picker';
                         {{ report.status }}
                       </span>
                       <h2 style="margin-top: 8px;">{{ report.reportId }}</h2>
-                      <p class="report-subtitle" style="font-size: 15px; color: var(--color-apple-text); font-weight: 500;">{{ report.name }}</p>
+                      <p class="report-subtitle" style="font-size: 15px; color: var(--color-apple-text); font-weight: 500;">{{ report.reportName }}</p>
                     </div>
                     <div style="font-size: 12px; color: var(--color-apple-grey); text-align: right;">
                       <span>Version: <strong>v{{ report.version }}</strong></span>
@@ -1379,7 +1379,7 @@ export class DashboardComponent implements OnInit {
       // Query match
       return !query || 
         report.reportId.toLowerCase().includes(query) || 
-        report.name.toLowerCase().includes(query) || 
+        report.reportName.toLowerCase().includes(query) || 
         (report.description && report.description.toLowerCase().includes(query)) ||
         (report.exploreId && String(report.exploreId).toLowerCase().includes(query)) ||
         (report.sourceTable && report.sourceTable.toLowerCase().includes(query));

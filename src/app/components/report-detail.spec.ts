@@ -41,7 +41,7 @@ describe('ReportDetailComponent', () => {
 
   const mockConfig = {
     reportId: 'R1',
-    name: 'Sales Report',
+    reportName: 'Sales Report',
     rows: [
       { rowId: 'row1', activeCols: ['COL1', 'COL2'] }
     ]

@@ -23,7 +23,7 @@ describe('ReportBuilderComponent', () => {
   const mockDates = ['2025-12-31', '2025-11-30'];
   const mockConfig = {
     reportId: 'R1',
-    name: 'Sales Report',
+    reportName: 'Sales Report',
     version: 1,
     status: 'draft',
     sourceTable: 'table1',
@@ -34,7 +34,17 @@ describe('ReportBuilderComponent', () => {
     timeframeToday: false,
     quickFilters: 'col1',
     generalFilters: '[]',
-    columns: [],
+    columns: [
+      {
+        colId: 'C1',
+        label: 'Col 1',
+        colType: 'WTD',
+        periodOffset: 0,
+        rollingN: null,
+        formulaExpr: '',
+        selected: false,
+      }
+    ],
     rows: [
       {
         rowId: 'R1',
@@ -108,7 +118,7 @@ describe('ReportBuilderComponent', () => {
     });
   };
 
-  it('should initialize as a new report', () => {
+  it('should initialize as a new report with only R1 row and generated unique UUID', () => {
     createComponent({ id: 'new' });
 
     expect(component.isNewReport).toBe(true);
@@ -116,6 +126,15 @@ describe('ReportBuilderComponent', () => {
     expect(mockReportService.getReportingDates).toHaveBeenCalled();
     expect(component.dbTables).toEqual(mockTables);
     expect(component.availableReportingDates).toEqual(mockDates);
+
+    // Verify default rows (only R1 is present)
+    expect(component.rows.length).toBe(1);
+    expect(component.rows[0].rowId).toBe('R1');
+    expect(component.rows[0].label).toBe('Report Header');
+    expect(component.rows[0].rowType).toBe('section');
+
+    // Verify reportId matches UUID format
+    expect(component.reportId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
 
   it('should initialize editing an existing report', () => {
@@ -161,7 +180,11 @@ describe('ReportBuilderComponent', () => {
     // no active data rows with catalog source
     component.reportId = 'R2';
     component.reportName = 'Test Report';
+    component.columns = [
+      { colId: 'C1', label: 'Col 1', colType: 'WTD', periodOffset: 0, rollingN: null, formulaExpr: '', selected: false }
+    ];
     component.rows = []; // empty rows
+    component.runValidation();
     component.saveConfig();
     expect(component.errorMessage()).toBe(
       'At least one data row with a valid catalog source field is required.',
@@ -215,6 +238,9 @@ describe('ReportBuilderComponent', () => {
     component.reportId = 'R2';
     component.reportName = 'Test Report';
     component.sourceTable = 'table1';
+    component.columns = [
+      { colId: 'C1', label: 'Col 1', colType: 'WTD', periodOffset: 0, rollingN: null, formulaExpr: '', selected: false }
+    ];
     component.rows = [
       {
         rowId: 'R1',
@@ -231,6 +257,7 @@ describe('ReportBuilderComponent', () => {
     const saveSubject = new Subject<any>();
     mockReportService.createReport.mockReturnValue(saveSubject);
 
+    component.runValidation();
     component.saveConfig();
 
     expect(component.saving()).toBe(true);
@@ -296,6 +323,10 @@ describe('ReportBuilderComponent', () => {
     component.reportId = 'R2';
     component.reportName = 'Test Report';
     component.sourceTable = 'table1';
+    component.columns = [
+      { colId: 'C1', label: 'Col 1', colType: 'WTD', periodOffset: 0, rollingN: null, formulaExpr: '', selected: false }
+    ];
+    component.runValidation();
     component.rows = [
       {
         rowId: 'R1',
@@ -725,7 +756,7 @@ describe('ReportBuilderComponent', () => {
       {
         colId: 'C1',
         label: 'WTD no.',
-        colType: 'WEEK',
+        colType: 'WTD',
         periodOffset: 0,
         rollingN: null,
         formulaExpr: null,
