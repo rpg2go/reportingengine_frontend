@@ -60,6 +60,15 @@ This document serves as the UI/UX architecture reference, implementation state, 
 10. **Composite Primary Key for Versioning**:
     - The `rpt_report` table uses a composite primary key `(report_id, version)`. All child tables (`rpt_column_def`, `rpt_row`, `rpt_row_metric`, `rpt_row_formula`, `rpt_row_column_map`) include a `version` column and were migrated (migration `015`) to use composite unique constraints incorporating `version`, replacing the old single-column unique indexes.
 
+11. **Dynamic Rows Setup Viewport Height**:
+    - Decoupled DWH explorer and template builder layouts using absolute overlays alongside flow-relative element placeholders. This lets the number of rows dynamically set the section height, enforcing a minimum Visual Usability Threshold of `450px` (~10 rows) and a maximum of `860px`. Explicit high-contrast scrollbars are configured for both light and dark themes.
+
+12. **Report ID Visual Hiding**:
+    - Extracted all raw internal report ID display labels from cards, catalogs, sidebar navigations, and detail headers. Visual sections display only the friendly report name, keeping the report ID visible only in the URL (`/reports/:id`, `/reports/:id/edit`) and in backend REST payloads.
+
+13. **Conditional Soft / Hard Deletion**:
+    - Configured a database column `deleted` and custom logic in the delete endpoint. If a report has at least one version with status `PUBLISHED`, deletion soft-deletes the record (marking `deleted = true` across all versions and filtering them out of all repository queries). If the report has never been published (only `DRAFT` or `IN_REVIEW`), it performs a physical cascade delete.
+
 ---
 
 ## 📂 Codebase Tour

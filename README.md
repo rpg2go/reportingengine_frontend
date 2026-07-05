@@ -21,10 +21,12 @@ The application is structured into standalone components routed lazily under [ap
 - Filter reports by status using tab chips: **All / Published / Drafts**.
 - Upload and ingest new Excel report templates (`.xlsx`) via drag-and-drop or file picker.
 - Auto-refreshes the catalog dynamically upon successful template ingestion.
+- Displays friendly report names instead of raw internal report IDs across all visual elements (cards, headers, inspector).
 
 ### 3. Report Builder (`/reports/new/edit` or `/reports/:id/edit`) — [ReportBuilderComponent](src/app/components/report-builder.ts)
 
 - Interactive drag-and-drop designer for configuring columns (`DATE`, `DATA`, `ROLLING`, `CALC`) and rows (`section`, `data`, `calc`, `blank`).
+- Dynamic rows setup viewport section height (constrained between a minimum of 450px and a maximum of 860px) with custom high-contrast scrollbars for seamless grid editing.
 - Full-screen field picker via [FieldPickerComponent](src/app/components/field-picker.ts) for selecting fact table measures and dimension attributes.
 - Advanced filter builder via [RowFilterComponent](src/app/components/row-filter.ts) and [RowConditionGroupComponent](src/app/components/row-condition-group.ts).
 - Granularity configuration via [GranularityPickerComponent](src/app/components/granularity-picker.ts) for group-by dimension breakdowns.
@@ -222,7 +224,7 @@ All calls use the relative base path `/api/reports`, proxied through Nginx or th
 | `getReportConfig(id, date, version?)` | `GET /api/reports/:id?date=&version=` | Load full config DTO |
 | `saveReport(id, config)` | `PUT /api/reports/:id` | Save column/row configuration |
 | `createReport(config)` | `POST /api/reports` | Create a new report record |
-| `deleteReport(id)` | `DELETE /api/reports/:id` | Delete a report |
+| `deleteReport(id)` | `DELETE /api/reports/:id` | Delete report (physical delete if no published history; soft delete across all versions if published version exists) |
 | `importTemplate(file)` | `POST /api/reports/import` | Ingest Excel template file |
 | `validateReport(config)` | `POST /api/reports/validate` | Validate a config before saving |
 | `previewSql(config)` | `POST /api/reports/preview-sql` | Generate live SQL preview |
