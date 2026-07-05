@@ -67,7 +67,7 @@
               <!-- Wrapping layout that prevents overlap between long names and badges -->
               <div class="flex items-center justify-between w-full">
                 <span class="report-code font-mono text-[10px] font-bold text-slate-400 group-hover:text-indigo-600">
-                  {{ rep.reportId }} <span class="text-slate-500 font-sans font-normal" style="font-size: 9px; margin-left: 6px;">(v{{ rep.version || 1 }})</span>
+                  Version v{{ rep.version || 1 }}
                 </span>
                 <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border shrink-0" [ngClass]="(rep.status || 'draft').toLowerCase()">
                   {{ rep.status || 'draft' }}
@@ -92,7 +92,7 @@
               <h2 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2" style="margin:0;">
                 <span>📊 {{ reportName() }}</span>
                 <span class="report-code font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" style="margin-left: 8px;">
-                  {{ selectedReportId() }} (v{{ reportConfig()?.version || 1 }})
+                  Version v{{ reportConfig()?.version || 1 }}
                 </span>
               </h2>
             </div>

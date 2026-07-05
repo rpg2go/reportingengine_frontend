@@ -44,10 +44,10 @@ import { SidebarComponent } from './sidebar';
           <header class="detail-header animate-fade-in">
             <div>
               <div class="breadcrumbs">
-                <a routerLink="/dashboard">Reports</a> / <span>{{ report.reportId }}</span>
+                <a routerLink="/dashboard">Reports</a> / <span>{{ report.reportName }}</span>
               </div>
               <h1 style="display: flex; align-items: center; gap: 8px;">
-                {{ report.reportId }}
+                {{ report.reportName }}
                 @if (running()) {
                   <span class="status-lozenge running font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-blue-500 text-blue-400 bg-blue-500/10">
                     <span class="spinner" style="width: 12px; height: 12px; border-width: 2px;"></span> Running
@@ -58,7 +58,6 @@ import { SidebarComponent } from './sidebar';
                   </span>
                 }
               </h1>
-              <p class="report-subtitle">{{ report.reportName }}</p>
             </div>
 
             <!-- Running Action Bar -->

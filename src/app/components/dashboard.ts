@@ -111,7 +111,6 @@ import { CalendarPickerComponent } from './calendar-picker';
                     (click)="viewReportCard(report.reportId)"
                   >
                     <div class="hd-card-header">
-                      <span class="hd-card-id">{{ report.reportId }}</span>
                       <span class="hd-badge" [class.published]="report.status === 'published'" [class.draft]="report.status === 'draft'">
                         {{ report.status }}
                       </span>
@@ -155,8 +154,7 @@ import { CalendarPickerComponent } from './calendar-picker';
                       <span class="badge" [class.badge-success]="report.status === 'published'" [class.badge-warning]="report.status === 'draft'">
                         {{ report.status }}
                       </span>
-                      <h2 style="margin-top: 8px;">{{ report.reportId }}</h2>
-                      <p class="report-subtitle" style="font-size: 15px; color: var(--color-apple-text); font-weight: 500;">{{ report.reportName }}</p>
+                      <h2 style="margin-top: 8px;">{{ report.reportName }}</h2>
                     </div>
                     <div style="font-size: 12px; color: var(--color-apple-grey); text-align: right;">
                       <span>Version: <strong>v{{ report.version }}</strong></span>

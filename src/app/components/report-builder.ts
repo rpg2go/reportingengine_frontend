@@ -598,8 +598,15 @@ export interface FieldGroup {
 
           <div class="rows-container-layout" [class.picker-closed]="!isFieldPickerOpen()">
             <!-- Left Side: Searchable DWH Catalog Tree -->
+            <!-- Left Side Placeholder to reserve space in flow -->
             <div
-              class="catalog-panel worksheet-shared-height"
+              class="catalog-panel-placeholder"
+              [class.collapsed]="!isFieldPickerOpen()"
+            ></div>
+
+            <!-- Left Side: Searchable DWH Catalog Tree -->
+            <div
+              class="catalog-panel"
               [class.collapsed]="!isFieldPickerOpen()"
             >
               <div class="catalog-search-box">
@@ -664,7 +671,7 @@ export interface FieldGroup {
             <!-- Right Side: Grid Table Canvas -->
             <!-- Stable Fixed-Width Worksheet Layout -->
             <div
-              class="w-full overflow-x-auto table-wrapper rows-table-wrapper worksheet-shared-height"
+              class="w-full overflow-x-auto table-wrapper rows-table-wrapper"
               style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;"
             >
               <table class="grid-table rows-grid">
@@ -1717,6 +1724,9 @@ export interface FieldGroup {
         -webkit-overflow-scrolling: touch;
         max-width: 100%;
         position: relative;
+        height: auto;
+        min-height: 450px;
+        max-height: 860px;
       }
 
       .grid-table {
@@ -3192,6 +3202,7 @@ export interface FieldGroup {
         margin-top: 10px;
         position: relative;
         transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        align-items: stretch;
       }
       .rows-container-layout.picker-closed {
         gap: 0px;
@@ -3202,37 +3213,54 @@ export interface FieldGroup {
         }
       }
 
-      /* ── Shared Worksheet Height scaling constraints ── */
-      .worksheet-shared-height {
-        min-height: 588px;
-        height: auto;
-        max-height: 860px;
-      }
-
       /* Premium subtle scroll tracks */
       .catalog-tree::-webkit-scrollbar,
       .rows-table-wrapper::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 10px;
+        height: 10px;
       }
       .catalog-tree::-webkit-scrollbar-track,
       .rows-table-wrapper::-webkit-scrollbar-track {
-        background: rgba(15, 23, 42, 0.2);
-        border-radius: 3px;
+        background: rgba(15, 23, 42, 0.4);
+        border-radius: 5px;
       }
       .catalog-tree::-webkit-scrollbar-thumb,
       .rows-table-wrapper::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.25);
+        border: 2px solid rgba(15, 23, 42, 0.4);
+        border-radius: 5px;
         transition: background 0.2s ease;
       }
       .catalog-tree::-webkit-scrollbar-thumb:hover,
       .rows-table-wrapper::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.45);
+      }
+      .catalog-tree::-webkit-scrollbar-thumb:active,
+      .rows-table-wrapper::-webkit-scrollbar-thumb:active {
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      /* ── Catalog Panel Placeholder ── */
+      .catalog-panel-placeholder {
+        width: 280px;
+        flex-shrink: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 0;
+        min-height: 0;
+        align-self: stretch;
+      }
+      .catalog-panel-placeholder.collapsed {
+        width: 0;
+        margin: 0;
       }
 
       /* ── Catalog Panel ── */
       .catalog-panel {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 280px;
         background: rgba(15, 23, 42, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px;
@@ -3243,8 +3271,9 @@ export interface FieldGroup {
         overflow: hidden;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         opacity: 1;
-        width: 280px;
         flex-shrink: 0;
+        z-index: 10;
+        box-sizing: border-box;
       }
       .catalog-panel.collapsed {
         width: 0;
@@ -3255,15 +3284,22 @@ export interface FieldGroup {
         margin: 0;
       }
       @media (max-width: 1024px) {
+        .catalog-panel-placeholder {
+          display: none;
+        }
         .catalog-panel {
-          width: 100%;
-          max-height: 400px;
+          position: relative !important;
+          top: auto !important;
+          bottom: auto !important;
+          left: auto !important;
+          width: 100% !important;
+          max-height: 400px !important;
+          height: auto !important;
         }
         .catalog-panel.collapsed {
           display: none;
         }
-        .worksheet-shared-height {
-          min-height: auto !important;
+        .rows-table-wrapper {
           max-height: none !important;
         }
       }
@@ -3310,6 +3346,7 @@ export interface FieldGroup {
       }
       .catalog-search-box {
         position: relative;
+        flex-shrink: 0;
       }
       .catalog-search-box .search-input {
         width: 100%;
@@ -3876,16 +3913,26 @@ export interface FieldGroup {
         color: #94A3B8;
       }
 
-      :host-context(html.light) .catalog-tree::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.03);
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-track,
+      :host-context(html.light) .rows-table-wrapper::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
       }
 
-      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.1);
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb,
+      :host-context(html.light) .rows-table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.25);
+        border: 2px solid rgba(243, 244, 246, 1);
+        border-radius: 5px;
       }
 
-      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 0, 0, 0.2);
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb:hover,
+      :host-context(html.light) .rows-table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      :host-context(html.light) .catalog-tree::-webkit-scrollbar-thumb:active,
+      :host-context(html.light) .rows-table-wrapper::-webkit-scrollbar-thumb:active {
+        background: rgba(0, 0, 0, 0.55);
       }
 
       /* Steps 1 Grid Typography & Inputs overrides */
