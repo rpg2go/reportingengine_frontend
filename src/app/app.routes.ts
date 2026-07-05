@@ -37,11 +37,6 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'semantic',
-    loadComponent: () => import('./components/semantic').then(m => m.SemanticViewerComponent),
-    canActivate: [authGuard]
-  },
-  {
     path: '',
     redirectTo: '/dashboard',
     pathMatch: 'full'

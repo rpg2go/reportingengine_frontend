@@ -33,8 +33,8 @@ export class ReportService {
     });
   }
 
-  getSemanticModel(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/semantic-model`);
+  getSchemaCatalog(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/schema-catalog`);
   }
 
   saveReport(id: string, config: any): Observable<any> {

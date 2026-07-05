@@ -64,15 +64,15 @@ describe('ReportService', () => {
     );
   });
 
-  it('should fetch semantic model via getSemanticModel', () => {
+  it('should fetch schema catalog via getSchemaCatalog', () => {
     const mockModel = { explores: [], views: [] };
     mockHttp.get.mockReturnValue(of(mockModel));
 
-    service.getSemanticModel().subscribe((data) => {
+    service.getSchemaCatalog().subscribe((data) => {
       expect(data).toEqual(mockModel);
     });
 
-    expect(mockHttp.get).toHaveBeenCalledWith('/api/reports/semantic-model');
+    expect(mockHttp.get).toHaveBeenCalledWith('/api/reports/schema-catalog');
   });
 
   it('should update a report configuration via saveReport', () => {

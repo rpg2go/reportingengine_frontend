@@ -54,7 +54,7 @@ export class ExecutionHubComponent implements OnInit {
     const reports = this.catalogReports();
     if (!query) return reports;
     return reports.filter(r => 
-      r.name.toLowerCase().includes(query) || 
+      (r.reportName && r.reportName.toLowerCase().includes(query)) || 
       (r.reportId && r.reportId.toLowerCase().includes(query))
     );
   });

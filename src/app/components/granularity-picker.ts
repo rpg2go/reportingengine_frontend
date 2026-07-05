@@ -496,7 +496,7 @@ export class GranularityPickerComponent implements OnInit, ControlValueAccessor 
   dataTypeMap = signal<Record<string, string>>({});
 
   ngOnInit(): void {
-    this.reportService.getSemanticModel().subscribe({
+    this.reportService.getSchemaCatalog().subscribe({
       next: (model) => {
         if (!model) return;
         const map: Record<string, string> = {};
@@ -522,7 +522,7 @@ export class GranularityPickerComponent implements OnInit, ControlValueAccessor 
         this.dataTypeMap.set(map);
       },
       error: (err) => {
-        console.error('Failed to load semantic model for granularity picker', err);
+        console.error('Failed to load schema catalog for granularity picker', err);
       }
     });
   }

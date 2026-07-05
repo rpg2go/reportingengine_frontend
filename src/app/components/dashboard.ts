@@ -134,14 +134,14 @@ import { CalendarPickerComponent } from './calendar-picker';
               <div class="inspector-empty-state">
                 <span class="spinner large spinner-blue" style="width: 36px; height: 36px;"></span>
                 <p class="empty-title" style="margin-top: 12px;">Loading Details...</p>
-                <p class="empty-desc">Fetching layout parameters, DWH targets, and semantic joins...</p>
+                <p class="empty-desc">Fetching layout parameters, DWH targets, and relationship joins...</p>
               </div>
             } @else if (!selectedReportId() || !selectedReportConfig()) {
               <div class="inspector-empty-state animate-fade-in">
                 <div class="empty-graphic">📊</div>
                 <h3 class="empty-title">Inspect Template Profile</h3>
                 <p class="empty-desc">
-                  Select a template from the catalog list to inspect its compilation models, DWH schemas, target databases, and semantic dimensional join networks.
+                  Select a template from the catalog list to inspect its compilation models, DWH schemas, target databases, and database schema relationship networks.
                 </p>
               </div>
             } @else {
@@ -239,19 +239,25 @@ import { CalendarPickerComponent } from './calendar-picker';
 
                 <!-- Target Data Source -->
                 <div class="inspector-section">
-                  <h3 class="inspector-section-title">📊 DWH Target Source</h3>
+                  <h3 class="inspector-section-title">📊 DWH Target Sources</h3>
                   <div class="datasource-grid">
-                    <div class="datasource-item">
-                      <span class="datasource-label">Physical Table</span>
-                      <span class="datasource-value" style="font-family: monospace; color: var(--color-apple-blue);">{{ report.sourceTable || 'analytics.fact_sales' }}</span>
+                    <div class="datasource-item" style="grid-column: span 2;">
+                      <span class="datasource-label">Physical Tables</span>
+                      <div class="flex flex-col gap-1 mt-1">
+                        @for (tbl of getPhysicalTables(); track tbl) {
+                          <div class="datasource-value" style="font-family: monospace; color: var(--color-apple-blue); font-size: 13px; margin-top: 3.5px;">
+                            📁 {{ tbl }}
+                          </div>
+                        } @empty {
+                          <span class="datasource-value text-slate-500 italic">No physical tables mapped</span>
+                        }
+                      </div>
                     </div>
-                    <div class="datasource-item">
-                      <span class="datasource-label">Explore Model Binding</span>
-                      <span class="datasource-value" style="font-family: monospace; color: #a855f7;">{{ report.exploreId || 'sales_explore' }}</span>
-                    </div>
-                    <div class="datasource-item">
+                    <div class="datasource-item" style="grid-column: span 2; margin-top: 10px;">
                       <span class="datasource-label">Timeframe</span>
-                      <span class="datasource-value">{{ report.timeframeStart && report.timeframeEnd ? (report.timeframeStart + ' to ' + report.timeframeEnd) : 'Dynamic rolling window' }}</span>
+                      <span class="datasource-value" style="font-size: 13px; margin-top: 3.5px;">
+                        📅 {{ report.timeframeStart && report.timeframeEnd ? (report.timeframeStart + ' to ' + report.timeframeEnd) : 'Dynamic rolling window' }}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1148,6 +1154,24 @@ export class DashboardComponent implements OnInit {
 
   constructor() {
     this.username = this.authService.getUsername();
+  }
+
+  getPhysicalTables(): string[] {
+    const config = this.selectedReportConfig();
+    if (!config || !config.rows) return [];
+    const tables = new Set<string>();
+    config.rows.forEach((row: any) => {
+      if (row.rowType === 'data' && row.source) {
+        const tbl = row.source.table || row.source.sourceTable;
+        if (tbl && tbl.trim()) {
+          tables.add(tbl.trim());
+        }
+      }
+    });
+    if (tables.size === 0 && config.sourceTable) {
+      tables.add(config.sourceTable.trim());
+    }
+    return Array.from(tables).sort();
   }
 
   ngOnInit(): void {

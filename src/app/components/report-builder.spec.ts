@@ -73,7 +73,7 @@ describe('ReportBuilderComponent', () => {
       getColumnTypes: vi.fn().mockReturnValue(of({})),
       getDimensionJoins: vi.fn().mockReturnValue(of([])),
       getDistinctValues: vi.fn().mockReturnValue(of([])),
-      getSemanticModel: vi.fn().mockReturnValue(of({ dimensions: [], measures: [] })),
+      getSchemaCatalog: vi.fn().mockReturnValue(of({ dimensions: [], measures: [] })),
       createReport: vi.fn(),
       saveReport: vi.fn(),
       validateReport: vi.fn().mockReturnValue(of({ errors: [] })),
