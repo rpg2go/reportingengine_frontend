@@ -22,8 +22,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Catch unauthorized or forbidden responses globally
-      if (error.status === 401 || error.status === 403) {
+      // Only treat 401/403 as a session expiry when the request is a normal
+      // JSON API call. Blob-typed requests (report execution) can return 403
+      // from the DWH execution layer without implying the API session is invalid.
+      const isBlobRequest = req.responseType === 'blob';
+      if (!isBlobRequest && (error.status === 401 || error.status === 403)) {
         authService.logout();
         router.navigate(['/login']);
       }

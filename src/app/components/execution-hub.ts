@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed, inject, DestroyRef, HostListener }
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { CdkDragDrop, CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { DateFormatter } from '../utils/date-formatter';
@@ -13,7 +14,7 @@ import { CalendarPickerComponent } from './calendar-picker';
 @Component({
   selector: 'app-execution-hub',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent, CalendarPickerComponent],
+  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent, CalendarPickerComponent, CdkDropList, CdkDrag, CdkDragPreview, CdkDragPlaceholder, CdkDragHandle],
   templateUrl: './execution-hub.html',
   styleUrls: ['./execution-hub.css']
 })
@@ -58,6 +59,35 @@ export class ExecutionHubComponent implements OnInit {
       (r.reportId && r.reportId.toLowerCase().includes(query))
     );
   });
+
+  // Favorites state — favoriteIds for O(1) lookup; favoriteOrderedIds for drag-reorder
+  favoriteIds        = signal<Set<string>>(new Set());
+  favoriteOrderedIds = signal<string[]>([]);
+
+  // Sidebar section collapse toggles
+  favoritesOpen = signal<boolean>(true);
+  catalogOpen   = signal<boolean>(true);
+
+  /**
+   * Ordered favorites: iterates favoriteOrderedIds() so the drag-reorder sequence
+   * is preserved. Falls back gracefully if a favorited ID is no longer in the catalog.
+   */
+  favoriteReports = computed(() => {
+    const all = this.catalogReports();
+    const query = this.searchQuery().toLowerCase().trim();
+    // Build a lookup map for O(1) access
+    const map = new Map<string, any>(all.map(r => [r.reportId, r]));
+    return this.favoriteOrderedIds()
+      .map(id => map.get(id))
+      .filter((r): r is any =>
+        r != null &&
+        (!query || r.reportName?.toLowerCase().includes(query) || r.reportId?.toLowerCase().includes(query))
+      );
+  });
+
+  allCatalogReports = computed(() =>
+    this.filteredReports().filter(r => !this.favoriteIds().has(r.reportId))
+  );
 
   granularityHeaders = computed(() => {
     const gran = this.reportConfig()?.granularity;
@@ -135,7 +165,21 @@ export class ExecutionHubComponent implements OnInit {
   ngOnInit(): void {
     this.username = this.authService.getUsername() || 'Guest';
 
-    // 1. Fetch all catalog reports
+    // 1. Load persisted favorites from localStorage
+    try {
+      const stored = localStorage.getItem('hub_favorites');
+      const ids: string[] = stored ? JSON.parse(stored) : [];
+      this.favoriteIds.set(new Set(ids));
+
+      // Load the user-defined drag order (falls back to insertion order)
+      const orderStored = localStorage.getItem('hub_favorites_order');
+      const order: string[] = orderStored ? JSON.parse(orderStored) : ids;
+      // Only keep IDs that are still in the favorites set
+      const favSet = new Set(ids);
+      this.favoriteOrderedIds.set(order.filter(id => favSet.has(id)));
+    } catch { /* ignore parse errors */ }
+
+    // 2. Fetch all catalog reports
     this.reportService
       .getReports()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -412,6 +456,49 @@ export class ExecutionHubComponent implements OnInit {
       maximumFractionDigits: 2,
     }).format(val);
   }
+
+  toggleFavorite(event: Event, reportId: string): void {
+    event.stopPropagation(); // prevent row selection
+    const currentIds = new Set(this.favoriteIds());
+    const currentOrder = [...this.favoriteOrderedIds()];
+
+    if (currentIds.has(reportId)) {
+      // Unpin: remove from both structures
+      currentIds.delete(reportId);
+      const idx = currentOrder.indexOf(reportId);
+      if (idx !== -1) currentOrder.splice(idx, 1);
+    } else {
+      // Pin: add to set, append to order list
+      currentIds.add(reportId);
+      currentOrder.push(reportId);
+    }
+
+    this.favoriteIds.set(currentIds);
+    this.favoriteOrderedIds.set(currentOrder);
+    this.persistFavorites(currentIds, currentOrder);
+  }
+
+  /**
+   * CDK drop handler — moves an item within the favoriteOrderedIds array
+   * and persists the new sequence without disturbing the allCatalogReports list.
+   */
+  onFavoriteReordered(event: CdkDragDrop<any[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    const ordered = [...this.favoriteOrderedIds()];
+    moveItemInArray(ordered, event.previousIndex, event.currentIndex);
+    this.favoriteOrderedIds.set(ordered);
+    this.persistFavorites(this.favoriteIds(), ordered);
+  }
+
+  private persistFavorites(ids: Set<string>, order: string[]): void {
+    try {
+      localStorage.setItem('hub_favorites', JSON.stringify([...ids]));
+      localStorage.setItem('hub_favorites_order', JSON.stringify(order));
+    } catch { /* storage quota exceeded */ }
+  }
+
+  toggleFavoritesSection(): void { this.favoritesOpen.update(v => !v); }
+  toggleCatalogSection():   void { this.catalogOpen.update(v => !v); }
 
   toggleSidebar(): void {
     this.sidebarOpen.update((v) => !v);

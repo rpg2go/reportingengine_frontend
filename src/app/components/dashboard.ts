@@ -235,34 +235,61 @@ import { CalendarPickerComponent } from './calendar-picker';
                   </div>
                 </div>
 
-                <!-- Target Data Source -->
+                <!-- Data Preset Overview -->
                 <div class="inspector-section">
-                  <h3 class="inspector-section-title">📊 DWH Target Sources</h3>
+                  <h3 class="inspector-section-title">📊 Data Preset Overview</h3>
                   <div class="datasource-grid">
-                    <div class="datasource-item" style="grid-column: span 2;">
+
+                    <!-- Physical Tables column -->
+                    <div class="datasource-item">
                       <span class="datasource-label">Physical Tables</span>
-                      <div class="flex flex-col gap-1 mt-1">
+                      <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
                         @for (tbl of getPhysicalTables(); track tbl) {
-                          <div class="datasource-value" style="font-family: monospace; color: var(--color-apple-blue); font-size: 13px; margin-top: 3.5px;">
-                            📁 {{ tbl }}
+                          <div class="datasource-table-pill">
+                            <span class="datasource-table-icon">🗄️</span>
+                            <span class="datasource-table-name">{{ tbl }}</span>
                           </div>
                         } @empty {
-                          <span class="datasource-value text-slate-500 italic">No physical tables mapped</span>
+                          <span class="datasource-empty">No physical tables mapped</span>
                         }
                       </div>
                     </div>
-                    <div class="datasource-item" style="grid-column: span 2; margin-top: 10px;">
-                      <span class="datasource-label">Timeframe</span>
-                      <span class="datasource-value" style="font-size: 13px; margin-top: 3.5px;">
-                        📅 {{ report.timeframeStart && report.timeframeEnd ? (report.timeframeStart + ' to ' + report.timeframeEnd) : 'Dynamic rolling window' }}
-                      </span>
+
+                    <!-- Timeframe timeline capsule -->
+                    <div class="datasource-item">
+                      <span class="datasource-label">Query Timeframe</span>
+                      @if (report.timeframeStart && report.timeframeEnd) {
+                        <div class="timeline-capsule">
+                          <!-- Start bounds -->
+                          <div class="timeline-bound">
+                            <span class="timeline-bound-label">Start Bounds</span>
+                            <span class="timeline-bound-value">{{ report.timeframeStart }}</span>
+                          </div>
+                          <!-- Connector -->
+                          <div class="timeline-connector">
+                            <div class="timeline-line"></div>
+                            <span class="timeline-span-badge">{{ getTimeframeSpan(report.timeframeStart, report.timeframeEnd) }}</span>
+                            <div class="timeline-line"></div>
+                          </div>
+                          <!-- End bounds -->
+                          <div class="timeline-bound end">
+                            <span class="timeline-bound-label">End Bounds</span>
+                            <span class="timeline-bound-value">{{ report.timeframeEnd }}</span>
+                          </div>
+                        </div>
+                      } @else {
+                        <div class="timeline-dynamic">
+                          <span class="timeline-dynamic-icon">♾️</span>
+                          <span class="timeline-dynamic-label">Dynamic rolling window</span>
+                        </div>
+                      }
                     </div>
+
                   </div>
                 </div>
 
-                <!-- Compilation Model Preview -->
                 <div class="inspector-section">
-                  <h3 class="inspector-section-title">🧮 Compilation Layout Model</h3>
+                  <h3 class="inspector-section-title">🗂️ Report Matrix Runtime Layout</h3>
                   <div class="compilation-summary">
                     <span>Columns: <strong>{{ report.columns?.length || 0 }}</strong></span>
                     <span>Rows: <strong>{{ report.rows?.length || 0 }}</strong></span>
@@ -271,6 +298,19 @@ import { CalendarPickerComponent } from './calendar-picker';
                   <div class="compilation-tree no-scrollbar">
                     @for (row of report.rows; track row.rowId) {
                       <div class="tree-row" [style.margin-left.px]="row.indentLevel * 12" [style.opacity]="row.rowType === 'blank' ? 0.4 : 1">
+
+                        <!-- Filter status lane -->
+                        <div class="tree-row-filter-lane">
+                          @if (rowHasFilter(row)) {
+                            <input type="checkbox" checked disabled class="tree-filter-check" />
+                            <span class="tree-filter-label active">Filtered</span>
+                          } @else {
+                            <input type="checkbox" disabled class="tree-filter-check" />
+                            <span class="tree-filter-label">Open</span>
+                          }
+                        </div>
+
+                        <!-- Row type icon + label -->
                         <div class="tree-row-label">
                           <span>
                             @if (row.rowType === 'section') { 📂 }
@@ -280,15 +320,17 @@ import { CalendarPickerComponent } from './calendar-picker';
                           </span>
                           <strong>{{ row.label || '[Blank Row]' }}</strong>
                         </div>
-                        <span class="tree-row-expr" [title]="row.source">
-                          @if (row.rowType === 'data') {
-                            <code>{{ row.source }}</code>
-                          } @else if (row.rowType === 'calc') {
-                            <code style="color:#22c55e;">{{ row.source }}</code>
-                          } @else {
-                            -
-                          }
-                        </span>
+
+                        <!-- Scrollable expression chip -->
+                        @if (row.rowType === 'data' || row.rowType === 'calc') {
+                          <div class="tree-row-expr-scroll" [title]="getRowSourceLabel(row)">
+                            <code class="tree-row-code" [class.data]="row.rowType === 'data'" [class.calc]="row.rowType === 'calc'">{{ getRowSourceLabel(row) }}</code>
+                          </div>
+                        } @else {
+                          <span class="tree-row-expr-empty">—</span>
+                        }
+
+                        <!-- Type badge -->
                         <span class="tree-row-type" [class]="row.rowType">{{ row.rowType }}</span>
                       </div>
                     }
@@ -414,6 +456,7 @@ import { CalendarPickerComponent } from './calendar-picker';
 
     .middle-pane {
       width: 380px;
+      min-width: 320px;
       border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
@@ -563,9 +606,16 @@ import { CalendarPickerComponent } from './calendar-picker';
       display: flex;
       flex-direction: column;
       gap: 24px;
-      max-width: 900px;
       width: 100%;
+      max-width: clamp(720px, 90%, 1600px);
       margin: 0 auto;
+    }
+
+    @media (min-width: 2560px) {
+      .inspector-container {
+        max-width: 1800px;
+        padding: 40px 48px;
+      }
     }
 
     .inspector-header-block {
@@ -692,26 +742,151 @@ import { CalendarPickerComponent } from './calendar-picker';
 
     .datasource-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* Shrink to single column on narrow right-pane widths */
+    @media (max-width: 700px) {
+      .datasource-grid { grid-template-columns: 1fr; }
     }
 
     .datasource-item {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
     .datasource-label {
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
       color: var(--color-apple-grey);
-      font-weight: 500;
+    }
+
+    .datasource-table-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(59, 130, 246, 0.07);
+      border: 1px solid rgba(59, 130, 246, 0.15);
+      font-family: 'SF Mono', ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--color-apple-blue);
+      font-weight: 600;
+    }
+
+    .datasource-table-icon { font-size: 11px; }
+    .datasource-table-name { letter-spacing: -0.01em; }
+
+    .datasource-empty {
+      font-size: 12px;
+      font-style: italic;
+      color: var(--color-apple-grey);
+      opacity: 0.6;
     }
 
     .datasource-value {
       font-size: 14px;
       font-weight: 600;
       color: var(--color-apple-text);
+    }
+
+    /* ── Timeline Capsule ─────────────────────────────── */
+    .timeline-capsule {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-top: 8px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .timeline-bound {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .timeline-bound.end {
+      text-align: right;
+    }
+
+    .timeline-bound-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-apple-grey);
+    }
+
+    .timeline-bound-value {
+      font-family: 'SF Mono', ui-monospace, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-apple-text);
+      letter-spacing: -0.01em;
+    }
+
+    .timeline-connector {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+      gap: 0;
+      padding: 0 8px;
+    }
+
+    .timeline-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(148,163,184,0.2), rgba(99,102,241,0.45));
+    }
+
+    .timeline-bound.end ~ .timeline-connector .timeline-line:first-child,
+    .timeline-connector:last-child .timeline-line {
+      background: linear-gradient(90deg, rgba(99,102,241,0.45), rgba(148,163,184,0.2));
+    }
+
+    .timeline-span-badge {
+      flex-shrink: 0;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      font-size: 10px;
+      font-weight: 700;
+      color: #a5b4fc;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+      margin: 0 6px;
+    }
+
+    .timeline-dynamic {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: rgba(148, 163, 184, 0.06);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .timeline-dynamic-icon { font-size: 13px; }
+
+    .timeline-dynamic-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-apple-grey);
+      font-style: italic;
     }
 
     /* Model Compilation preview list */
@@ -731,44 +906,128 @@ import { CalendarPickerComponent } from './calendar-picker';
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 250px;
-      overflow-y: auto;
       padding-right: 6px;
     }
 
+    /* ── Tree row layout ──────────────────────────────── */
     .tree-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 6px 12px;
-      border-radius: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
       background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       font-size: 12px;
+      gap: 10px;
+      transition: background 0.15s ease;
     }
 
+    .tree-row:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Filter status lane */
+    .tree-row-filter-lane {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      width: 54px;
+      flex-shrink: 0;
+    }
+
+    .tree-filter-check {
+      width: 11px;
+      height: 11px;
+      accent-color: var(--color-apple-blue);
+      cursor: default;
+    }
+
+    .tree-filter-label {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-apple-grey);
+      white-space: nowrap;
+    }
+
+    .tree-filter-label.active {
+      color: #60a5fa;
+    }
+
+    /* Row label */
     .tree-row-label {
       display: flex;
       align-items: center;
       gap: 8px;
       font-weight: 500;
+      min-width: 0;
+      flex: 1;
     }
 
-    .tree-row-expr {
-      font-family: monospace;
+    /* Scrollable expression container */
+    .tree-row-expr-scroll {
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+    }
+
+    .tree-row-expr-scroll::-webkit-scrollbar {
+      height: 3px;
+    }
+
+    .tree-row-expr-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .tree-row-expr-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 2px;
+    }
+
+    .tree-row-expr-empty {
+      flex: 1;
       color: var(--color-apple-grey);
-      max-width: 250px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 12px;
+      text-align: right;
+      padding-right: 4px;
+    }
+
+    /* Expression code chip — no truncation, scrolls inside parent */
+    .tree-row-code {
+      font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 6px;
       white-space: nowrap;
+      display: inline-block;
+    }
+
+    .tree-row-code.data {
+      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.18);
+    }
+
+    .tree-row-code.calc {
+      color: #4ade80;
+      background: rgba(34, 197, 94, 0.08);
+      border: 1px solid rgba(34, 197, 94, 0.18);
     }
 
     .tree-row-type {
       font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 1px 4px;
-      border-radius: 3px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .tree-row-type.section { background: rgba(255, 255, 255, 0.08); color: var(--color-apple-text); }
@@ -1049,6 +1308,48 @@ import { CalendarPickerComponent } from './calendar-picker';
       color: #0F172A;
     }
 
+    :host-context(html.light) .datasource-table-pill {
+      background: rgba(37, 99, 235, 0.05);
+      border-color: rgba(37, 99, 235, 0.15);
+      color: #1d4ed8;
+    }
+
+    :host-context(html.light) .datasource-empty {
+      color: #94a3b8;
+    }
+
+    :host-context(html.light) .timeline-capsule {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .timeline-bound-label {
+      color: #94a3b8;
+    }
+
+    :host-context(html.light) .timeline-bound-value {
+      color: #0f172a;
+    }
+
+    :host-context(html.light) .timeline-span-badge {
+      background: rgba(79, 70, 229, 0.08);
+      border-color: rgba(79, 70, 229, 0.2);
+      color: #4f46e5;
+    }
+
+    :host-context(html.light) .timeline-line {
+      background: linear-gradient(90deg, rgba(203,213,225,0.6), rgba(99,102,241,0.35));
+    }
+
+    :host-context(html.light) .timeline-dynamic {
+      background: rgba(241, 245, 249, 0.8);
+      border-color: #E2E8F0;
+    }
+
+    :host-context(html.light) .timeline-dynamic-label {
+      color: #64748B;
+    }
+
     :host-context(html.light) .compilation-summary {
       color: #64748B;
     }
@@ -1070,6 +1371,34 @@ import { CalendarPickerComponent } from './calendar-picker';
       background: #F1F5F9;
       border-color: #E2E8F0;
       color: #334155;
+    }
+
+    :host-context(html.light) .tree-row-code.data {
+      color: #1d4ed8;
+      background: rgba(29, 78, 216, 0.06);
+      border-color: rgba(29, 78, 216, 0.18);
+    }
+
+    :host-context(html.light) .tree-row-code.calc {
+      color: #15803d;
+      background: rgba(21, 128, 61, 0.06);
+      border-color: rgba(21, 128, 61, 0.18);
+    }
+
+    :host-context(html.light) .tree-filter-label {
+      color: #94a3b8;
+    }
+
+    :host-context(html.light) .tree-filter-label.active {
+      color: #2563eb;
+    }
+
+    :host-context(html.light) .tree-row-expr-empty {
+      color: #94a3b8;
+    }
+
+    :host-context(html.light) .tree-row-expr-scroll::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.35);
     }
 
     :host-context(html.light) .search-input {
@@ -1152,6 +1481,97 @@ export class DashboardComponent implements OnInit {
 
   constructor() {
     this.username = this.authService.getUsername();
+  }
+
+  /**
+   * Computes a human-readable duration between two date strings.
+   * Returns strings like "12 Months Span", "3 Days Span", "2 Years Span".
+   */
+  getTimeframeSpan(start: string, end: string): string {
+    if (!start || !end) return '';
+    try {
+      const s = new Date(start);
+      const e = new Date(end);
+      if (isNaN(s.getTime()) || isNaN(e.getTime())) return '';
+      const diffMs = e.getTime() - s.getTime();
+      if (diffMs < 0) return '';
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays < 31)  return `${diffDays} Day${diffDays !== 1 ? 's' : ''} Span`;
+      const diffMonths = Math.round(diffDays / 30.44);
+      if (diffMonths < 24) return `${diffMonths} Month${diffMonths !== 1 ? 's' : ''} Span`;
+      const diffYears = Math.round(diffMonths / 12);
+      return `${diffYears} Year${diffYears !== 1 ? 's' : ''} Span`;
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Returns true when a row carries active query filter constraints.
+   * Checks `filterExpr` (raw backend DTO field) and the already-parsed
+   * `rowFilters` property (present after report-builder hydration).
+   */
+  rowHasFilter(row: any): boolean {
+    // Raw backend field: a non-empty, non-trivial JSON string
+    const expr = row?.filterExpr;
+    if (expr && typeof expr === 'string') {
+      const trimmed = expr.trim();
+      if (trimmed && trimmed !== '[]' && trimmed !== '{}' && trimmed !== 'null') {
+        return true;
+      }
+    }
+    // Hydrated in-memory field (report-builder sets this after parsing)
+    if (row?.rowFilters) {
+      if (Array.isArray(row.rowFilters) && row.rowFilters.length > 0) return true;
+      if (
+        typeof row.rowFilters === 'object' &&
+        ((row.rowFilters.rules?.length > 0) || (row.rowFilters.childGroups?.length > 0))
+      ) return true;
+    }
+    // Legacy raw expression
+    if (row?.legacyFilterExpr && row.legacyFilterExpr.trim()) return true;
+    return false;
+  }
+
+  /**
+   * Safely resolves a human-readable expression string from row.source,
+   * which may arrive as a plain string or as a backend JSON object:
+   *   { aggregation, targetColumn, sourceTable, rawExpression }
+   */
+  getRowSourceLabel(row: any): string {
+    const src = row?.source;
+    if (!src) return '';
+
+    // Already a plain string — return as-is
+    if (typeof src === 'string') {
+      // Could still be a JSON string from serialization
+      if (src.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(src);
+          return this.resolveSourceObject(parsed);
+        } catch { /* fall through */ }
+      }
+      return src;
+    }
+
+    // Backend JSON object
+    if (typeof src === 'object') {
+      return this.resolveSourceObject(src);
+    }
+
+    return String(src);
+  }
+
+  private resolveSourceObject(obj: any): string {
+    // Raw SQL / formula expression takes priority
+    if (obj.rawExpression) return obj.rawExpression;
+    if (obj.rawSql) return obj.rawSql;
+    // Structured: AGG(column)
+    const agg = obj.aggregation || obj.aggregationFunction || 'SUM';
+    const col = obj.targetColumn || obj.measureCol || '';
+    const tbl = obj.sourceTable || obj.table || '';
+    if (col) return tbl ? `${agg}(${tbl}.${col})` : `${agg}(${col})`;
+    return '';
   }
 
   getPhysicalTables(): string[] {
@@ -1342,7 +1762,27 @@ export class DashboardComponent implements OnInit {
         },
         error: (err) => {
           this.running.set(false);
-          this.errorMessage.set('Failed to generate report. Make sure the analytical database is correctly seeded.');
+          // The error body arrives as a Blob when responseType is 'blob'.
+          // Read it asynchronously to extract the backend message.
+          const raw = err?.error;
+          if (raw instanceof Blob) {
+            raw.text().then(text => {
+              let msg = 'Report execution failed.';
+              try {
+                const parsed = JSON.parse(text);
+                msg = parsed.message || parsed.error || text || msg;
+              } catch {
+                if (text && text.trim()) msg = text.trim();
+              }
+              this.errorMessage.set(msg);
+            }).catch(() => {
+              this.errorMessage.set('Report execution failed. Check the analytical database configuration.');
+            });
+          } else {
+            const msg = err?.error?.message || err?.error?.error || err?.message
+              || 'Failed to generate report. Make sure the analytical database is correctly seeded.';
+            this.errorMessage.set(msg);
+          }
         }
       });
     } else {

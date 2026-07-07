@@ -6,9 +6,9 @@
       <span class="ham-line"></span>
       <span class="ham-line"></span>
     </button>
-    <span class="topbar-brand">Reports Execution Hub</span>
+    <span class="topbar-brand">Execution Hub</span>
   </div>
-  
+
   <app-sidebar
     brandIcon="analytics-grid"
     brandText="Execution Hub"
@@ -17,7 +17,7 @@
     (mobileOpenChange)="sidebarOpen.set($event)"
   ></app-sidebar>
 
-  <!-- ══════════════════════════════════════════ MAIN CONTENT -->
+  <!-- ══ MAIN CONTENT ════════════════════════════════════ -->
   <main class="main-content animate-fade-in">
     <header class="detail-header">
       <div>
@@ -25,96 +25,176 @@
           <a routerLink="/dashboard">Reports</a> / <span>Execution Hub</span>
         </div>
         <h1>📈 Reports Execution Hub</h1>
-        <p class="report-subtitle">
-          Configure parameters, run queries, and review calculated data grids.
-        </p>
+        <p class="report-subtitle">Configure parameters, run queries, and review calculated data grids.</p>
       </div>
     </header>
 
-    <!-- Split-Pane Workspace Dashboard Explorer Layout -->
+    <!-- Split-Pane Workspace -->
     <div class="workspace-split-pane">
-      <!-- Floating Sidebar Toggle Chevron Button -->
-      <button 
-        (click)="toggleSidebarPanel()" 
-        class="absolute top-6 z-40 w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center border border-slate-200 cursor-pointer text-slate-500 hover:text-indigo-600 transition-all duration-300 ease-in-out"
+
+      <!-- Sidebar Toggle Chevron -->
+      <button
+        (click)="toggleSidebarPanel()"
+        class="sidebar-chevron-btn"
         [style.left.px]="isSidebarOpen() ? 308 : -12"
         [attr.aria-label]="isSidebarOpen() ? 'Collapse Sidebar' : 'Expand Sidebar'"
       >
-        <span class="transition-transform duration-300 inline-block font-mono text-[10px]" [class.rotate-180]="!isSidebarOpen()">
-          ◀
-        </span>
+        <span class="chevron-icon" [class.rotated]="!isSidebarOpen()">◀</span>
       </button>
 
-      <!-- Left Nav Explorer Sidebar (w-[320px], collapsible) -->
+      <!-- ══ LEFT NAVIGATOR SIDEBAR ═══════════════════════ -->
       <aside class="explorer-sidebar" [class.collapsed]="!isSidebarOpen()">
+
+        <!-- Search -->
         <div class="search-container">
           <input
             type="text"
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
             placeholder="🔍 Search templates..."
-            class="form-input text-sm bg-slate-50 border-slate-200 focus:border-indigo-500 rounded-lg p-2.5 w-full text-slate-800 placeholder-slate-400"
+            class="sidebar-search-input"
           />
         </div>
 
-        <div class="explorer-list">
-          @for (rep of filteredReports(); track rep.reportId + '_' + rep.version) {
+        <!-- ── ⭐ FAVORITES SECTION ──────────────────────── -->
+        <div class="sidebar-section">
+          <button class="sidebar-section-header" (click)="toggleFavoritesSection()">
+            <span class="section-header-icon">⭐</span>
+            <span class="section-header-label">Favorite Reports</span>
+            <span class="section-badge">{{ favoriteReports().length }}</span>
+            <span class="section-chevron" [class.open]="favoritesOpen()">›</span>
+          </button>
+
+          @if (favoritesOpen()) {
             <div
-              (click)="onReportSelected(rep.reportId, rep.version)"
-              [class.active-light-explorer-row]="selectedReportId() === rep.reportId && (reportConfig()?.version === rep.version)"
-              class="explorer-row group"
+              class="section-list"
+              cdkDropList
+              [cdkDropListData]="favoriteReports()"
+              (cdkDropListDropped)="onFavoriteReordered($event)"
             >
-              <!-- Wrapping layout that prevents overlap between long names and badges -->
-              <div class="flex items-center justify-between w-full">
-                <span class="report-code font-mono text-[10px] font-bold text-slate-400 group-hover:text-indigo-600">
-                  Version v{{ rep.version || 1 }}
-                </span>
-                <span class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border shrink-0" [ngClass]="(rep.status || 'draft').toLowerCase()">
-                  {{ rep.status || 'draft' }}
-                </span>
-              </div>
-              <div class="report-name-text font-semibold text-slate-700 group-hover:text-slate-950 w-full whitespace-normal break-words leading-snug">
-                {{ rep.reportName }}
-              </div>
+              @for (rep of favoriteReports(); track rep.reportId + '_' + rep.version) {
+                <div
+                  cdkDrag
+                  [cdkDragData]="rep"
+                  (click)="onReportSelected(rep.reportId, rep.version)"
+                  [class.active]="selectedReportId() === rep.reportId && (reportConfig()?.version === rep.version)"
+                  class="explorer-row drag-row"
+                >
+                  <!-- CDK drag preview (shown while dragging) -->
+                  <div *cdkDragPreview class="drag-preview">
+                    <span class="drag-preview-icon">📌</span>
+                    <span class="drag-preview-name">{{ rep.reportName }}</span>
+                  </div>
+
+                  <!-- CDK drop placeholder -->
+                  <div *cdkDragPlaceholder class="drag-placeholder"></div>
+
+                  <!-- Grab handle — appears on row hover -->
+                  <span class="grab-handle" cdkDragHandle title="Drag to reorder">⋮⋮</span>
+
+                  <!-- Star toggle -->
+                  <button
+                    class="star-btn active"
+                    (click)="toggleFavorite($event, rep.reportId)"
+                    title="Remove from favorites"
+                    aria-label="Remove from favorites"
+                  >★</button>
+
+                  <div class="row-content">
+                    <div class="row-name">{{ rep.reportName }}</div>
+                    <div class="row-meta">
+                      <span class="meta-version">v{{ rep.version || 1 }}</span>
+                      <span class="meta-dot">·</span>
+                      <span class="meta-status" [class]="(rep.status || 'draft').toLowerCase()">
+                        {{ (rep.status === 'PUBLISHED' ? 'Pub' : rep.status === 'IN_REVIEW' ? 'Rev' : 'Dft') }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              } @empty {
+                <div class="section-empty">No pinned reports yet — click ☆ to pin.</div>
+              }
             </div>
-          } @empty {
-            <div class="text-center text-xs text-slate-400 py-8 font-mono">No templates found</div>
           }
         </div>
+
+        <!-- ── 📁 ALL CATALOG SECTION ───────────────────── -->
+        <div class="sidebar-section">
+          <button class="sidebar-section-header" (click)="toggleCatalogSection()">
+            <span class="section-header-icon">📁</span>
+            <span class="section-header-label">All Catalog Templates</span>
+            <span class="section-badge">{{ allCatalogReports().length }}</span>
+            <span class="section-chevron" [class.open]="catalogOpen()">›</span>
+          </button>
+
+          @if (catalogOpen()) {
+            <div class="section-list">
+              @for (rep of allCatalogReports(); track rep.reportId + '_' + rep.version) {
+                <div
+                  (click)="onReportSelected(rep.reportId, rep.version)"
+                  [class.active]="selectedReportId() === rep.reportId && (reportConfig()?.version === rep.version)"
+                  class="explorer-row"
+                >
+                  <!-- Star toggle -->
+                  <button
+                    class="star-btn"
+                    (click)="toggleFavorite($event, rep.reportId)"
+                    title="Add to favorites"
+                    aria-label="Add to favorites"
+                  >☆</button>
+
+                  <div class="row-content">
+                    <div class="row-name">{{ rep.reportName }}</div>
+                    <div class="row-meta">
+                      <span class="meta-version">v{{ rep.version || 1 }}</span>
+                      <span class="meta-dot">·</span>
+                      <span class="meta-status" [class]="(rep.status || 'draft').toLowerCase()">
+                        {{ (rep.status === 'PUBLISHED' ? 'Pub' : rep.status === 'IN_REVIEW' ? 'Rev' : 'Dft') }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              } @empty {
+                <div class="section-empty">No templates found.</div>
+              }
+            </div>
+          }
+        </div>
+
       </aside>
 
-      <!-- Right Active Canvas Workspace -->
+      <!-- ══ RIGHT CANVAS ══════════════════════════════════ -->
       <div class="workspace-active-canvas">
         @if (selectedReportId()) {
-          <!-- Active Report Header Area -->
+
+          <!-- Active Report Header -->
           <div class="active-report-meta-header">
             <div>
-              <h2 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2" style="margin:0;">
-                <span>📊 {{ reportName() }}</span>
-                <span class="report-code font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" style="margin-left: 8px;">
-                  Version v{{ reportConfig()?.version || 1 }}
-                </span>
+              <h2 class="active-report-title">
+                📊 {{ reportName() }}
+                <span class="version-chip">v{{ reportConfig()?.version || 1 }}</span>
               </h2>
             </div>
-            <div class="status-lozenge font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" [ngClass]="(reportConfig()?.status || 'draft').toLowerCase()">
-              {{ reportConfig()?.status || 'draft' }}
-            </div>
+            <span class="status-lozenge" [ngClass]="(reportConfig()?.status || 'draft').toLowerCase()">
+              {{ reportConfig()?.status || 'DRAFT' }}
+            </span>
           </div>
 
-          <!-- Horizontal Parameter Bar inside Canvas -->
-          <div class="horizontal-parameter-bar">
-            <!-- Custom Date Picker Popover Widget -->
-            <div class="calendar-picker-container">
-              <label class="text-[10px] font-bold tracking-wider uppercase text-slate-400 mb-1.5 block">Reporting Date</label>
-              <button 
+          <!-- ── Action-Oriented Parameter Card Bar ─────── -->
+          <div class="parameter-card">
+
+            <!-- Reporting Date Picker -->
+            <div class="param-group calendar-picker-container">
+              <label class="param-label">Reporting Date</label>
+              <button
                 type="button"
                 class="calendar-trigger-btn font-mono"
                 (click)="toggleCalendarPopover($event)"
               >
                 <span>📅 {{ selectedReportingDate() || 'Select Date' }}</span>
-                <span class="text-[9px] text-slate-400">▼</span>
+                <span class="cal-chevron">▼</span>
               </button>
-              
+
               @if (isCalendarOpen()) {
                 <app-calendar-picker
                   [availableDates]="availableReportingDates()"
@@ -125,20 +205,21 @@
               }
             </div>
 
-            <!-- Quick Filters Runtime Inputs -->
+            <!-- Quick Filters -->
             @for (filter of runtimeQuickFilters(); track filter.tableColumn) {
-              <div class="form-group">
-                <label class="text-[10px] font-bold tracking-wider uppercase text-slate-400 mb-1.5 block">
-                  {{ filter.dimTable ? filter.dimTable + '.' : '' }}{{ filter.attribute }} ({{ filter.operator }})
+              <div class="param-group">
+                <label class="param-label">
+                  {{ filter.dimTable ? filter.dimTable + '.' : '' }}{{ filter.attribute }}
+                  <span class="param-operator">({{ filter.operator }})</span>
                 </label>
 
                 @if (filter.options.length > 0) {
                   <select
                     [ngModel]="filter.value"
                     (ngModelChange)="onFilterValueChange(filter, $event)"
-                    class="form-select font-mono text-xs bg-white border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 max-w-[180px]"
+                    class="param-select"
                   >
-                    <option value="">-- All Values --</option>
+                    <option value="">-- All --</option>
                     @for (opt of filter.options; track opt) {
                       <option [value]="opt">{{ opt }}</option>
                     }
@@ -148,31 +229,33 @@
                     type="text"
                     [ngModel]="filter.value"
                     (ngModelChange)="onFilterValueChange(filter, $event)"
-                    placeholder="Enter filter value..."
-                    class="form-input text-xs bg-white border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 max-w-[180px]"
+                    placeholder="Filter value..."
+                    class="param-input"
                   />
                 }
               </div>
             }
 
-            <!-- Run execution button -->
-            <button
-              (click)="runExecution()"
-              [disabled]="executing() || !selectedReportingDate()"
-              class="run-report-btn"
-              style="margin: 0; min-height: 38px; width: auto; padding: 10px 24px;"
-            >
-              @if (executing()) {
-                <span class="spinner"></span> Executing...
-              } @else {
-                <span>⚡ Run Report</span>
-              }
-            </button>
+            <!-- Run Report — pinned to far right via margin-left: auto -->
+            <div class="param-run-slot">
+              <button
+                (click)="runExecution()"
+                [disabled]="executing() || !selectedReportingDate()"
+                class="run-report-btn"
+              >
+                @if (executing()) {
+                  <span class="spinner"></span> Executing...
+                } @else {
+                  <span>⚡ Run Report</span>
+                }
+              </button>
+            </div>
           </div>
 
-          <!-- Canvas Workspace Container -->
+          <!-- ── Canvas / Data Area ────────────────────── -->
           <div class="immersive-data-canvas">
-            <!-- Execution Error Alert -->
+
+            <!-- Error Alert -->
             @if (executionError()) {
               <div class="alert error-alert animate-fade-in mb-4">
                 <span class="alert-icon">🛑</span>
@@ -180,16 +263,16 @@
               </div>
             }
 
-            <!-- When Idle (No data executed yet) -->
+            <!-- Idle -->
             @if (!executedData() && !executing()) {
               <div class="idle-placeholder">
                 <span class="placeholder-icon">📈</span>
                 <h3 class="placeholder-title">Ready for Execution</h3>
-                <p class="placeholder-desc">Configure the reporting parameters in the top bar and execute the queries.</p>
+                <p class="placeholder-desc">Configure the reporting parameters above and click ⚡ Run Report.</p>
               </div>
             }
 
-            <!-- When Executing (Loading/Spinner) -->
+            <!-- Loading -->
             @if (executing()) {
               <div class="loading-state-canvas">
                 <span class="spinner border-4 w-12 h-12 mb-4" style="border-top-color: #4f46e5;"></span>
@@ -198,56 +281,63 @@
               </div>
             }
 
-            <!-- When Executed -->
+            <!-- Data Grid -->
             @if (executedData() && !executing()) {
               <div class="executed-workspace card animate-fade-in">
-                <!-- Header bar -->
+
+                <!-- Grid Header Bar -->
                 <div class="workspace-header-bar mb-4 pb-4">
                   <div>
-                    <h3 class="section-title text-[10px] tracking-wider uppercase font-bold text-slate-400">📊 Publication-Ready Data Grid</h3>
-                    <p class="section-subtitle font-mono text-[11px] text-slate-500 mt-1">Compiled matrix for {{ reportName() }}</p>
+                    <h3 class="section-title">📊 Publication-Ready Data Grid</h3>
+                    <p class="section-subtitle">Compiled matrix for {{ reportName() }}</p>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <button (click)="exportToExcel()" class="export-excel-btn" [disabled]="exportingExcel() || !executedData()">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <button
+                      (click)="exportToExcel()"
+                      class="export-excel-btn"
+                      [disabled]="exportingExcel() || !executedData()"
+                    >
                       <span>📥 {{ exportingExcel() ? 'Exporting...' : 'Export Excel' }}</span>
                     </button>
                   </div>
                 </div>
 
-                <!-- Spreadsheet Grid -->
-                <div class="table-wrapper rows-table-wrapper max-w-full overflow-auto">
-                  <table class="spreadsheet-table w-full border-collapse">
+                <!-- Spreadsheet Grid with frozen panes and zebra rows -->
+                <div class="table-wrapper rows-table-wrapper">
+                  <table class="spreadsheet-table">
                     <thead>
                       <tr>
-                        <th class="sticky-col px-4 py-3 text-left">Label</th>
-                        <th class="px-4 py-3 text-left">ID</th>
-                        <th class="px-4 py-3 text-left">Type</th>
+                        <!-- Frozen context columns -->
+                        <th class="freeze-col freeze-label">Label</th>
+                        <th class="freeze-col freeze-id">ID</th>
+                        <th class="freeze-col freeze-type">Type</th>
+                        <!-- Granularity dimension headers -->
                         @for (gHeader of granularityHeaders(); track gHeader) {
-                          <th class="px-4 py-3 text-left border-l border-slate-200 text-indigo-600 font-mono">{{ gHeader }}</th>
+                          <th class="col-flag-header border-l">{{ gHeader }}</th>
                         }
+                        <!-- Rolling / fixed period column headers -->
                         @for (col of expandedColumns(); track col.colId) {
-                          <th class="col-flag-header px-4 py-3 text-center border-l border-slate-200">
-                            <div class="font-mono text-indigo-600">{{ col.colId }}</div>
+                          <th class="col-flag-header border-l">
+                            <div class="col-id-label">{{ col.colId }}</div>
                             <div class="preview-col-label">{{ col.label }}</div>
                           </th>
                         }
                       </tr>
                     </thead>
                     <tbody>
-                      @for (row of rows(); track row.rowId) {
+                      @for (row of rows(); track row.rowId; let rowIndex = $index) {
+                        <!-- Main data row with zebra striping -->
                         <tr
                           [class]="'row-style-' + (row.style || 'normal').toLowerCase()"
-                          class="hover:bg-slate-50 transition-colors"
+                          [class.zebra-even]="rowIndex % 2 === 0"
+                          class="data-row"
                         >
+                          <!-- Frozen: Label -->
                           <td
-                            class="sticky-col label-cell px-4 py-3"
+                            class="freeze-col freeze-label label-cell"
                             [style.padding-left.px]="16 + row.indentLevel * 16"
                           >
-                            @if (
-                              row.rowType === 'section' ||
-                              row.style?.toLowerCase() === 'section' ||
-                              row.style?.toLowerCase() === 'header'
-                            ) {
+                            @if (row.rowType === 'section' || row.style?.toLowerCase() === 'section' || row.style?.toLowerCase() === 'header') {
                               📂 <strong>{{ row.label }}</strong>
                             } @else if (row.rowType === 'calc') {
                               🧮 <strong>{{ row.label }}</strong>
@@ -257,50 +347,54 @@
                               &nbsp;
                             }
                           </td>
-                          <td class="px-4 py-3 font-mono text-slate-400">{{ row.rowId }}</td>
-                          <td class="px-4 py-3">
-                            <span class="row-type-badge badge font-mono text-[9px]" [class]="'badge-' + (row.rowType === 'calc' ? 'badge-success' : row.rowType === 'data' ? 'badge-success' : 'badge-muted')">
-                              {{ row.rowType }}
-                            </span>
+
+                          <!-- Frozen: ID -->
+                          <td class="freeze-col freeze-id font-mono text-slate-400">{{ row.rowId }}</td>
+
+                          <!-- Frozen: Type -->
+                          <td class="freeze-col freeze-type">
+                            <span class="row-type-badge badge"
+                              [class.badge-success]="row.rowType === 'calc' || row.rowType === 'data'"
+                              [class.badge-muted]="row.rowType !== 'calc' && row.rowType !== 'data'"
+                            >{{ row.rowType }}</span>
                           </td>
+
+                          <!-- Granularity placeholder cells -->
                           @for (gHeader of granularityHeaders(); track gHeader) {
-                            <td class="px-4 py-3 text-slate-300 font-mono border-l border-slate-200 text-center">-</td>
+                            <td class="col-flag-cell border-l text-slate-300">-</td>
                           }
+
+                          <!-- Data value cells -->
                           @for (col of expandedColumns(); track col.colId) {
                             <td
-                              class="col-flag-cell px-4 py-3 text-center font-mono border-l border-slate-200"
+                              class="col-flag-cell border-l"
                               [class.section-cell]="row.rowType === 'section'"
                             >
-                              @if (row.rowType === 'blank') {
-                                &nbsp;
-                              } @else {
-                                {{ getCellValue(row.rowId, col.colId) }}
-                              }
+                              @if (row.rowType === 'blank') { &nbsp; }
+                              @else { {{ getCellValue(row.rowId, col.colId) }} }
                             </td>
                           }
                         </tr>
 
-                        <!-- ── Granularity sub-rows (data rows only) ────────────── -->
+                        <!-- Granularity sub-rows (data rows only) -->
                         @if (row.rowType === 'data') {
                           @for (subRow of getGranularitySubRows(row.rowId); track subRow.rowId; let last = $last) {
-                            <tr class="gran-subrow hover:bg-slate-50 transition-colors">
+                            <tr class="gran-subrow">
                               <td
-                                class="sticky-col gran-subrow-label px-4 py-2 text-slate-500 font-medium"
+                                class="freeze-col freeze-label gran-subrow-label"
                                 [style.padding-left.px]="16 + row.indentLevel * 16 + 24"
                               >
                                 <span class="gran-subrow-connector">{{ last ? '└' : '├' }}</span>
                               </td>
-                              <td class="px-4 py-2"></td>
-                              <td class="px-4 py-2">
+                              <td class="freeze-col freeze-id"></td>
+                              <td class="freeze-col freeze-type">
                                 <span class="gran-subrow-badge">group by</span>
                               </td>
                               @for (gHeader of granularityHeaders(); track gHeader; let i = $index) {
-                                <td class="px-4 py-2 text-slate-600 font-mono border-l border-slate-200">
-                                  {{ subRow.segments[i] || '' }}
-                                </td>
+                                <td class="border-l gran-segment-cell">{{ subRow.segments[i] || '' }}</td>
                               }
                               @for (col of expandedColumns(); track col.colId) {
-                                <td class="col-flag-cell gran-subrow-cell px-4 py-2 text-center font-mono border-l border-slate-200">
+                                <td class="col-flag-cell gran-subrow-cell border-l">
                                   {{ getCellValue(subRow.rowId, col.colId) }}
                                 </td>
                               }
@@ -311,18 +405,21 @@
                     </tbody>
                   </table>
                 </div>
+
               </div>
             }
+
           </div>
         } @else {
-          <!-- Explorer Placeholder when no report is selected -->
+          <!-- No report selected placeholder -->
           <div class="select-placeholder animate-fade-in">
             <span class="placeholder-icon">👁️</span>
             <h3 class="placeholder-title">No Template Selected</h3>
-            <p class="placeholder-desc">Please select a report template from the vertical sidebar explorer on the left to review parameter configurations and run query calculations.</p>
+            <p class="placeholder-desc">Select a report template from the sidebar to configure parameters and run query calculations.</p>
           </div>
         }
       </div>
+
     </div>
   </main>
 </div>
