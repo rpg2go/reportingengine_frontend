@@ -45,8 +45,28 @@
           placeholder="Search distinct values..."
           (click)="$event.stopPropagation()"
           (keydown)="$event.stopPropagation()"
+          (keydown.enter)="addCustomSearchValue(); $event.preventDefault()"
         />
       </div>
+
+      <!-- Option to add the typed search value if it doesn't match any pre-loaded options -->
+      @if (searchText().trim() && !filteredValues().includes(searchText().trim())) {
+        <div class="p-1 border-b border-slate-100 bg-slate-50/50">
+          <div 
+            class="dropdown-option-item custom-value-option" 
+            (click)="addCustomSearchValue(); $event.stopPropagation()"
+          >
+            <span class="checkbox-indicator">
+              @if (selectedValues().includes(searchText().trim())) {
+                ✓
+              }
+            </span>
+            <span class="option-label text-indigo-600 font-semibold">
+              Add "{{ searchText().trim() }}" manually
+            </span>
+          </div>
+        </div>
+      }
 
       <!-- Scrollable list of distinct checkbox options -->
       <div class="dropdown-options-list max-h-[220px] overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">

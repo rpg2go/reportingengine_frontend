@@ -290,6 +290,7 @@ export class RowFilterComponent implements OnInit {
   dwhCatalog = input<any[]>([]);
   linkedDimensions = input<string[]>([]);
   columnTypes = input<{ [tableName: string]: { [columnName: string]: string } }>({});
+  schemaCatalogMap = input<{ [key: string]: { isFilterable: boolean; isCached: boolean } }>({});
   rowFilters = model<any>(null);
   legacyFilterExpr = model<string>('');
   isRawMode = model<boolean>(false);

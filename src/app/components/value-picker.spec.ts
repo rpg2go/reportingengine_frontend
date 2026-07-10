@@ -89,4 +89,21 @@ describe('ValuePickerComponent', () => {
 
     expect(component.isOpen()).toBe(true);
   });
+
+  it('should add custom search value and clear search text', () => {
+    component.searchText.set('CustomVal');
+    component.addCustomSearchValue();
+
+    expect(component.selectedValues()).toEqual(['CustomVal']);
+    expect(component.searchText()).toBe('');
+  });
+
+  it('should not add duplicate custom values', () => {
+    component.selectedValues.set(['CustomVal']);
+    component.searchText.set('CustomVal');
+    component.addCustomSearchValue();
+
+    expect(component.selectedValues()).toEqual(['CustomVal']);
+    expect(component.searchText()).toBe('');
+  });
 });

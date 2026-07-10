@@ -383,6 +383,18 @@ export class ValuePickerComponent {
     }
   }
 
+  addCustomSearchValue() {
+    if (this.disabled()) return;
+    const val = this.searchText().trim();
+    if (val) {
+      const current = this.selectedValues() || [];
+      if (!current.includes(val)) {
+        this.selectedValues.set([...current, val]);
+      }
+      this.searchText.set('');
+    }
+  }
+
   removeValue(value: string, event: MouseEvent) {
     event.stopPropagation();
     if (this.disabled()) return;

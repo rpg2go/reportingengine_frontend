@@ -131,6 +131,7 @@ export class GeneralFilterModalComponent {
   dwhCatalog = input<any[]>([]);
   linkedDimensions = input<string[]>([]);
   columnTypes = input<{ [tableName: string]: { [columnName: string]: string } }>({});
+  schemaCatalogMap = input<{ [key: string]: { isFilterable: boolean; isCached: boolean } }>({});
   disabled = input<boolean>(false);
 
   onApply = output<void>();

@@ -26,6 +26,7 @@ export class ExecutionHubComponent implements OnInit {
   selectedReportingDate = signal<string>('');
   availableReportingDates = signal<string[]>([]);
   runtimeQuickFilters = signal<any[]>([]);
+  schemaCatalogMap = signal<{ [key: string]: { isFilterable: boolean; isCached: boolean } }>({});
 
   reportConfig = signal<any>(null);
   columns = signal<any[]>([]);
@@ -215,6 +216,30 @@ export class ExecutionHubComponent implements OnInit {
             });
         },
       });
+
+    // Fetch schema-catalog dimension flags
+    this.reportService.getSchemaCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (catalog: any) => {
+          const map: { [key: string]: { isFilterable: boolean; isCached: boolean } } = {};
+          if (catalog && catalog.dimensions) {
+            catalog.dimensions.forEach((dim: any) => {
+              if (dim.view_name && dim.name) {
+                const key = `${dim.view_name.replace(/^analytics\./, '')}.${dim.name}`.toLowerCase();
+                map[key] = {
+                  isFilterable: dim.is_filterable === true || dim.is_filterable === 'true' || dim.is_filterable === 1,
+                  isCached: dim.is_cached === true || dim.is_cached === 'true' || dim.is_cached === 1
+                };
+              }
+            });
+          }
+          this.schemaCatalogMap.set(map);
+        },
+        error: (err) => {
+          console.warn('Failed to load schema catalog flags:', err);
+        }
+      });
   }
 
   loadReportConfig(id: string, version?: number): void {
@@ -253,7 +278,13 @@ export class ExecutionHubComponent implements OnInit {
             };
 
             const queryTable = f.dimTable ? f.dimTable : config.rows?.[0]?.source?.table || '';
-            if (queryTable) {
+            const cleanTable = queryTable.replace(/^analytics\./, '').toLowerCase();
+            const cleanAttr = f.attribute.toLowerCase();
+            const key = `${cleanTable}.${cleanAttr}`;
+            const meta = this.schemaCatalogMap()[key];
+            const isAutocompleteable = meta ? meta.isCached : false;
+
+            if (queryTable && isAutocompleteable) {
               this.reportService
                 .getDistinctValues(queryTable, f.attribute)
                 .pipe(takeUntilDestroyed(this.destroyRef))

@@ -129,13 +129,24 @@
           <!-- Value Picker (flex-1 to take all remaining space) -->
           <div class="flex-1 min-w-[200px]">
             @if (rule.requiresValueField) {
-              <app-value-picker
-                [availableValues]="getRuleDistinctValues(rule)"
-                [selectedValues]="rule.value"
-                (selectedValuesChange)="onRuleValuesChange(rule, $event)"
-                [placeholder]="'Select values...'"
-                [disabled]="disabled()"
-              ></app-value-picker>
+              @if (isColumnAutocompleteable(rule)) {
+                <app-value-picker
+                  [availableValues]="getRuleDistinctValues(rule)"
+                  [selectedValues]="rule.value"
+                  (selectedValuesChange)="onRuleValuesChange(rule, $event)"
+                  [placeholder]="'Select values...'"
+                  [disabled]="disabled()"
+                ></app-value-picker>
+              } @else {
+                <input
+                  type="text"
+                  [ngModel]="rule.value && rule.value.length > 0 ? rule.value[0] : ''"
+                  (ngModelChange)="onManualValueChange(rule, $event)"
+                  [disabled]="disabled()"
+                  class="form-input w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
+                  placeholder="Enter manual value..."
+                />
+              }
             }
           </div>
 
@@ -167,6 +178,7 @@
           [dwhCatalog]="dwhCatalog()"
           [linkedDimensions]="linkedDimensions()"
           [columnTypes]="columnTypes()"
+          [schemaCatalogMap]="schemaCatalogMap()"
           [disabled]="disabled()"
           (removeGroup)="onRemoveChildGroup($event)"
           (groupChanged)="onChildGroupChanged()"

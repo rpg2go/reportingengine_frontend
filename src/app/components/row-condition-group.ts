@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, inject, OnInit, signal, computed, HostListener, ElementRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, inject, OnInit, signal, computed, HostListener, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReportService } from '../services/report.service';
@@ -263,6 +263,7 @@ export class RowConditionGroupComponent implements OnInit {
   dwhCatalog = input<any[]>([]);
   linkedDimensions = input<string[]>([]);
   columnTypes = input<{ [tableName: string]: { [columnName: string]: string } }>({});
+  schemaCatalogMap = input<{ [key: string]: { isFilterable: boolean; isCached: boolean } }>({});
   disabled = input<boolean>(false);
 
   removeGroup = output<string>();
@@ -284,6 +285,7 @@ export class RowConditionGroupComponent implements OnInit {
   }
 
   private reportService = inject(ReportService);
+  private cdr = inject(ChangeDetectorRef);
   distinctValuesCache: { [key: string]: string[] } = {};
   operators = UNIFIED_OPERATORS;
 
@@ -362,6 +364,25 @@ export class RowConditionGroupComponent implements OnInit {
     this.groupChanged.emit();
   }
 
+  isColumnAutocompleteable(rule: RowFilterRule): boolean {
+    const table = rule.tableName || this.activeMeasureTable();
+    const attr = rule.columnName;
+    if (!table || !attr) return false;
+    const cleanTable = table.replace(/^analytics\./, '').toLowerCase();
+    const cleanAttr = attr.toLowerCase();
+    const key = `${cleanTable}.${cleanAttr}`;
+    const meta = this.schemaCatalogMap()[key];
+    if (meta) {
+      return meta.isCached;
+    }
+    return false;
+  }
+
+  onManualValueChange(rule: RowFilterRule, value: string) {
+    rule.value = value !== null && value !== undefined && value !== '' ? [value] : [];
+    this.groupChanged.emit();
+  }
+
   onRuleChange() {
     this.groupChanged.emit();
   }
@@ -405,6 +426,9 @@ export class RowConditionGroupComponent implements OnInit {
   }
 
   loadDistinctValues(rule: RowFilterRule) {
+    if (!this.isColumnAutocompleteable(rule)) {
+      return;
+    }
     const table = rule.tableName || this.activeMeasureTable();
     const attr = rule.columnName;
     if (!table || !attr) return;
@@ -420,9 +444,11 @@ export class RowConditionGroupComponent implements OnInit {
       next: (vals) => {
         this.distinctValuesCache[key] = vals;
         this.distinctValuesCache = { ...this.distinctValuesCache };
+        this.cdr.markForCheck();
       },
       error: () => {
         this.distinctValuesCache[key] = [];
+        this.cdr.markForCheck();
       }
     });
   }

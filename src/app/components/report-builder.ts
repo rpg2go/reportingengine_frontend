@@ -853,6 +853,7 @@ export interface FieldGroup {
                               [dwhCatalog]="dwhCatalogCache()"
                               [linkedDimensions]="linkedDimensions"
                               [columnTypes]="columnTypesCache"
+                              [schemaCatalogMap]="schemaCatalogMap()"
                               [rowFilters]="row.rowFilters"
                               [(legacyFilterExpr)]="row.legacyFilterExpr"
                               [(isRawMode)]="row.isFilterRawMode"
@@ -1163,6 +1164,7 @@ export interface FieldGroup {
         [dwhCatalog]="dwhCatalogCache()"
         [linkedDimensions]="conformedDimensions()"
         [columnTypes]="columnTypesCache"
+        [schemaCatalogMap]="schemaCatalogMap()"
         [disabled]="isLocked"
         (onApply)="triggerValidationDebounced()"
       ></app-general-filter-modal>
@@ -4860,6 +4862,7 @@ export class ReportBuilderComponent implements OnInit {
   dbTables: string[] = [];
   tableColumns: string[] = [];
   distinctValues: { [key: string]: string[] } = {};
+  schemaCatalogMap = signal<{ [key: string]: { isFilterable: boolean; isCached: boolean } }>({});
   readonly conformedKeys = ['customer_id', 'location_id', 'reporting_date'];
 
   // Searchable DWH Catalog signals
@@ -5171,6 +5174,30 @@ export class ReportBuilderComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadReportingDates();
+
+    // Fetch schema-catalog dimension flags
+    this.reportService.getSchemaCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (catalog: any) => {
+          const map: { [key: string]: { isFilterable: boolean; isCached: boolean } } = {};
+          if (catalog && catalog.dimensions) {
+            catalog.dimensions.forEach((dim: any) => {
+              if (dim.view_name && dim.name) {
+                const key = `${dim.view_name.replace(/^analytics\./, '')}.${dim.name}`.toLowerCase();
+                map[key] = {
+                  isFilterable: dim.is_filterable === true || dim.is_filterable === 'true' || dim.is_filterable === 1,
+                  isCached: dim.is_cached === true || dim.is_cached === 'true' || dim.is_cached === 1
+                };
+              }
+            });
+          }
+          this.schemaCatalogMap.set(map);
+        },
+        error: (err) => {
+          console.warn('Failed to load schema catalog flags:', err);
+        }
+      });
 
     this.reportForm.controls.granularity.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -5948,6 +5975,16 @@ export class ReportBuilderComponent implements OnInit {
     filter.availableValues = [];
 
     if (!table || !column) {
+      return;
+    }
+
+    const cleanTable = table.replace(/^analytics\./, '').toLowerCase();
+    const cleanAttr = column.toLowerCase();
+    const key = `${cleanTable}.${cleanAttr}`;
+    const meta = this.schemaCatalogMap()[key];
+    const isAutocompleteable = meta ? meta.isCached : false;
+
+    if (!isAutocompleteable) {
       return;
     }
 
