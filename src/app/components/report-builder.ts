@@ -613,7 +613,7 @@ export interface FieldGroup {
                 <input
                   type="text"
                   class="form-input search-input"
-                  placeholder="🔍 Search DWH fields..."
+                  placeholder="🔍 Search fields..."
                   [ngModel]="fieldsSearchQuery()"
                   (ngModelChange)="fieldsSearchQuery.set($event)"
                 />
