@@ -9,7 +9,7 @@ This guide outlines the automated testing architecture, standards, and patterns 
 | Spec File | Covers |
 |-----------|--------|
 | [login.spec.ts](src/app/components/login.spec.ts) | `LoginComponent` — credential form, auth redirect |
-| [dashboard.spec.ts](src/app/components/dashboard.spec.ts) | `DashboardComponent` — catalog load, status filter, file upload |
+| [reports-catalog.spec.ts](src/app/components/reports-catalog.spec.ts) | `ReportsCatalogComponent` — catalog load, favorites pin/toggle, file upload |
 | [report-builder.spec.ts](src/app/components/report-builder.spec.ts) | `ReportBuilderComponent` — column/row CRUD, lifecycle transitions, SQL preview |
 | [report-detail.spec.ts](src/app/components/report-detail.spec.ts) | `ReportDetailComponent` — config load, Excel download |
 | [execution-hub.spec.ts](src/app/components/execution-hub.spec.ts) | `ExecutionHubComponent` — report selection, execution, grid pivot, sidebar toggles |

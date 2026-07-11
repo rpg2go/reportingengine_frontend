@@ -1,0 +1,410 @@
+<div class="builder-container">
+  <!-- Mobile topbar -->
+  <div class="mobile-topbar">
+    <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle navigation">
+      <span class="ham-line"></span>
+      <span class="ham-line"></span>
+      <span class="ham-line"></span>
+    </button>
+    <span class="topbar-brand">Reporting Engine</span>
+  </div>
+
+  <app-sidebar
+    brandIcon="📊"
+    brandText="Reporting Engine"
+    [showUser]="true"
+    [mobileOpen]="sidebarOpen()"
+    (mobileOpenChange)="sidebarOpen.set($event)"
+  ></app-sidebar>
+
+  <!-- ══ MAIN CONTENT ════════════════════════════════════ -->
+  <main class="main-content animate-fade-in no-scrollbar" style="padding: 0; overflow: hidden; display: flex; flex-grow: 1; flex-direction: column;">
+    <!-- Detail Header (Top Bar inside Main Canvas) -->
+    <header class="detail-header" style="padding: 24px 32px 18px 32px; flex-shrink: 0; background: var(--color-apple-bg);">
+      <div>
+        <div class="breadcrumbs">
+          <a routerLink="/dashboard">Reports</a> / <span>Catalog</span>
+        </div>
+        <h1>📂 Reports Catalog Management</h1>
+        <p class="report-subtitle">Organize, customize, and inspect metadata-driven financial reports.</p>
+      </div>
+
+      <div class="header-actions">
+        <!-- Template Excel file uploader -->
+        <label class="upload-label" style="margin: 0;">
+          @if (uploading()) {
+            <span class="spinner" style="width: 14px; height: 14px; margin-right: 4px;"></span> Ingesting...
+          } @else {
+            <span>📥 Import Excel Template</span>
+          }
+          <input
+            type="file"
+            (change)="onFileSelected($event)"
+            accept=".xlsx"
+            class="file-input"
+            [disabled]="uploading()"
+          />
+        </label>
+
+        <button routerLink="/reports/new/edit" class="btn-primary" style="margin: 0;">
+          <span>+ Create Report</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Split-Pane Workspace -->
+    <div class="workspace-split-pane" style="display: flex; flex-grow: 1; width: 100%; border-radius: 0; border: none; border-top: 1px solid var(--border-color); box-shadow: none;">
+      
+      <!-- Sidebar Toggle Chevron -->
+      <button
+        (click)="toggleSidebarPanel()"
+        class="sidebar-chevron-btn"
+        [style.left.px]="isSidebarOpen() ? 288 : -12"
+        [attr.aria-label]="isSidebarOpen() ? 'Collapse Sidebar' : 'Expand Sidebar'"
+        style="top: 24px;"
+      >
+        <span class="chevron-icon" [class.rotated]="!isSidebarOpen()">◀</span>
+      </button>
+
+      <!-- ══ LEFT NAVIGATOR SIDEBAR ═══════════════════════ -->
+      <aside class="explorer-sidebar" [class.collapsed]="!isSidebarOpen()">
+        
+        <!-- Search bar -->
+        <div class="search-container">
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event); onSearchChange()"
+            placeholder="🔍 Search templates..."
+            class="sidebar-search-input"
+          />
+        </div>
+
+        <!-- ── ⭐ FAVORITES SECTION ──────────────────────── -->
+        <div class="sidebar-section">
+          <button class="sidebar-section-header" (click)="toggleFavoritesSection()">
+            <span class="section-header-icon">⭐</span>
+            <span class="section-header-label">Favorite Reports</span>
+            <span class="section-badge">{{ favoriteReports().length }}</span>
+            <span class="section-chevron" [class.open]="favoritesOpen()">›</span>
+          </button>
+
+          @if (favoritesOpen()) {
+            <div
+              class="section-list"
+              cdkDropList
+              [cdkDropListData]="favoriteReports()"
+              (cdkDropListDropped)="onFavoriteReordered($event)"
+            >
+              @for (rep of favoriteReports(); track rep.reportId) {
+                <div
+                  cdkDrag
+                  [cdkDragData]="rep"
+                  (click)="onReportSelected(rep.reportId)"
+                  [class.active]="selectedReportId() === rep.reportId"
+                  class="explorer-row drag-row"
+                >
+                  <!-- CDK drag preview (shown while dragging) -->
+                  <div *cdkDragPreview class="drag-preview">
+                    <span class="drag-preview-icon">📌</span>
+                    <span class="drag-preview-name">{{ rep.reportName }}</span>
+                  </div>
+
+                  <!-- CDK drop placeholder -->
+                  <div *cdkDragPlaceholder class="drag-placeholder"></div>
+
+                  <!-- Grab handle — appears on row hover -->
+                  <span class="grab-handle" cdkDragHandle title="Drag to reorder">⋮⋮</span>
+
+                  <!-- Star toggle -->
+                  <button
+                    class="star-btn active"
+                    (click)="toggleFavorite($event, rep.reportId)"
+                    title="Remove from favorites"
+                    aria-label="Remove from favorites"
+                  >★</button>
+
+                  <div class="row-content">
+                    <div class="row-name">{{ rep.reportName }}</div>
+                    <div class="row-meta">
+                      <span class="meta-version">v{{ rep.version || 1 }}</span>
+                      <span class="meta-dot">·</span>
+                      <span class="meta-status" [class]="(rep.status || 'draft').toLowerCase()">
+                        {{ (rep.status === 'PUBLISHED' ? 'Pub' : rep.status === 'IN_REVIEW' ? 'Rev' : 'Dft') }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              } @empty {
+                <div class="section-empty">No favorite reports yet — click ☆ to pin.</div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- ── 📁 ALL CATALOG SECTION ───────────────────── -->
+        <div class="sidebar-section" style="flex-grow: 1;">
+          <button class="sidebar-section-header" (click)="toggleCatalogSection()">
+            <span class="section-header-icon">📁</span>
+            <span class="section-header-label">All Catalog Templates</span>
+            <span class="section-badge">{{ allCatalogReports().length }}</span>
+            <span class="section-chevron" [class.open]="catalogOpen()">›</span>
+          </button>
+
+          @if (catalogOpen()) {
+            <div class="section-list" style="max-height: calc(100vh - 280px);">
+              @for (rep of allCatalogReports(); track rep.reportId) {
+                <div
+                  (click)="onReportSelected(rep.reportId)"
+                  [class.active]="selectedReportId() === rep.reportId"
+                  class="explorer-row"
+                >
+                  <!-- Star toggle -->
+                  <button
+                    class="star-btn"
+                    (click)="toggleFavorite($event, rep.reportId)"
+                    title="Add to favorites"
+                    aria-label="Add to favorites"
+                  >☆</button>
+
+                  <div class="row-content">
+                    <div class="row-name">{{ rep.reportName }}</div>
+                    <div class="row-meta">
+                      <span class="meta-version">v{{ rep.version || 1 }}</span>
+                      <span class="meta-dot">·</span>
+                      <span class="meta-status" [class]="(rep.status || 'draft').toLowerCase()">
+                        {{ (rep.status === 'PUBLISHED' ? 'Pub' : rep.status === 'IN_REVIEW' ? 'Rev' : 'Dft') }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              } @empty {
+                <div class="section-empty">No templates found.</div>
+              }
+            </div>
+          }
+        </div>
+
+      </aside>
+
+      <!-- ══ RIGHT CANVAS ══════════════════════════════════ -->
+      <div class="workspace-active-canvas no-scrollbar">
+        @if (selectedReportLoading()) {
+          <div class="canvas-loading-state">
+            <span class="spinner large spinner-blue" style="width: 36px; height: 36px;"></span>
+            <p class="empty-title" style="margin-top: 12px;">Loading Details...</p>
+            <p class="empty-desc">Fetching layout parameters, DWH targets, and relationship joins...</p>
+          </div>
+        } @else if (!selectedReportId() || !selectedReportConfig()) {
+          <div class="canvas-empty-state animate-fade-in">
+            <div class="empty-graphic">📊</div>
+            <h3 class="empty-title">Inspect Template Profile</h3>
+            <p class="empty-desc">
+              Select a template from the catalog sidebar to inspect its compilation models, DWH schemas, target databases, and database schema relationship networks.
+            </p>
+          </div>
+        } @else {
+          @let report = selectedReportConfig();
+          <div class="inspector-container animate-fade-in">
+            
+            <!-- Inspector Header -->
+            <div class="inspector-header-block">
+              <div class="inspector-title-row">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span [class]="report.status === 'published' ? 'badge-emerald-pill' : report.status === 'in_review' ? 'badge-indigo-pill' : 'badge-amber-pill'">
+                      {{ report.status | uppercase }}
+                    </span>
+                    <span class="font-mono text-xs text-slate-400">v{{ report.version }}</span>
+                  </div>
+                  <h2 style="margin-top: 8px;">{{ report.reportName }}</h2>
+                </div>
+                <div style="font-size: 12px; color: var(--color-apple-grey); text-align: right;">
+                  <span>Granularity: <strong>{{ report.granularity || 'Not set' }}</strong></span>
+                </div>
+              </div>
+              <p class="inspector-desc">{{ report.description || 'This report is configured to aggregate transactional rows and present financial indicator summaries in a standard spreadsheet format.' }}</p>
+            </div>
+
+            <!-- Alert Messages inside Inspector -->
+            @if (successMessage()) {
+              <div class="alert alert-success animate-fade-in">
+                <span class="alert-icon">✓</span>
+                <span>{{ successMessage() }}</span>
+              </div>
+            }
+            @if (errorMessage()) {
+              <div class="alert alert-error animate-fade-in">
+                <span class="alert-icon">⚠️</span>
+                <span>{{ errorMessage() }}</span>
+              </div>
+            }
+
+            <!-- Delete Confirmation dialog -->
+            @if (showDeleteConfirm()) {
+              <div class="delete-confirm-block animate-fade-in">
+                <span class="delete-confirm-msg">⚠️ Delete this template definition? This action is permanent and cannot be undone.</span>
+                <div class="delete-confirm-actions">
+                  <button (click)="showDeleteConfirm.set(false)" class="btn-secondary" style="min-height: 32px; padding: 4px 12px; font-size: 12px; border-radius: 6px;">Cancel</button>
+                  <button (click)="deleteReport(report.reportId)" [disabled]="deleting()" class="btn-danger" style="min-height: 32px; padding: 4px 12px; font-size: 12px; border-radius: 6px;">
+                    @if (deleting()) { Deleting... } @else { Yes, Delete }
+                  </button>
+                </div>
+              </div>
+            }
+
+            <!-- Action Bar -->
+            <div class="inspector-actions-bar">
+              <div class="inspector-date-box" style="position: relative;">
+                <label>Ref Date</label>
+                <button
+                  type="button"
+                  class="inspector-date-input"
+                  style="display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; min-width: 135px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--color-apple-text); border-radius: 8px; padding: 6px 12px; font-size: 13px; font-family: inherit;"
+                  (click)="toggleDatePicker($event)"
+                >
+                  <span>📅 {{ referenceDate() || 'Select Date' }}</span>
+                  <span style="font-size: 10px; color: var(--color-apple-grey);">▼</span>
+                </button>
+                
+                @if (showDatePicker()) {
+                  <app-calendar-picker
+                    [availableDates]="availableReportingDates()"
+                    [(selectedDate)]="referenceDate"
+                    (dateSelected)="onDateSelectedFromPicker($event)"
+                    (click)="$event.stopPropagation()"
+                  ></app-calendar-picker>
+                }
+              </div>
+              <div class="inspector-action-buttons">
+                <button (click)="viewReport(report.reportId)" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+                  👁️ View Definition
+                </button>
+                <button [routerLink]="['/reports', report.reportId, 'edit']" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+                  ✏️ Edit Definition
+                </button>
+                <button (click)="showDeleteConfirm.set(true)" class="btn-secondary" style="min-height: 38px; padding: 8px 12px; font-size: 13px; border-radius: 8px; color: #f87171;" title="Delete Template">
+                  🗑️
+                </button>
+                <button (click)="runReport()" [disabled]="running()" class="btn-primary" style="min-height: 38px; padding: 8px 20px; font-size: 13px; border-radius: 8px;">
+                  @if (running()) {
+                    <span class="spinner" style="width: 14px; height: 14px;"></span> Running...
+                  } @else {
+                    <span>⚡ Run & Download</span>
+                  }
+                </button>
+              </div>
+            </div>
+
+            <!-- Data Preset Overview -->
+            <div class="inspector-section">
+              <h3 class="inspector-section-title">📊 Data Preset Overview</h3>
+              <div class="datasource-grid">
+
+                <!-- Physical Tables column -->
+                <div class="datasource-item">
+                  <span class="datasource-label">Physical Tables</span>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px; align-items: flex-start;">
+                    @for (tbl of getPhysicalTables(); track tbl) {
+                      <div class="datasource-table-pill">
+                        <span class="datasource-table-icon">🗄️</span>
+                        <code class="font-mono text-xs text-blue-600 bg-blue-50/30 border border-blue-100/60 px-2 py-1 rounded-md">{{ tbl }}</code>
+                      </div>
+                    } @empty {
+                      <span class="text-slate-400 italic">No physical tables mapped</span>
+                    }
+                  </div>
+                </div>
+
+                <!-- Timeframe timeline capsule -->
+                <div class="datasource-item">
+                  <span class="datasource-label">Query Timeframe</span>
+                  @let resolvedStart = getResolvedTimeframeStart(report);
+                  @let resolvedEnd = getResolvedTimeframeEnd(report);
+                  @if (resolvedStart && resolvedEnd) {
+                    <div class="timeline-capsule">
+                      <!-- Start bounds -->
+                      <div class="timeline-bound">
+                        <span class="timeline-bound-label">Start Bounds</span>
+                        <span class="timeline-bound-value">{{ resolvedStart }}</span>
+                      </div>
+                      <!-- Connector -->
+                      <div class="timeline-connector">
+                        <div class="timeline-line"></div>
+                        <span class="timeline-span-badge">{{ getTimeframeSpan(resolvedStart, resolvedEnd) }}</span>
+                        <div class="timeline-line"></div>
+                      </div>
+                      <!-- End bounds -->
+                      <div class="timeline-bound end">
+                        <span class="timeline-bound-label">End Bounds</span>
+                        <span class="timeline-bound-value">{{ resolvedEnd }}</span>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="timeline-dynamic">
+                      <span class="timeline-dynamic-icon">♾️</span>
+                      <span class="timeline-dynamic-label">Dynamic rolling window</span>
+                    </div>
+                  }
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Matrix layout compilation details -->
+            <div class="inspector-section">
+              <h3 class="inspector-section-title">🗂️ Report Matrix Runtime Layout</h3>
+              <div class="compilation-summary">
+                <span>Columns: <strong>{{ report.columns?.length || 0 }}</strong></span>
+                <span>Rows: <strong>{{ report.rows?.length || 0 }}</strong></span>
+              </div>
+
+              <div class="compilation-tree no-scrollbar">
+                @for (row of report.rows; track row.rowId) {
+                  <div class="tree-row" [style.margin-left.px]="row.indentLevel * 12" [style.opacity]="row.rowType === 'blank' ? 0.4 : 1">
+
+                    <!-- Filter status lane -->
+                    <div class="tree-row-filter-lane">
+                      @if (rowHasFilter(row)) {
+                        <input type="checkbox" checked disabled class="tree-filter-check" />
+                        <span class="tree-filter-label active">Filtered</span>
+                      } @else {
+                        <input type="checkbox" disabled class="tree-filter-check" />
+                        <span class="tree-filter-label">Open</span>
+                      }
+                    </div>
+
+                    <!-- Row type icon + label -->
+                    <div class="tree-row-label">
+                      <span>
+                        @if (row.rowType === 'section') { 📂 }
+                        @else if (row.rowType === 'calc') { 🧮 }
+                        @else if (row.rowType === 'data' || row.rowType === 'data_metric') { 📊 }
+                        @else { ◽ }
+                      </span>
+                      <strong>{{ row.label || '[Blank Row]' }}</strong>
+                    </div>
+
+                    <!-- Scrollable expression chip -->
+                    @if (row.rowType === 'data' || row.rowType === 'calc') {
+                      <div class="tree-row-expr-scroll" [title]="getRowSourceLabel(row)">
+                        <code class="tree-row-code" [class.data]="row.rowType === 'data'" [class.calc]="row.rowType === 'calc'">{{ getRowSourceLabel(row) }}</code>
+                      </div>
+                    } @else {
+                      <span class="tree-row-expr-empty">—</span>
+                    }
+
+                    <!-- Type badge -->
+                    <span class="tree-row-type" [class]="row.rowType">{{ row.rowType }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+          </div>
+        }
+      </div>
+
+    </div>
+  </main>
+</div>

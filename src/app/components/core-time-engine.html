@@ -1,0 +1,210 @@
+<div class="space-y-6">
+  <!-- Equitable 50/50 Balanced Horizontal UI Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full pt-2">
+
+    <!-- Left Column: Reporting Date Configuration -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+      <div>
+        <!-- Card Header -->
+        <div class="pb-3 border-b border-slate-100 flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-blue-50 text-blue-600">
+            <!-- Calendar Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Reporting Date Configuration</h3>
+            <p class="text-xs text-slate-400 font-medium">Determine the evaluation date anchor for runtime queries.</p>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="pt-4 space-y-4">
+          <!-- Segmented Toggle Option -->
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Input Mode Selection</label>
+            <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[260px] w-full">
+              <button 
+                type="button" 
+                (click)="setReportingDateType('DYNAMIC')"
+                [class]="reportingDateType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                ⚡ Dynamic Macro
+              </button>
+              <button 
+                type="button" 
+                (click)="setReportingDateType('FIXED')"
+                [class]="reportingDateType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                📅 Static Date
+              </button>
+            </div>
+          </div>
+
+          <!-- Conditional Input Container -->
+          <div class="min-h-[72px]">
+            <!-- Dynamic Macro Dropdown -->
+            @if (reportingDateType === 'DYNAMIC') {
+              <div class="space-y-1">
+                <label class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Dynamic Offset Code</label>
+                <select 
+                  [(ngModel)]="reportingDateExpression" 
+                  (ngModelChange)="onModelChange()"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm">
+                  <option value="T">T (Execution Date)</option>
+                  <option value="T-1">T-1 (Previous Day)</option>
+                  <option value="T-2">T-2 (Two Days Ago)</option>
+                  <option value="T-3">T-3 (Three Days Ago)</option>
+                  <option value="T-5">T-5 (Five Days Ago)</option>
+                  <option value="T-10">T-10 (Ten Days Ago)</option>
+                </select>
+              </div>
+            }
+
+            <!-- Static Date Picker -->
+            @if (reportingDateType === 'FIXED') {
+              <div class="space-y-1">
+                <label class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Select Static Date</label>
+                <input 
+                  type="date" 
+                  [(ngModel)]="reportingDateStatic" 
+                  (ngModelChange)="onModelChange()"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm" />
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Mock Evaluation Banner -->
+      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium">
+        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">🔍 Live Evaluated Value</span>
+        <span class="font-mono bg-indigo-50 border border-indigo-100 text-indigo-700 font-black px-2.5 py-0.5 rounded-lg text-xs">
+          {{ resolveDate(reportingDateType, reportingDateStatic, reportingDateExpression) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Right Column: Timeframe Limits Configuration -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+      <div>
+        <!-- Card Header -->
+        <div class="pb-3 border-b border-slate-100 flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+            <!-- Clock Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Timeframe Boundary Limits</h3>
+            <p class="text-xs text-slate-400 font-medium">Control the start and end boundary values for transaction filters.</p>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="pt-4 space-y-6">
+          <!-- Timeframe Start Configuration -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">⏳ Timeframe Start Boundary</span>
+              <!-- Pill Switch Toggle -->
+              <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[200px] w-full">
+                <button 
+                  type="button" 
+                  (click)="setTimeframeStartType('DYNAMIC')"
+                  [class]="timeframeStartType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  Dynamic
+                </button>
+                <button 
+                  type="button" 
+                  (click)="setTimeframeStartType('FIXED')"
+                  [class]="timeframeStartType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  Fixed
+                </button>
+              </div>
+            </div>
+
+            <div class="min-h-[38px]">
+              <!-- Start Dynamic Select -->
+              @if (timeframeStartType === 'DYNAMIC') {
+                <select 
+                  [(ngModel)]="timeframeStartExpression" 
+                  (ngModelChange)="onModelChange()"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm">
+                  <option value="T-30">T-30 (Thirty Days Ago)</option>
+                  <option value="T-60">T-60 (Sixty Days Ago)</option>
+                  <option value="T-90">T-90 (Ninety Days Ago)</option>
+                  <option value="T-365">T-365 (One Year Ago)</option>
+                </select>
+              }
+              <!-- Start Fixed Picker -->
+              @if (timeframeStartType === 'FIXED') {
+                <input 
+                  type="date" 
+                  [(ngModel)]="timeframeStartStatic" 
+                  (ngModelChange)="onModelChange()"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm" />
+              }
+            </div>
+          </div>
+
+          <!-- Timeframe End Configuration -->
+          <div class="space-y-3 pt-4 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">⏳ Timeframe End Boundary</span>
+              <!-- Pill Switch Toggle -->
+              <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[200px] w-full">
+                <button 
+                  type="button" 
+                  (click)="setTimeframeEndType('DYNAMIC')"
+                  [class]="timeframeEndType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  Dynamic
+                </button>
+                <button 
+                  type="button" 
+                  (click)="setTimeframeEndType('FIXED')"
+                  [class]="timeframeEndType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  Fixed
+                </button>
+              </div>
+            </div>
+
+            <div class="min-h-[38px]">
+              <!-- End Dynamic Select -->
+              @if (timeframeEndType === 'DYNAMIC') {
+                <select 
+                  [(ngModel)]="timeframeEndExpression" 
+                  (ngModelChange)="onModelChange()"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm">
+                  <option value="T">T (Execution Date)</option>
+                  <option value="T-1">T-1 (Previous Day)</option>
+                  <option value="T-2">T-2 (Two Days Ago)</option>
+                  <option value="T-5">T-5 (Five Days Ago)</option>
+                </select>
+              }
+              <!-- End Fixed Picker -->
+              @if (timeframeEndType === 'FIXED') {
+                <input 
+                  type="date" 
+                  [(ngModel)]="timeframeEndStatic" 
+                  (ngModelChange)="onModelChange()"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm" />
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Mock Evaluation Range Banner -->
+      <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium">
+        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">🔍 Live Evaluated Range</span>
+        <span class="font-mono bg-indigo-50 border border-indigo-100 text-indigo-700 font-black px-2.5 py-0.5 rounded-lg text-xs">
+          {{ resolveDate(timeframeStartType, timeframeStartStatic, timeframeStartExpression) }} 
+          <span class="text-indigo-400 px-1">➔</span> 
+          {{ resolveDate(timeframeEndType, timeframeEndStatic, timeframeEndExpression) }}
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -15,13 +15,13 @@ The application is structured into standalone components routed lazily under [ap
 - Secure credential form with Basic Auth header injection.
 - Redirects authenticated users to the dashboard automatically.
 
-### 2. Reports Catalog (`/dashboard`) — [DashboardComponent](src/app/components/dashboard.ts)
+### 2. Reports Catalog (`/dashboard`) — [ReportsCatalogComponent](src/app/components/reports-catalog.ts)
 
-- Browse all report templates grouped by lifecycle status (`draft`, `in_review`, `published`).
-- Filter reports by status using tab chips: **All / Published / Drafts**.
-- Upload and ingest new Excel report templates (`.xlsx`) via drag-and-drop or file picker.
-- Auto-refreshes the catalog dynamically upon successful template ingestion.
-- Displays friendly report names instead of raw internal report IDs across all visual elements (cards, headers, inspector).
+- Browse report templates in a **Dual-Pane Split Workspace Layout** with a fixed 300px explorer left rail.
+- Organize items into collapsible groups: ⭐ **Favorite Reports** (supporting drag-reorder and pin toggling) and 📁 **All Catalog Templates** (searchable list).
+- Redesigned Right Canvas zone showing selected report details with explicit status badges, version labels, and monospaced data source table paths.
+- Upload and ingest new Excel report templates (`.xlsx`) via file picker.
+- Dynamic auto-refresh of catalog and details inspect views upon ingestion.
 
 ### 3. Report Builder (`/reports/new/edit` or `/reports/:id/edit`) — [ReportBuilderComponent](src/app/components/report-builder.ts)
 

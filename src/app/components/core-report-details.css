@@ -1,0 +1,299 @@
+/* ============================================================
+   CORE REPORT DETAILS — SCALAR PARAMETERS & FILTERS WORKSPACE
+   ============================================================ */
+
+/* ── Panel Layout ───────────────────────────── */
+.config-panel {
+  background: var(--color-apple-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-apple-blue);
+  margin: 0 0 4px 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-apple-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-input {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--color-apple-text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast, 150ms);
+}
+.form-input:focus {
+  border-color: var(--color-apple-blue);
+}
+
+.form-input.readonly {
+  background: rgba(15, 23, 42, 0.35);
+  cursor: not-allowed;
+  color: var(--color-apple-grey);
+}
+
+/* ── Status Badge styling ───────────────────── */
+.status-badge-container {
+  display: flex;
+  align-items: center;
+}
+.status-lozenge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+.status-lozenge.published { background: rgba(16, 185, 129, 0.12); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+.status-lozenge.in-review { background: rgba(99, 102, 241, 0.12); color: #818cf8; border-color: rgba(99, 102, 241, 0.2); }
+.status-lozenge.draft     { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+
+/* ── 50/50 Balanced Grid Layout ───────────── */
+.timeframe-split-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 24px;
+  padding: 20px;
+  border-radius: 16px;
+}
+
+@media (min-width: 1024px) {
+  .timeframe-split-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.timeframe-flex-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Select Dropdowns & Inputs ──────────────── */
+.select-dropdown {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--color-apple-text);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 150ms);
+}
+.select-dropdown:focus {
+  border-color: var(--color-apple-blue);
+}
+
+.date-picker-input {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--color-apple-text);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color var(--transition-fast, 150ms);
+}
+.date-picker-input:focus {
+  border-color: var(--color-apple-blue);
+}
+
+.date-picker-input:disabled,
+.select-dropdown:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Runtime Evaluation Preview Bar ─────────── */
+.eval-preview-label {
+  font-size: 11px;
+  color: var(--color-apple-grey);
+  margin-top: 4px;
+  font-family: 'SF Mono', ui-monospace, monospace;
+}
+.eval-preview-label span {
+  color: var(--color-apple-blue);
+  font-weight: 600;
+}
+
+/* ── General Filters Overhaul ───────────────── */
+.filters-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filters-builder {
+  background: rgba(30, 41, 59, 0.15);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.flex-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.configure-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #4f46e5;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+  transition: background 0.15s;
+}
+.configure-btn:hover:not(:disabled) { background: #4338ca; }
+.configure-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.status-indicator {
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+/* General Filter Layout */
+.active-scopes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.scope-capsule-card {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.scope-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+}
+
+/* Bounded, padded, slate-tinted panels with Indigo text */
+.indigo-capsule-panel {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4338ca; /* Indigo-700 */
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:host-context(html.dark) .indigo-capsule-panel {
+  background-color: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #818cf8; /* Light Indigo */
+}
+
+/* ── Tailwind utility class helper overrides ── */
+.text-\[9px\] { font-size: 9px; }
+.font-black { font-weight: 900; }
+.tracking-wider { letter-spacing: 0.05em; }
+.text-slate-400 { color: #94a3b8; }
+.uppercase { text-transform: uppercase; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.w-full { width: 100%; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-2 { gap: 0.5rem; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.gap-4 { gap: 1rem; }
+
+/* ── Light theme styles refinement ──────────── */
+:host-context(html.light) .config-panel,
+:host-context(html.light) .filters-builder {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+}
+:host-context(html.light) .timeframe-split-grid {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+}
+:host-context(html.light) .scope-capsule-card {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+}
+:host-context(html.light) .form-input,
+:host-context(html.light) .datepicker-trigger-btn {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+:host-context(html.light) .form-input.readonly {
+  background: #F1F5F9;
+  color: #94A3B8;
+}
+:host-context(html.light) .select-dropdown,
+:host-context(html.light) .date-picker-input {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}

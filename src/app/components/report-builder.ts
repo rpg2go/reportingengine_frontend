@@ -23,6 +23,7 @@ import { GranularityPickerComponent } from './granularity-picker';
 import { GeneralFilterModalComponent } from './general-filter-modal';
 import { TableFilterScope } from '../interfaces/general-filter.interface';
 import { LiveLayoutPreviewComponent } from './live-layout-preview';
+import { CoreReportDetailsComponent } from './core-report-details';
 interface CalendarDay {
   date: Date;
   dayNum: number;
@@ -94,10 +95,9 @@ export interface FieldGroup {
     FieldPickerComponent,
     SidebarComponent,
     RowFilterComponent,
-    CalendarPickerComponent,
-    GranularityPickerComponent,
     GeneralFilterModalComponent,
     LiveLayoutPreviewComponent,
+    CoreReportDetailsComponent,
   ],
 
   template: `
@@ -270,307 +270,34 @@ export interface FieldGroup {
         <!-- ══════════════════════════════════════════════════════
              SECTION 1 — CORE REPORT DETAILS
         ═══════════════════════════════════════════════════════════ -->
-        <section class="config-panel card">
-          <h3 class="section-title">⚙️ Core Report Details</h3>
-
-          <!-- Basic identity fields -->
-          <div class="form-grid">
-            <input
-              type="hidden"
-              id="report-id"
-              [(ngModel)]="reportId"
-            />
-
-            <div class="form-group">
-              <label for="report-name">Report Name*</label>
-              <input
-                type="text"
-                id="report-name"
-                [(ngModel)]="reportName"
-                (ngModelChange)="triggerValidationDebounced()"
-                [disabled]="isLocked"
-                placeholder="e.g. Sales Weekly Report"
-                class="form-input"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="report-version">Version</label>
-              <input
-                type="number"
-                id="report-version"
-                [(ngModel)]="reportVersion"
-                readonly
-                class="form-input bg-slate-900/50 cursor-not-allowed text-slate-400"
-                title="Automatically versioned on publishing"
-              />
-            </div>
-
-            <div class="form-group">
-              <label>Report Status</label>
-              <div class="status-badge-container" style="margin-top: 6px;">
-                @if (status === 'published') {
-                  <span class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border">
-                    🔒 Published
-                  </span>
-                } @else if (status === 'in_review' || status === 'in-review') {
-                  <span class="status-lozenge in-review font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border">
-                    ⏳ In Review
-                  </span>
-                } @else {
-                  <span class="status-lozenge draft font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border">
-                    📝 Draft
-                  </span>
-                }
-              </div>
-            </div>
-
-            <!-- Granularity (bound to conformed keys / dynamic granularity fields) -->
-            <div [formGroup]="reportForm" class="form-group">
-              <label for="granularity" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Report Granularity*</label>
-              <div class="w-full">
-                <app-granularity-picker
-                  id="granularity"
-                  [options]="dynamicGranularityOptions()"
-                  formControlName="granularity"
-                ></app-granularity-picker>
-              </div>
-            </div>
-
-            <!-- Time Information Row -->
-            <div class="time-information-row">
-              <!-- Reporting Date (guarded database calendar picker) -->
-              <div class="form-group reporting-date-group">
-                <label for="reporting-date"
-                  >Reporting Date <span class="label-hint">(from dim_date)</span></label
-                >
-                <div class="custom-datepicker-wrapper">
-                  <!-- Trigger button showing current value or placeholder -->
-                  <button
-                    type="button"
-                    id="reporting-date"
-                    class="datepicker-trigger-btn"
-                    [class.active]="showDatePicker()"
-                    (click)="!isLocked && toggleDatePicker()"
-                    [disabled]="isLocked"
-                  >
-                    <span>{{ reportingDate || '— select a reporting date —' }}</span>
-                    <span class="calendar-icon">📅</span>
-                  </button>
-
-                  <!-- Click-outside handler backdrop -->
-                  @if (showDatePicker()) {
-                    <div class="datepicker-backdrop" (click)="showDatePicker.set(false)"></div>
-                  }
-
-                  <!-- Datepicker Dropdown Grid overlay -->
-                  @if (showDatePicker()) {
-                    <app-calendar-picker
-                      [availableDates]="availableReportingDates"
-                      [(selectedDate)]="reportingDate"
-                      (dateSelected)="showDatePicker.set(false)"
-                      (click)="$event.stopPropagation()"
-                    ></app-calendar-picker>
-                  }
-                </div>
-              </div>
-
-              <!-- Timeframe Limit (redesigned with mode buttons) -->
-              <div class="form-group timeframe-group-inline">
-                <label>Timeframe Limit</label>
-                <div class="timeframe-row">
-                  <!-- Start Date Custom Calendar Picker -->
-                  <div class="custom-datepicker-wrapper tf-start">
-                    <button
-                      type="button"
-                      class="datepicker-trigger-btn"
-                      [class.active]="showTimeframeStartDatePicker()"
-                      (click)="!isLocked && showTimeframeStartDatePicker.set(!showTimeframeStartDatePicker())"
-                      [disabled]="isLocked"
-                    >
-                      <span>{{ timeframeStart || '— select start date —' }}</span>
-                      <span class="calendar-icon">📅</span>
-                    </button>
-
-                    @if (showTimeframeStartDatePicker()) {
-                      <div class="datepicker-backdrop" (click)="showTimeframeStartDatePicker.set(false)"></div>
-                    }
-
-                    @if (showTimeframeStartDatePicker()) {
-                      <app-calendar-picker
-                        [availableDates]="availableReportingDates"
-                        [(selectedDate)]="timeframeStart"
-                        (dateSelected)="showTimeframeStartDatePicker.set(false)"
-                        (click)="$event.stopPropagation()"
-                      ></app-calendar-picker>
-                    }
-                  </div>
-                  <span class="tf-arrow">→</span>
-                  <div class="tf-end-group">
-                    <div class="mode-btn-group" role="group">
-                      <button
-                        type="button"
-                        class="mode-btn"
-                        [class.active]="timeframeMode === 'today_minus_2'"
-                        (click)="!isLocked && setTimeframeMode('today_minus_2')"
-                        [disabled]="isLocked"
-                        title="Today minus 2 calendar days"
-                      >
-                        Today − 2
-                      </button>
-                      <button
-                        type="button"
-                        class="mode-btn"
-                        [class.active]="timeframeMode === 'today_minus_1'"
-                        (click)="!isLocked && setTimeframeMode('today_minus_1')"
-                        [disabled]="isLocked"
-                        title="Today minus 1 calendar day"
-                      >
-                        Today − 1
-                      </button>
-                      <button
-                        type="button"
-                        class="mode-btn"
-                        [class.active]="timeframeMode === 'today'"
-                        (click)="!isLocked && setTimeframeMode('today')"
-                        [disabled]="isLocked"
-                        title="Today (current date)"
-                      >
-                        Today
-                      </button>
-                      <button
-                        type="button"
-                        class="mode-btn"
-                        [class.active]="timeframeMode === 'custom'"
-                        (click)="!isLocked && setTimeframeMode('custom')"
-                        [disabled]="isLocked"
-                        title="Pick a specific date from dim_date or calendar"
-                      >
-                        Custom ▾
-                      </button>
-                    </div>
-                    @if (timeframeMode === 'custom') {
-                      <div class="custom-datepicker-wrapper">
-                        <!-- Trigger button showing current value or placeholder -->
-                        <button
-                          type="button"
-                          class="datepicker-trigger-btn"
-                          [class.active]="showTimeframeEndDatePicker()"
-                          (click)="!isLocked && toggleTimeframeEndDatePicker()"
-                          [disabled]="isLocked"
-                        >
-                          <span>{{ timeframeEnd || '— select end date —' }}</span>
-                          <span class="calendar-icon">📅</span>
-                        </button>
-
-                        <!-- Click-outside handler backdrop -->
-                        @if (showTimeframeEndDatePicker()) {
-                          <div class="datepicker-backdrop" (click)="showTimeframeEndDatePicker.set(false)"></div>
-                        }
-
-                        <!-- Datepicker Dropdown Grid overlay -->
-                        @if (showTimeframeEndDatePicker()) {
-                          <app-calendar-picker
-                            [availableDates]="availableReportingDates"
-                            [(selectedDate)]="timeframeEnd"
-                            (dateSelected)="showTimeframeEndDatePicker.set(false)"
-                            (click)="$event.stopPropagation()"
-                          ></app-calendar-picker>
-                        }
-                      </div>
-                    } @else {
-                      <span class="computed-date-badge">{{ computedTimeframeEnd }}</span>
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ── Consolidated Filters Row ── -->
-          <div class="filters-row-container">
-            <!-- ── Quick Filters ──────────────────────────────────────────────── -->
-            <div [formGroup]="reportForm" class="form-group filters-builder">
-              <div class="flex-header">
-                <label for="quickFiltersPicker" class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">
-                  Quick Filters
-                  <span class="text-[11px] text-slate-400 font-medium font-sans lowercase normal-case tracking-normal ml-1">(runtime-exposed filter dimensions)</span>
-                </label>
-              </div>
-              <div class="w-full mt-2">
-                <app-granularity-picker
-                  id="quickFiltersPicker"
-                  [options]="dynamicGranularityOptions()"
-                  formControlName="quickFilters"
-                ></app-granularity-picker>
-              </div>
-            </div>
-
-            <!-- ── General Filters ───────────────────────────────────────────── -->
-            <div class="form-group filters-builder">
-              <div class="flex-header">
-                <label class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">
-                  General Filters
-                  <span class="text-[11px] text-slate-400 font-medium font-sans lowercase normal-case tracking-normal ml-1">(multi-table query constraints modal)</span>
-                </label>
-              </div>
-              <div class="row-filter-wrapper flex flex-col gap-2 mt-2">
-                <div class="flex items-center justify-between">
-                  <button type="button" 
-                          (click)="isGeneralFilterModalOpen.set(true)" 
-                          [disabled]="isLocked"
-                          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm cursor-pointer whitespace-nowrap">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Configure General Filters
-                  </button>
-                  <span *ngIf="isGeneralFilterRawMode" class="font-sans text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">
-                    Custom SQL Mode Active
-                  </span>
-                </div>
-
-                <!-- Display active scopes summary -->
-                <div class="active-scopes-list grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  <ng-container *ngIf="!isGeneralFilterRawMode && generalFilterScopes().length > 0">
-                    <div *ngFor="let sc of generalFilterScopes()" 
-                         class="border border-slate-200 bg-slate-50/40 rounded-xl p-3 flex flex-col gap-1 shadow-sm hover:shadow-md transition-all duration-200 ease-out">
-                      <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                        <span class="text-xs font-bold text-slate-800 font-sans tracking-tight uppercase">
-                          {{ sc.tableName.replace('analytics.', '') }}
-                        </span>
-                      </div>
-                      <div class="font-mono text-[11px] text-indigo-600 bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 font-medium tracking-tight whitespace-pre-wrap leading-relaxed">
-                        {{ getGeneralFilterSummary(sc.filtersGroup) }}
-                      </div>
-                    </div>
-                  </ng-container>
-                  
-                  <div *ngIf="isGeneralFilterRawMode && generalFilterExpr" 
-                       class="col-span-full border border-slate-200 bg-slate-50/40 rounded-xl p-3 flex flex-col gap-1 shadow-sm hover:shadow-md transition-all duration-200 ease-out">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                      <span class="text-xs font-bold text-slate-800 font-sans tracking-tight uppercase">
-                        CUSTOM SQL FORMULA
-                      </span>
-                      <span class="font-sans text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        Raw SQL
-                      </span>
-                    </div>
-                    <div class="font-mono text-[11px] text-indigo-600 bg-white border border-slate-150 rounded-lg px-2.5 py-1.5 font-medium tracking-tight whitespace-pre-wrap leading-relaxed">
-                      {{ generalFilterExpr }}
-                    </div>
-                  </div>
-
-                  <div *ngIf="!isGeneralFilterRawMode && generalFilterScopes().length === 0" 
-                       class="col-span-full p-6 text-center text-xs text-slate-400 italic bg-slate-50/30 border border-dashed border-slate-200 rounded-xl font-sans">
-                    No active general filter scopes configured.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <app-core-report-details
+          [(reportId)]="reportId"
+          [(reportName)]="reportName"
+          [reportVersion]="reportVersion"
+          [status]="status"
+          [isLocked]="isLocked"
+          [reportForm]="reportForm"
+          [dynamicGranularityOptions]="dynamicGranularityOptions()"
+          [availableReportingDates]="availableReportingDates"
+          [(reportingDate)]="reportingDate"
+          [(timeframeStart)]="timeframeStart"
+          [(timeframeEnd)]="timeframeEnd"
+          [(timeframeMode)]="timeframeMode"
+          [(reportingDateType)]="reportingDateType"
+          [(reportingDateStatic)]="reportingDateStatic"
+          [(reportingDateExpression)]="reportingDateExpression"
+          [(timeframeStartType)]="timeframeStartType"
+          [(timeframeStartStatic)]="timeframeStartStatic"
+          [(timeframeStartExpression)]="timeframeStartExpression"
+          [(timeframeEndType)]="timeframeEndType"
+          [(timeframeEndStatic)]="timeframeEndStatic"
+          [(timeframeEndExpression)]="timeframeEndExpression"
+          [generalFilterScopes]="generalFilterScopes()"
+          [isGeneralFilterRawMode]="isGeneralFilterRawMode"
+          [generalFilterExpr]="generalFilterExpr"
+          (triggerValidation)="triggerValidationDebounced()"
+          (configureGeneralFilters)="isGeneralFilterModalOpen.set(true)"
+        ></app-core-report-details>
 
         <!-- ══════════════════════════════════════════════════════
              SECTION 2 — ROWS SETUP (Step 1)
@@ -4450,7 +4177,7 @@ export class ReportBuilderComponent implements OnInit {
   });
   expandedColumns = computed(() => {
     this.previewTrigger(); // subscribe to updates
-    const refDate = this.reportingDate || new Date().toISOString().split('T')[0];
+    const refDate = this.resolveReportingDate(this.reportingDate) || new Date().toISOString().split('T')[0];
     const expanded: any[] = [];
     for (const col of this.columns) {
       if (col.colType === 'ROLLING') {
@@ -4601,7 +4328,7 @@ export class ReportBuilderComponent implements OnInit {
       exploreId: 1,
       status: this.status,
       granularity: this.granularity,
-      reportingDate: this.reportingDate,
+      reportingDate: this.resolveReportingDate(this.reportingDate),
       timeframeStart: this.timeframeStart,
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
@@ -4660,7 +4387,7 @@ export class ReportBuilderComponent implements OnInit {
       exploreId: 1,
       status: this.status,
       granularity: this.granularity,
-      reportingDate: this.reportingDate,
+      reportingDate: this.resolveReportingDate(this.reportingDate),
       timeframeStart: this.timeframeStart,
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
@@ -4724,7 +4451,7 @@ export class ReportBuilderComponent implements OnInit {
       exploreId: 1,
       status: this.status,
       granularity: this.granularity,
-      reportingDate: this.reportingDate,
+      reportingDate: this.resolveReportingDate(this.reportingDate),
       timeframeStart: this.timeframeStart,
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
@@ -4973,6 +4700,19 @@ export class ReportBuilderComponent implements OnInit {
   timeframeStart = '2022-01-01';
   timeframeEnd = '';
   timeframeMode: 'custom' | 'today_minus_2' | 'today_minus_1' | 'today' = 'today_minus_2';
+
+  // Polymorphic time parameters mapping
+  reportingDateType = 'DYNAMIC';
+  reportingDateStatic = '';
+  reportingDateExpression = 'T-2';
+
+  timeframeStartType = 'FIXED';
+  timeframeStartStatic = '2022-01-01';
+  timeframeStartExpression = '';
+
+  timeframeEndType = 'DYNAMIC';
+  timeframeEndStatic = '';
+  timeframeEndExpression = 'T-2';
   quickFilters: QuickFilterCondition[] = [];
   generalFiltersGroup: any = null;
   generalFilterExpr = '';
@@ -5272,7 +5012,20 @@ export class ReportBuilderComponent implements OnInit {
     }
     this.sourceTable = data.sourceTable || '';
     this.granularity = data.granularity || '';
-    this.reportingDate = data.reportingDate || this.dateOffsetString(-1);
+    this.reportingDate = data.reportingDate || 'T-2';
+
+    // Populate polymorphic time parameter configurations
+    this.reportingDateType = data.reportingDateType || 'DYNAMIC';
+    this.reportingDateStatic = this.formatDateForInput(data.reportingDateStatic || '');
+    this.reportingDateExpression = data.reportingDateExpression || 'T-2';
+    
+    this.timeframeStartType = data.timeframeStartType || 'FIXED';
+    this.timeframeStartStatic = this.formatDateForInput(data.timeframeStartStatic || '2022-01-01');
+    this.timeframeStartExpression = data.timeframeStartExpression || '';
+    
+    this.timeframeEndType = data.timeframeEndType || 'DYNAMIC';
+    this.timeframeEndStatic = this.formatDateForInput(data.timeframeEndStatic || '');
+    this.timeframeEndExpression = data.timeframeEndExpression || 'T-2';
 
     // Timeframe — restore relative mode or custom date
     const offset: number | null = data.timeframeTodayOffset ?? null;
@@ -5482,10 +5235,21 @@ export class ReportBuilderComponent implements OnInit {
     this.reportForm.enable();
     this.sourceTable = '';
     this.granularity = '';
-    this.reportingDate = this.dateOffsetString(-1);
+    this.reportingDate = 'T-2';
     this.timeframeStart = '2022-01-01';
     this.timeframeMode = 'today_minus_2';
     this.timeframeEnd = this.dateOffsetString(-2);
+
+    this.reportingDateType = 'DYNAMIC';
+    this.reportingDateStatic = this.dateOffsetString(0);
+    this.reportingDateExpression = 'T-2';
+    this.timeframeStartType = 'FIXED';
+    this.timeframeStartStatic = '2022-01-01';
+    this.timeframeStartExpression = '';
+    this.timeframeEndType = 'DYNAMIC';
+    this.timeframeEndStatic = this.dateOffsetString(0);
+    this.timeframeEndExpression = 'T-2';
+
     this.quickFilters = [];
     this.generalFilters = [];
     this.generalFiltersGroup = null;
@@ -5749,6 +5513,18 @@ export class ReportBuilderComponent implements OnInit {
   private dateOffsetString(n: number): string {
     return dateOffsetString(n);
   }
+  resolveReportingDate(dateStr: string): string {
+    if (dateStr === 'T') {
+      return this.dateOffsetString(0);
+    }
+    if (dateStr === 'T-1') {
+      return this.dateOffsetString(-1);
+    }
+    if (dateStr === 'T-2') {
+      return this.dateOffsetString(-2);
+    }
+    return dateStr;
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // REPORTING DATE & CUSTOM CALENDAR WIDGET
@@ -5785,8 +5561,9 @@ export class ReportBuilderComponent implements OnInit {
 
   initializeCalendarView(): void {
     let dateToUse = new Date();
-    if (this.reportingDate) {
-      const parsed = new Date(this.reportingDate);
+    const resolvedDate = this.resolveReportingDate(this.reportingDate);
+    if (resolvedDate) {
+      const parsed = new Date(resolvedDate);
       if (!isNaN(parsed.getTime())) {
         dateToUse = parsed;
       }
@@ -6826,6 +6603,15 @@ export class ReportBuilderComponent implements OnInit {
       reportingDate: this.reportingDate,
       timeframeStart: this.timeframeStart,
       timeframeEnd: this.computedTimeframeEnd,
+      reportingDateType: this.reportingDateType,
+      reportingDateStatic: this.reportingDateStatic || null,
+      reportingDateExpression: this.reportingDateExpression || null,
+      timeframeStartType: this.timeframeStartType,
+      timeframeStartStatic: this.timeframeStartStatic || null,
+      timeframeStartExpression: this.timeframeStartExpression || null,
+      timeframeEndType: this.timeframeEndType,
+      timeframeEndStatic: this.timeframeEndStatic || null,
+      timeframeEndExpression: this.timeframeEndExpression || null,
       // Relative offset: 0=today, -1=today-1, -2=today-2, null=custom absolute date
       timeframeTodayOffset:
         this.timeframeMode === 'today'

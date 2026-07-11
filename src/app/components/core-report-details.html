@@ -1,0 +1,205 @@
+<section class="config-panel card">
+  <h3 class="section-title">⚙️ Core Report Details</h3>
+
+  <!-- Basic identity fields -->
+  <div class="form-grid">
+    <input
+      type="hidden"
+      id="report-id"
+      [ngModel]="reportId()"
+      (ngModelChange)="reportId.set($event)"
+    />
+
+    <div class="form-group">
+      <label for="report-name">Report Name*</label>
+      <input
+        type="text"
+        id="report-name"
+        [ngModel]="reportName()"
+        (ngModelChange)="onReportNameChange($event)"
+        [disabled]="isLocked()"
+        placeholder="e.g. Sales Weekly Report"
+        class="form-input"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="report-version">Version</label>
+      <input
+        type="number"
+        id="report-version"
+        [ngModel]="reportVersion()"
+        readonly
+        class="form-input readonly"
+        title="Automatically versioned on publishing"
+      />
+    </div>
+
+    <div class="form-group">
+      <label>Report Status</label>
+      <div class="status-badge-container" style="margin-top: 6px">
+        @if (status() === 'published') {
+          <span
+            class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border"
+          >
+            🔒 Published
+          </span>
+        } @else if (status() === 'in_review' || status() === 'in-review') {
+          <span
+            class="status-lozenge in-review font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border"
+          >
+            ⏳ In Review
+          </span>
+        } @else {
+          <span
+            class="status-lozenge draft font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border"
+          >
+            📝 Draft
+          </span>
+        }
+      </div>
+    </div>
+
+    <!-- Granularity (bound to conformed keys / dynamic granularity fields) -->
+    <div [formGroup]="reportForm()" class="form-group">
+      <label for="granularity" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+        >Report Granularity*</label
+      >
+      <div class="w-full">
+        <app-granularity-picker
+          id="granularity"
+          [options]="dynamicGranularityOptions()"
+          formControlName="granularity"
+        ></app-granularity-picker>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Time Parameter Engine -->
+  <app-core-time-engine
+    [reportId]="reportId()"
+    [version]="reportVersion()"
+    [reportingDateType]="reportingDateType()"
+    [reportingDateStatic]="reportingDateStatic()"
+    [reportingDateExpression]="reportingDateExpression()"
+    [timeframeStartType]="timeframeStartType()"
+    [timeframeStartStatic]="timeframeStartStatic()"
+    [timeframeStartExpression]="timeframeStartExpression()"
+    [timeframeEndType]="timeframeEndType()"
+    [timeframeEndStatic]="timeframeEndStatic()"
+    [timeframeEndExpression]="timeframeEndExpression()"
+    (timeframeConfigChange)="onTimeframeConfigChange($event)"
+  ></app-core-time-engine>
+
+  <!-- ── Consolidated Filters Row ── -->
+  <div class="filters-row-container">
+    <!-- ── Quick Filters ──────────────────────────────────────────────── -->
+    <div [formGroup]="reportForm()" class="form-group filters-builder">
+      <div class="flex-header">
+        <label
+          for="quickFiltersPicker"
+          class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase"
+        >
+          Quick Filters
+          <span
+            class="text-[11px] text-slate-400 font-medium font-sans lowercase normal-case tracking-normal ml-1"
+            >(runtime-exposed filter dimensions)</span
+          >
+        </label>
+      </div>
+      <div class="w-full mt-2">
+        <app-granularity-picker
+          id="quickFiltersPicker"
+          [options]="dynamicGranularityOptions()"
+          formControlName="quickFilters"
+        ></app-granularity-picker>
+      </div>
+    </div>
+
+    <!-- ── General Filters (Overhauled Cards layout) ───────────────────── -->
+    <div class="form-group filters-builder">
+      <div class="flex-header">
+        <label class="font-sans text-xs font-bold text-slate-800 tracking-tight uppercase">
+          General Filters
+          <span
+            class="text-[11px] text-slate-400 font-medium font-sans lowercase normal-case tracking-normal ml-1"
+            >(multi-table query constraints modal)</span
+          >
+        </label>
+        @if (isGeneralFilterRawMode()) {
+          <span class="status-indicator">Custom SQL Active</span>
+        }
+      </div>
+
+      <div class="row-filter-wrapper flex flex-col gap-2 mt-2">
+        <div class="flex items-center justify-between">
+          <button
+            type="button"
+            (click)="onConfigureGeneralFilters()"
+            [disabled]="isLocked()"
+            class="configure-btn"
+          >
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            Configure General Filters
+          </button>
+        </div>
+
+        <!-- Display active scopes summary -->
+        <div class="active-scopes-list mt-2">
+          @if (!isGeneralFilterRawMode() && generalFilterScopes().length > 0) {
+            @for (sc of generalFilterScopes(); track sc.tableName) {
+              <div class="scope-capsule-card">
+                <div class="scope-header">
+                  <span class="text-[9px] font-black tracking-wider text-slate-400 uppercase">
+                    {{ sc.tableName.replace('analytics.', '') }}
+                  </span>
+                </div>
+                <!-- Bounded, slate-tinted panels with Indigo text -->
+                <div class="indigo-capsule-panel">
+                  {{ getGeneralFilterSummary(sc.filtersGroup) }}
+                </div>
+              </div>
+            }
+          } @else if (isGeneralFilterRawMode() && generalFilterExpr()) {
+            <div class="scope-capsule-card" style="grid-column: 1 / -1">
+              <div class="scope-header">
+                <span class="text-[9px] font-black tracking-wider text-slate-400 uppercase">
+                  CUSTOM SQL FORMULA
+                </span>
+                <span class="status-indicator">Raw SQL</span>
+              </div>
+              <div class="indigo-capsule-panel">
+                {{ generalFilterExpr() }}
+              </div>
+            </div>
+          } @else {
+            <div
+              style="grid-column: 1 / -1"
+              class="p-6 text-center text-xs text-slate-400 italic bg-slate-50/30 border border-dashed border-slate-200 rounded-xl font-sans"
+            >
+              No active general filter scopes configured.
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

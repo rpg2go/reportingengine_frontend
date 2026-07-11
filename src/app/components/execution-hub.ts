@@ -300,6 +300,11 @@ export class ExecutionHubComponent implements OnInit {
           this.runtimeQuickFilters.set(filters);
           this.loadingConfig.set(false);
           this.executedData.set(null); // clear old execution data
+          
+          const defaultDate = this.resolveDefaultDate(config);
+          if (defaultDate) {
+            this.selectedReportingDate.set(defaultDate);
+          }
           this.syncCalendarToSelectedDate();
         },
         error: (err) => {
@@ -602,5 +607,32 @@ export class ExecutionHubComponent implements OnInit {
         }
       }
     }
+  }
+
+  private resolveDefaultDate(config: any): string | null {
+    if (!config) return null;
+    
+    if (config.reportingDateType === 'FIXED') {
+      return config.reportingDateStatic || null;
+    } else { // DYNAMIC
+      const expr = config.reportingDateExpression || 'T-2';
+      return this.evaluateDateExpression(expr);
+    }
+  }
+
+  private evaluateDateExpression(expr: string): string {
+    const today = new Date();
+    const clean = expr.trim().toUpperCase();
+    if (clean === 'T') {
+      return today.toISOString().split('T')[0];
+    }
+    if (clean.startsWith('T-') || clean.startsWith('T+')) {
+      const sign = clean.startsWith('T-') ? -1 : 1;
+      const offset = parseInt(clean.substring(2), 10);
+      if (!isNaN(offset)) {
+        today.setDate(today.getDate() + (sign * offset));
+      }
+    }
+    return today.toISOString().split('T')[0];
   }
 }

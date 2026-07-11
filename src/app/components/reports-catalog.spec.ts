@@ -1,29 +1,37 @@
 import '@angular/compiler';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Injector, runInInjectionContext, DestroyRef } from '@angular/core';
-import { DashboardComponent } from './dashboard';
+import { ReportsCatalogComponent } from './reports-catalog';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 import { of, throwError, Subject } from 'rxjs';
 
-describe('DashboardComponent', () => {
-  let component: DashboardComponent;
+describe('ReportsCatalogComponent', () => {
+  let component: ReportsCatalogComponent;
   let mockReportService: any;
   let mockAuthService: any;
   let mockRouter: any;
   let mockDestroyRef: any;
 
   const mockReports = [
-    { reportId: 'R1', reportName: 'Sales Report', status: 'published', description: 'Monthly sales', exploreId: 'sales', sourceTable: 'fact_sales' },
-    { reportId: 'R2', reportName: 'Inventory Report', status: 'draft', description: 'Stock details', exploreId: 'inventory', sourceTable: 'fact_inventory' }
+    { reportId: 'R1', reportName: 'Sales Report', status: 'published', description: 'Monthly sales', exploreId: 'sales', sourceTable: 'fact_sales', version: 1 },
+    { reportId: 'R2', reportName: 'Inventory Report', status: 'draft', description: 'Stock details', exploreId: 'inventory', sourceTable: 'fact_inventory', version: 2 }
   ];
 
   beforeEach(() => {
+    // Clear localStorage to prevent test leakage
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+    }
+
     mockReportService = {
       getReports: vi.fn().mockReturnValue(of(mockReports)),
       importTemplate: vi.fn(),
-      getReportingDates: vi.fn().mockReturnValue(of(['2025-12-31', '2026-03-31']))
+      getReportingDates: vi.fn().mockReturnValue(of(['2025-12-31', '2026-03-31'])),
+      getReportConfig: vi.fn().mockReturnValue(of({ reportId: 'R1', reportName: 'Sales Report', status: 'published', version: 1, rows: [], columns: [] })),
+      runReport: vi.fn().mockReturnValue(of(new Blob())),
+      deleteReport: vi.fn().mockReturnValue(of({}))
     };
     mockAuthService = {
       getUsername: vi.fn().mockReturnValue('test-user'),
@@ -46,7 +54,7 @@ describe('DashboardComponent', () => {
     });
 
     runInInjectionContext(injector, () => {
-      component = new DashboardComponent();
+      component = new ReportsCatalogComponent();
       component.ngOnInit();
     });
   });
@@ -71,7 +79,7 @@ describe('DashboardComponent', () => {
     });
     
     runInInjectionContext(injector, () => {
-      const anotherComponent = new DashboardComponent();
+      const anotherComponent = new ReportsCatalogComponent();
       anotherComponent.ngOnInit();
       expect(anotherComponent.loading()).toBe(false);
       expect(anotherComponent.errorMessage()).toBe('Failed to load report templates catalog.');
@@ -96,7 +104,6 @@ describe('DashboardComponent', () => {
 
     expect(component.uploading()).toBe(false);
     expect(component.successMessage()).toBe('Template Excel configurations imported successfully!');
-    // Checks that catalog is reloaded (it was called during init and then again on success)
     expect(mockReportService.getReports).toHaveBeenCalledTimes(2);
   });
 
@@ -114,43 +121,39 @@ describe('DashboardComponent', () => {
     expect(component.errorMessage()).toBe('Invalid format');
   });
 
-  it('should filter reports by search query', () => {
+  it('should add and remove items to favorites', () => {
+    // Initially no favorites
+    expect(component.favoriteReports()).toHaveLength(0);
+    expect(component.allCatalogReports()).toHaveLength(2);
+
+    // Pin R1
+    const mockEvent = { stopPropagation: vi.fn() } as any;
+    component.toggleFavorite(mockEvent, 'R1');
+
+    expect(mockEvent.stopPropagation).toHaveBeenCalled();
+    expect(component.favoriteIds().has('R1')).toBe(true);
+    expect(component.favoriteReports()).toHaveLength(1);
+    expect(component.favoriteReports()[0].reportId).toBe('R1');
+    expect(component.allCatalogReports()).toHaveLength(1); // Excluded from all catalog list
+
+    // Unpin R1
+    component.toggleFavorite(mockEvent, 'R1');
+    expect(component.favoriteIds().has('R1')).toBe(false);
+    expect(component.favoriteReports()).toHaveLength(0);
+    expect(component.allCatalogReports()).toHaveLength(2);
+  });
+
+  it('should filter all catalog reports by search query', () => {
     component.searchQuery.set('sales');
-    expect(component.filteredReports).toHaveLength(1);
-    expect(component.filteredReports[0].reportId).toBe('R1');
+    expect(component.allCatalogReports()).toHaveLength(1);
+    expect(component.allCatalogReports()[0].reportId).toBe('R1');
 
     component.searchQuery.set('inventory');
-    expect(component.filteredReports).toHaveLength(1);
-    expect(component.filteredReports[0].reportId).toBe('R2');
+    expect(component.allCatalogReports()).toHaveLength(1);
+    expect(component.allCatalogReports()[0].reportId).toBe('R2');
 
     component.searchQuery.set('Nonexistent');
-    expect(component.filteredReports).toHaveLength(0);
-  });
-
-  it('should filter reports by status', () => {
-    component.filterStatus.set('draft');
-    expect(component.filteredReports).toHaveLength(1);
-    expect(component.filteredReports[0].reportId).toBe('R2');
-
-    component.filterStatus.set('published');
-    expect(component.filteredReports).toHaveLength(1);
-    expect(component.filteredReports[0].reportId).toBe('R1');
-  });
-
-  it('should return correct reports count by status', () => {
-    expect(component.getReportsCountByStatus('all')).toBe(2);
-    expect(component.getReportsCountByStatus('draft')).toBe(1);
-    expect(component.getReportsCountByStatus('published')).toBe(1);
-  });
-
-  it('should clear filters', () => {
-    component.searchQuery.set('sales');
-    component.filterStatus.set('published');
-    
-    component.clearFilters();
-    
-    expect(component.searchQuery()).toBe('');
-    expect(component.filterStatus()).toBe('all');
+    expect(component.allCatalogReports()).toHaveLength(0);
   });
 
   it('should navigate to report details view', () => {
