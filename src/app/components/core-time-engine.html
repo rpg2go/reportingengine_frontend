@@ -24,17 +24,21 @@
           <!-- Segmented Toggle Option -->
           <div class="space-y-2">
             <label class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Input Mode Selection</label>
-            <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[260px] w-full">
+            <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[260px] w-full" [class.opacity-60]="isLocked">
               <button 
                 type="button" 
                 (click)="setReportingDateType('DYNAMIC')"
-                [class]="reportingDateType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                [disabled]="isLocked"
+                [class]="reportingDateType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'"
+                [class.cursor-not-allowed]="isLocked">
                 ⚡ Dynamic Macro
               </button>
               <button 
                 type="button" 
                 (click)="setReportingDateType('FIXED')"
-                [class]="reportingDateType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                [disabled]="isLocked"
+                [class]="reportingDateType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'"
+                [class.cursor-not-allowed]="isLocked">
                 📅 Static Date
               </button>
             </div>
@@ -49,7 +53,8 @@
                 <select 
                   [(ngModel)]="reportingDateExpression" 
                   (ngModelChange)="onModelChange()"
-                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm">
+                  [disabled]="isLocked"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
                   <option value="T">T (Execution Date)</option>
                   <option value="T-1">T-1 (Previous Day)</option>
                   <option value="T-2">T-2 (Two Days Ago)</option>
@@ -68,7 +73,8 @@
                   type="date" 
                   [(ngModel)]="reportingDateStatic" 
                   (ngModelChange)="onModelChange()"
-                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm" />
+                  [disabled]="isLocked"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed" />
               </div>
             }
           </div>
@@ -108,17 +114,21 @@
             <div class="flex items-center justify-between">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">⏳ Timeframe Start Boundary</span>
               <!-- Pill Switch Toggle -->
-              <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[200px] w-full">
+              <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[200px] w-full" [class.opacity-60]="isLocked">
                 <button 
                   type="button" 
                   (click)="setTimeframeStartType('DYNAMIC')"
-                  [class]="timeframeStartType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  [disabled]="isLocked"
+                  [class]="timeframeStartType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'"
+                  [class.cursor-not-allowed]="isLocked">
                   Dynamic
                 </button>
                 <button 
                   type="button" 
                   (click)="setTimeframeStartType('FIXED')"
-                  [class]="timeframeStartType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  [disabled]="isLocked"
+                  [class]="timeframeStartType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'"
+                  [class.cursor-not-allowed]="isLocked">
                   Fixed
                 </button>
               </div>
@@ -130,7 +140,8 @@
                 <select 
                   [(ngModel)]="timeframeStartExpression" 
                   (ngModelChange)="onModelChange()"
-                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm">
+                  [disabled]="isLocked"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
                   <option value="T-30">T-30 (Thirty Days Ago)</option>
                   <option value="T-60">T-60 (Sixty Days Ago)</option>
                   <option value="T-90">T-90 (Ninety Days Ago)</option>
@@ -143,7 +154,8 @@
                   type="date" 
                   [(ngModel)]="timeframeStartStatic" 
                   (ngModelChange)="onModelChange()"
-                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm" />
+                  [disabled]="isLocked"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed" />
               }
             </div>
           </div>
@@ -153,17 +165,21 @@
             <div class="flex items-center justify-between">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">⏳ Timeframe End Boundary</span>
               <!-- Pill Switch Toggle -->
-              <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[200px] w-full">
+              <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 max-w-[200px] w-full" [class.opacity-60]="isLocked">
                 <button 
                   type="button" 
                   (click)="setTimeframeEndType('DYNAMIC')"
-                  [class]="timeframeEndType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  [disabled]="isLocked"
+                  [class]="timeframeEndType === 'DYNAMIC' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'"
+                  [class.cursor-not-allowed]="isLocked">
                   Dynamic
                 </button>
                 <button 
                   type="button" 
                   (click)="setTimeframeEndType('FIXED')"
-                  [class]="timeframeEndType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'">
+                  [disabled]="isLocked"
+                  [class]="timeframeEndType === 'FIXED' ? 'bg-white shadow-sm font-black text-slate-800 text-[11px] rounded-lg flex-1 py-1.5 text-center transition-all border border-slate-200/40' : 'text-slate-400 font-bold hover:text-slate-600 text-[11px] flex-1 py-1.5 text-center transition-all'"
+                  [class.cursor-not-allowed]="isLocked">
                   Fixed
                 </button>
               </div>
@@ -175,7 +191,8 @@
                 <select 
                   [(ngModel)]="timeframeEndExpression" 
                   (ngModelChange)="onModelChange()"
-                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm">
+                  [disabled]="isLocked"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
                   <option value="T">T (Execution Date)</option>
                   <option value="T-1">T-1 (Previous Day)</option>
                   <option value="T-2">T-2 (Two Days Ago)</option>
@@ -188,7 +205,8 @@
                   type="date" 
                   [(ngModel)]="timeframeEndStatic" 
                   (ngModelChange)="onModelChange()"
-                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm" />
+                  [disabled]="isLocked"
+                  class="w-full border border-slate-200 bg-white rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed" />
               }
             </div>
           </div>

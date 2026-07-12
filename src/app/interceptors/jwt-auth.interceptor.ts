@@ -5,26 +5,30 @@ import { catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-export const authInterceptor: HttpInterceptorFn = (req, next) => {
+/**
+ * Standalone Functional HTTP Interceptor injecting the active OIDC JWT Bearer token.
+ * Reads 'dev_token' from localStorage (for Swagger / dev overrides) or falls back to AuthService.
+ */
+export const jwtAuthInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
-  const token = authService.getToken();
 
-  // If token exists and request is to /api, clone and inject Basic Auth header
+  // Check if a dev-override token exists in localStorage first, otherwise fallback to AuthService
+  const devToken = typeof localStorage !== 'undefined' ? localStorage.getItem('dev_token') : null;
+  const token = devToken || authService.getToken();
+
   let authReq = req;
   if (token && req.url.includes('/api/')) {
     authReq = req.clone({
       setHeaders: {
-        'Authorization': `Basic ${token}`
+        'Authorization': `Bearer ${token}`
       }
     });
   }
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Only treat 401/403 as a session expiry when the request is a normal
-      // JSON API call. Blob-typed requests (report execution) can return 403
-      // from the DWH execution layer without implying the API session is invalid.
+      // Avoid redirecting on Blob queries if the execution schema fails downstream
       const isBlobRequest = req.responseType === 'blob';
       if (!isBlobRequest && (error.status === 401 || error.status === 403)) {
         authService.logout();

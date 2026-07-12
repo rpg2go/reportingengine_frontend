@@ -43,9 +43,10 @@ describe('AuthService', () => {
   it('should call login endpoint and save token/username on success', () => {
     const username = 'admin';
     const password = 'password';
-    const expectedToken = btoa(`${username}:${password}`);
+    const credToken = btoa(`${username}:${password}`);
+    const mockToken = 'mock-jwt-token-123';
     
-    mockHttp.get.mockReturnValue(of({ success: true }));
+    mockHttp.get.mockReturnValue(of({ success: true, token: mockToken }));
 
     service.login(username, password).subscribe();
 
@@ -53,13 +54,13 @@ describe('AuthService', () => {
       headers: expect.any(Object)
     });
     
-    // Check that headers contain auth token
+    // Check that headers contain basic auth credentials token for login
     const callArgs = mockHttp.get.mock.calls[0][1];
     const headers = callArgs.headers;
-    expect(headers.get('Authorization')).toBe(`Basic ${expectedToken}`);
+    expect(headers.get('Authorization')).toBe(`Basic ${credToken}`);
 
-    // Session storage must be updated
-    expect(sessionStorage.getItem('token')).toBe(expectedToken);
+    // Session storage must be updated with the Bearer token returned from backend response
+    expect(sessionStorage.getItem('token')).toBe(mockToken);
     expect(sessionStorage.getItem('username')).toBe(username);
     expect(service.isAuthenticated()).toBe(true);
   });
@@ -108,6 +109,6 @@ describe('AuthService', () => {
     // With token
     sessionStorage.setItem('token', 'token123');
     headers = service.getAuthHeader();
-    expect(headers.get('Authorization')).toBe('Basic token123');
+    expect(headers.get('Authorization')).toBe('Bearer token123');
   });
 });

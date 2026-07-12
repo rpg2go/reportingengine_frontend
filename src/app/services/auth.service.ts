@@ -12,14 +12,14 @@ export class AuthService {
   constructor(private http: HttpClient) {}
 
   login(username: string, password: string): Observable<any> {
-    const token = btoa(`${username}:${password}`);
+    const credToken = btoa(`${username}:${password}`);
     const headers = new HttpHeaders({
-      'Authorization': `Basic ${token}`
+      'Authorization': `Basic ${credToken}`
     });
 
-    return this.http.get(`${this.apiUrl}/login`, { headers }).pipe(
-      tap(() => {
-        sessionStorage.setItem('token', token);
+    return this.http.get<any>(`${this.apiUrl}/login`, { headers }).pipe(
+      tap((res) => {
+        sessionStorage.setItem('token', res.token);
         sessionStorage.setItem('username', username);
         this.isAuthenticated.set(true);
       })
@@ -39,7 +39,7 @@ export class AuthService {
   getAuthHeader(): HttpHeaders {
     const token = this.getToken();
     return new HttpHeaders({
-      'Authorization': token ? `Basic ${token}` : ''
+      'Authorization': token ? `Bearer ${token}` : ''
     });
   }
 

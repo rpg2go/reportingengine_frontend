@@ -10,9 +10,9 @@ import { FormsModule } from '@angular/forms';
   styleUrls: []
 })
 export class CoreTimeEngineComponent implements OnInit {
-  // Input configuration model matching the report metadata structure
   @Input() reportId: string = '';
   @Input() version: number = 1;
+  @Input() isLocked: boolean = false;
 
   // Reporting Date properties mapping
   @Input() reportingDateType: string = 'DYNAMIC'; // 'FIXED' or 'DYNAMIC'
@@ -45,16 +45,19 @@ export class CoreTimeEngineComponent implements OnInit {
 
   // Model update propagators
   setReportingDateType(type: string): void {
+    if (this.isLocked) return;
     this.reportingDateType = type;
     this.onModelChange();
   }
 
   setTimeframeStartType(type: string): void {
+    if (this.isLocked) return;
     this.timeframeStartType = type;
     this.onModelChange();
   }
 
   setTimeframeEndType(type: string): void {
+    if (this.isLocked) return;
     this.timeframeEndType = type;
     this.onModelChange();
   }
