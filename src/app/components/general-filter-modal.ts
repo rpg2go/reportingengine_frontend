@@ -11,6 +11,11 @@ import { TableFilterScope } from '../interfaces/general-filter.interface';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './general-filters-workspace.html',
   styles: [`
+    :host {
+      display: block;
+      position: relative;
+      z-index: 99999 !important;
+    }
     .fixed { position: fixed !important; }
     .inset-0 { top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; }
     .z-\\[9999\\] { z-index: 9999 !important; }
@@ -48,7 +53,7 @@ import { TableFilterScope } from '../interfaces/general-filter.interface';
     .hover\\:bg-slate-100:hover { background-color: #F1F5F9 !important; }
     .flex-1 { flex: 1 1 0% !important; }
     .overflow-hidden { overflow: hidden !important; }
-    .w-1\\/4 { width: 25% !important; }
+    .w-scope-sidebar { width: 260px !important; flex-shrink: 0 !important; }
     .border-r { border-right-width: 1px !important; }
     .bg-slate-50\\/50 { background-color: rgba(248, 250, 252, 0.5) !important; }
     .p-4 { padding: 1rem !important; }

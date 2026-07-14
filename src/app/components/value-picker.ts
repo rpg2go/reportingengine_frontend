@@ -402,11 +402,51 @@ export class ValuePickerComponent {
     this.selectedValues.set(current.filter(val => val !== value));
   }
 
+  commitSearchText() {
+    if (this.disabled()) return;
+    const text = this.searchText().trim();
+    if (!text) return;
+
+    const available = this.availableValues() || [];
+    const current = this.selectedValues() || [];
+
+    // Find if there is an exact case-insensitive match in available values
+    const exactMatch = available.find(val => 
+      val && val.toString().toLowerCase() === text.toLowerCase()
+    );
+
+    if (exactMatch) {
+      if (!current.includes(exactMatch)) {
+        this.selectedValues.set([...current, exactMatch]);
+      }
+    } else {
+      // It's a custom value
+      if (!current.includes(text)) {
+        this.selectedValues.set([...current, text]);
+      }
+    }
+    this.searchText.set('');
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
     const clickedInside = this.elementRef.nativeElement.contains(event.target);
     if (!clickedInside) {
-      this.isOpen.set(false);
+      if (this.isOpen()) {
+        this.commitSearchText();
+        this.isOpen.set(false);
+      }
+    }
+  }
+
+  @HostListener('focusout', ['$event'])
+  onFocusOut(event: FocusEvent) {
+    const relatedTarget = event.relatedTarget as HTMLElement;
+    if (relatedTarget && !this.elementRef.nativeElement.contains(relatedTarget)) {
+      if (this.isOpen()) {
+        this.commitSearchText();
+        this.isOpen.set(false);
+      }
     }
   }
 }

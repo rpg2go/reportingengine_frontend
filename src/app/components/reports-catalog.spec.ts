@@ -31,7 +31,8 @@ describe('ReportsCatalogComponent', () => {
       getReportingDates: vi.fn().mockReturnValue(of(['2025-12-31', '2026-03-31'])),
       getReportConfig: vi.fn().mockReturnValue(of({ reportId: 'R1', reportName: 'Sales Report', status: 'published', version: 1, rows: [], columns: [] })),
       runReport: vi.fn().mockReturnValue(of(new Blob())),
-      deleteReport: vi.fn().mockReturnValue(of({}))
+      deleteReport: vi.fn().mockReturnValue(of({})),
+      cloneReport: vi.fn()
     };
     mockAuthService = {
       getUsername: vi.fn().mockReturnValue('test-user'),
@@ -173,5 +174,88 @@ describe('ReportsCatalogComponent', () => {
     component.logout();
     expect(mockAuthService.logout).toHaveBeenCalled();
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  describe('Report Cloning Feature', () => {
+    it('should open clone modal and pre-populate cloneNewName with Copy suffix', () => {
+      const sourceReport = mockReports[0];
+      component.openCloneModal(sourceReport);
+
+      expect(component.showCloneModal()).toBe(true);
+      expect(component.cloningReport()).toEqual(sourceReport);
+      expect(component.cloneNewName()).toBe('Sales Report - Copy');
+      expect(component.cloneError()).toBeNull();
+      expect(component.cloningInProgress()).toBe(false);
+    });
+
+    it('should close clone modal and reset fields', () => {
+      component.openCloneModal(mockReports[0]);
+      component.closeCloneModal();
+
+      expect(component.showCloneModal()).toBe(false);
+      expect(component.cloningReport()).toBeNull();
+      expect(component.cloneNewName()).toBe('');
+      expect(component.cloneError()).toBeNull();
+    });
+
+    it('should validate cloneNewName correctly', () => {
+      component.openCloneModal(mockReports[0]);
+      
+      // Initially, "Sales Report - Copy" is valid (it doesn't exist in mockReports)
+      expect(component.isCloneNameInvalid()).toBe(false);
+
+      // Name matches an existing report case-insensitively
+      component.cloneNewName.set('sales report');
+      expect(component.isCloneNameInvalid()).toBe(true);
+
+      component.cloneNewName.set('INVENTORY REPORT');
+      expect(component.isCloneNameInvalid()).toBe(true);
+
+      // Name is empty
+      component.cloneNewName.set('   ');
+      expect(component.isCloneNameInvalid()).toBe(true);
+
+      // Unique name
+      component.cloneNewName.set('Marketing Report');
+      expect(component.isCloneNameInvalid()).toBe(false);
+    });
+
+    it('should successfully clone a report and reload catalog', () => {
+      const clonedReport = { reportId: 'R3', reportName: 'Sales Report - Copy', status: 'draft', version: 1 };
+      mockReportService.cloneReport.mockReturnValue(of(clonedReport));
+      
+      const updatedReports = [...mockReports, clonedReport];
+      // Second fetch of getReports returns the new list
+      mockReportService.getReports.mockReturnValue(of(updatedReports));
+
+      component.openCloneModal(mockReports[0]);
+      component.cloneNewName.set('Sales Report - Copy');
+      
+      vi.spyOn(component, 'selectReport');
+
+      component.confirmClone();
+
+      expect(component.cloningInProgress()).toBe(false);
+      expect(component.showCloneModal()).toBe(false);
+      expect(component.successMessage()).toBe('Report successfully cloned as "Sales Report - Copy"!');
+      expect(mockReportService.cloneReport).toHaveBeenCalledWith('R1', 'Sales Report - Copy');
+      expect(mockReportService.getReports).toHaveBeenCalled();
+      expect(component.reports()).toEqual(updatedReports);
+      expect(component.selectReport).toHaveBeenCalledWith('R3');
+    });
+
+    it('should handle clone failure and display error message', () => {
+      mockReportService.cloneReport.mockReturnValue(throwError(() => ({
+        error: { message: 'Database error occurred' }
+      })));
+
+      component.openCloneModal(mockReports[0]);
+      component.cloneNewName.set('Unique Cloned Name');
+      component.confirmClone();
+
+      expect(component.cloningInProgress()).toBe(false);
+      expect(component.showCloneModal()).toBe(true); // modal stays open on error
+      expect(component.cloneError()).toBe('Database error occurred');
+    });
   });
 });

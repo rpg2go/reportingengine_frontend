@@ -214,6 +214,9 @@ export interface RowFilterGroup {
     }
 
     /* Mock Tailwind classes for single-line horizontal track layout */
+    .w-\\[280px\\] { width: 280px !important; }
+    .w-\\[220px\\] { width: 220px !important; }
+    .w-\\[240px\\] { width: 240px !important; }
     .w-\\[200px\\] { width: 200px !important; }
     .w-\\[140px\\] { width: 140px !important; }
     .flex-shrink-0 { flex-shrink: 0 !important; }

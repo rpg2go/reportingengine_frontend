@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './core-time-engine.html',
-  styleUrls: []
+  styleUrls: ['./core-time-engine.css']
 })
 export class CoreTimeEngineComponent implements OnInit {
   @Input() reportId: string = '';

@@ -1094,3 +1094,118 @@ h1 {
     display: none;
   }
 }
+
+/* ============================================================
+   CLONE REPORT MODAL STYLES
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-card {
+  background: var(--color-apple-card, #1e293b);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-apple-text, #f8fafc);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  margin-bottom: 16px;
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-apple-text, #f8fafc);
+}
+
+.modal-icon {
+  font-size: 20px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-apple-grey, #94a3b8);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all var(--transition-fast, 150ms);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-apple-text, #f8fafc);
+}
+
+.modal-description {
+  font-size: 13px;
+  color: var(--color-apple-grey, #94a3b8);
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+.form-input:focus {
+  border-color: var(--color-apple-blue, #3b82f6) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Light Mode Overrides for Modal */
+:host-context(html.light) .modal-card {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #0F172A;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+:host-context(html.light) .modal-header {
+  border-bottom-color: #E2E8F0;
+}
+
+:host-context(html.light) .modal-header h2 {
+  color: #0F172A;
+}
+
+:host-context(html.light) .modal-close-btn {
+  color: #64748B;
+}
+
+:host-context(html.light) .modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #0F172A;
+}
+
+:host-context(html.light) .modal-description {
+  color: #475569;
+}
+
+:host-context(html.light) .modal-footer {
+  border-top-color: #E2E8F0 !important;
+}

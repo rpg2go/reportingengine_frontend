@@ -70,14 +70,31 @@ describe('ValuePickerComponent', () => {
     expect(component.filteredValues()).toEqual([]);
   });
 
-  it('should close on document click if clicked outside', () => {
+  it('should close on document click if clicked outside and commit search text', () => {
     component.isOpen.set(true);
+    component.searchText.set('CustomAway');
     mockElementRef.nativeElement.contains.mockReturnValue(false);
 
     const event = { target: {} } as any;
     component.onDocumentClick(event);
 
     expect(component.isOpen()).toBe(false);
+    expect(component.selectedValues()).toEqual(['CustomAway']);
+    expect(component.searchText()).toBe('');
+  });
+
+  it('should close on document click and select exact match if it exists in available values', () => {
+    component.isOpen.set(true);
+    component.searchText.set('banana');
+    vi.spyOn(component, 'availableValues').mockReturnValue(['apple', 'banana', 'orange']);
+    mockElementRef.nativeElement.contains.mockReturnValue(false);
+
+    const event = { target: {} } as any;
+    component.onDocumentClick(event);
+
+    expect(component.isOpen()).toBe(false);
+    expect(component.selectedValues()).toEqual(['banana']);
+    expect(component.searchText()).toBe('');
   });
 
   it('should not close on document click if clicked inside', () => {
@@ -86,6 +103,29 @@ describe('ValuePickerComponent', () => {
 
     const event = { target: {} } as any;
     component.onDocumentClick(event);
+
+    expect(component.isOpen()).toBe(true);
+  });
+
+  it('should close and commit search text on focusout if focus leaves component', () => {
+    component.isOpen.set(true);
+    component.searchText.set('TabOutVal');
+    mockElementRef.nativeElement.contains.mockReturnValue(false);
+
+    const event = { relatedTarget: {} } as any;
+    component.onFocusOut(event);
+
+    expect(component.isOpen()).toBe(false);
+    expect(component.selectedValues()).toEqual(['TabOutVal']);
+    expect(component.searchText()).toBe('');
+  });
+
+  it('should not close on focusout if focus stays inside component', () => {
+    component.isOpen.set(true);
+    mockElementRef.nativeElement.contains.mockReturnValue(true);
+
+    const event = { relatedTarget: {} } as any;
+    component.onFocusOut(event);
 
     expect(component.isOpen()).toBe(true);
   });

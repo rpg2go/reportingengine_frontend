@@ -60,6 +60,19 @@ export class ReportsCatalogComponent implements OnInit {
   deleting = signal<boolean>(false);
   showDeleteConfirm = signal<boolean>(false);
 
+  // Clone Modal signals
+  showCloneModal = signal<boolean>(false);
+  cloneNewName = signal<string>('');
+  cloningReport = signal<any | null>(null);
+  cloneError = signal<string | null>(null);
+  cloningInProgress = signal<boolean>(false);
+
+  isCloneNameInvalid = computed(() => {
+    const name = this.cloneNewName().trim();
+    if (!name) return true;
+    return this.reports().some(r => r.reportName?.toLowerCase().trim() === name.toLowerCase());
+  });
+
   private destroyRef = inject(DestroyRef);
   private reportService = inject(ReportService);
   private authService = inject(AuthService);
@@ -425,6 +438,57 @@ export class ReportsCatalogComponent implements OnInit {
     } else {
       this.deleting.set(false);
     }
+  }
+
+  openCloneModal(report: any): void {
+    this.cloningReport.set(report);
+    this.cloneNewName.set(report.reportName ? `${report.reportName} - Copy` : 'New Report - Copy');
+    this.cloneError.set(null);
+    this.cloningInProgress.set(false);
+    this.showCloneModal.set(true);
+  }
+
+  closeCloneModal(): void {
+    this.showCloneModal.set(false);
+    this.cloningReport.set(null);
+    this.cloneNewName.set('');
+    this.cloneError.set(null);
+  }
+
+  confirmClone(): void {
+    const report = this.cloningReport();
+    const newName = this.cloneNewName().trim();
+    if (!report || !newName || this.isCloneNameInvalid()) return;
+
+    this.cloningInProgress.set(true);
+    this.cloneError.set(null);
+
+    this.reportService.cloneReport(report.reportId, newName).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (newReport) => {
+        this.cloningInProgress.set(false);
+        this.showCloneModal.set(false);
+        
+        // Reload catalog
+        this.reportService.getReports().pipe(
+          takeUntilDestroyed(this.destroyRef)
+        ).subscribe({
+          next: (data) => {
+            this.reports.set(data);
+            // Select the newly cloned report
+            if (newReport && newReport.reportId) {
+              this.selectReport(newReport.reportId);
+            }
+            this.successMessage.set(`Report successfully cloned as "${newName}"!`);
+          }
+        });
+      },
+      error: (err) => {
+        this.cloningInProgress.set(false);
+        this.cloneError.set(err.error?.message || 'Failed to clone the report. Please try again.');
+      }
+    });
   }
 
   onSearchChange(): void {

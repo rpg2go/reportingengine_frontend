@@ -118,4 +118,8 @@ export class ReportService {
   getReportVersions(id: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/${id}/version/list`);
   }
+
+  cloneReport(id: string, newName: string): Observable<any> {
+    return this.http.post<any>(`/api/v1/reports/${id}/clone?newName=${encodeURIComponent(newName)}`, null);
+  }
 }

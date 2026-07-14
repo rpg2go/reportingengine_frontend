@@ -30,22 +30,6 @@
       </div>
 
       <div class="header-actions">
-        <!-- Template Excel file uploader -->
-        <label class="upload-label" style="margin: 0;">
-          @if (uploading()) {
-            <span class="spinner" style="width: 14px; height: 14px; margin-right: 4px;"></span> Ingesting...
-          } @else {
-            <span>📥 Import Excel Template</span>
-          }
-          <input
-            type="file"
-            (change)="onFileSelected($event)"
-            accept=".xlsx"
-            class="file-input"
-            [disabled]="uploading()"
-          />
-        </label>
-
         <button routerLink="/reports/new/edit" class="btn-primary" style="margin: 0;">
           <span>+ Create Report</span>
         </button>
@@ -283,6 +267,9 @@
                 <button [routerLink]="['/reports', report.reportId, 'edit']" class="btn-secondary" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
                   ✏️ Edit Definition
                 </button>
+                <button (click)="openCloneModal(report)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-sm transition-all" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+                  📋 Clone Report
+                </button>
                 <button (click)="showDeleteConfirm.set(true)" class="btn-secondary" style="min-height: 38px; padding: 8px 12px; font-size: 13px; border-radius: 8px; color: #f87171;" title="Delete Template">
                   🗑️
                 </button>
@@ -407,4 +394,78 @@
 
     </div>
   </main>
+
+  <!-- ══ CLONE REPORT MODAL ═════════════════════════════ -->
+  @if (showCloneModal()) {
+    <div class="modal-overlay animate-fade-in" (click)="closeCloneModal()">
+      <div class="modal-card animate-scale-up" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="modal-icon">📋</span>
+            <h2>Clone Report Template</h2>
+          </div>
+          <button class="modal-close-btn" (click)="closeCloneModal()" aria-label="Close modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">
+            Duplicate the layout, columns, custom formulas, parameter configurations, and table bounds from report <strong>{{ cloningReport()?.reportName }}</strong>.
+          </p>
+          
+          <div class="form-group" style="margin-top: 16px;">
+            <label for="cloneReportName" class="form-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--color-apple-text);">New Report Name</label>
+            <input
+              id="cloneReportName"
+              type="text"
+              class="form-input"
+              style="width: 100%; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--color-apple-text); border-radius: 8px; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color 0.2s;"
+              [(ngModel)]="cloneNewName"
+              placeholder="Enter new report name..."
+              [disabled]="cloningInProgress()"
+              required
+            />
+            
+            <div style="margin-top: 8px; font-size: 12px;">
+              @if (cloneNewName().trim() === '') {
+                <span style="color: #f87171; display: flex; align-items: center; gap: 4px;">
+                  ⚠️ Report name cannot be left empty.
+                </span>
+              } @else if (isCloneNameInvalid()) {
+                <span style="color: #f87171; display: flex; align-items: center; gap: 4px;">
+                  ⚠️ A report template named "{{ cloneNewName().trim() }}" already exists in the catalog.
+                </span>
+              } @else {
+                <span style="color: #34d399; display: flex; align-items: center; gap: 4px;">
+                  ✓ Report name is unique and available.
+                </span>
+              }
+            </div>
+          </div>
+
+          @if (cloneError()) {
+            <div class="alert alert-error animate-fade-in" style="margin-top: 16px; margin-bottom: 0;">
+              <span class="alert-icon">⚠️</span>
+              <span>{{ cloneError() }}</span>
+            </div>
+          }
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+          <button (click)="closeCloneModal()" class="btn-secondary" [disabled]="cloningInProgress()" style="min-height: 38px; padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+            Cancel
+          </button>
+          <button
+            (click)="confirmClone()"
+            class="btn-primary"
+            [disabled]="isCloneNameInvalid() || cloningInProgress()"
+            style="min-height: 38px; padding: 8px 20px; font-size: 13px; border-radius: 8px;"
+          >
+            @if (cloningInProgress()) {
+              <span class="spinner" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block;"></span> Duplicating...
+            } @else {
+              <span>Confirm Clone</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>
