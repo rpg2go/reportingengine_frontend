@@ -25,7 +25,7 @@ The application is structured into standalone components routed lazily under [ap
 
 ### 3. Report Builder (`/reports/new/edit` or `/reports/:id/edit`) — [ReportBuilderComponent](src/app/components/report-builder.ts)
 
-- Interactive drag-and-drop designer for configuring columns (`DATE`, `DATA`, `ROLLING`, `CALC`) and rows (`section`, `data`, `calc`, `blank`).
+- Interactive drag-and-drop designer for configuring columns (`WTD`, `MTD`, `QTD`, `YTD`, `ROLLING`, `CALC`, `HEADER`) and rows (`section`, `data`, `calc`, `blank`).
 - Dynamic rows setup viewport section height (constrained between a minimum of 450px and a maximum of 860px) with custom high-contrast scrollbars for seamless grid editing.
 - Full-screen field picker via [FieldPickerComponent](src/app/components/field-picker.ts) for selecting fact table measures and dimension attributes.
 - Advanced filter builder via [RowFilterComponent](src/app/components/row-filter.ts) and [RowConditionGroupComponent](src/app/components/row-condition-group.ts).
