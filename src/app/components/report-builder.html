@@ -1,0 +1,218 @@
+<div class="builder-container">
+  <!-- Mobile topbar -->
+  <div class="mobile-topbar">
+    <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle navigation">
+      <span class="ham-line"></span>
+      <span class="ham-line"></span>
+      <span class="ham-line"></span>
+    </button>
+    <span class="topbar-brand">Report Builder</span>
+  </div>
+  <!-- Sidebar / Header -->
+  <app-sidebar
+    brandIcon="🛠️"
+    brandText="Report Builder"
+    [showBackButton]="true"
+    backButtonText="← Cancel & Exit"
+    collapsedBackButtonText="✕"
+    [mobileOpen]="sidebarOpen()"
+    (mobileOpenChange)="sidebarOpen.set($event)"
+    (backClick)="goBack()"
+  ></app-sidebar>
+
+  <!-- ══════════════════════════════════════════ MAIN CONTENT -->
+  <main class="main-content animate-fade-in">
+    <!-- Top sticky action bar -->
+    <header class="detail-header">
+      <div>
+        <div class="breadcrumbs">
+          <a routerLink="/dashboard">Reports</a> / <span>Builder</span>
+        </div>
+        <h1>{{ isNewReport ? 'Create New Report' : 'Update Existing Report' }}</h1>
+        <p class="report-subtitle">
+          Define structural configurations, formulas, and filter details.
+        </p>
+      </div>
+
+      <div class="action-buttons">
+        <button (click)="togglePreview()" class="preview-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>{{ showPreview() ? 'Hide Preview' : 'Preview Layout' }}</span>
+        </button>
+        <button (click)="previewSql()" class="btn-preview-sql">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+            <polyline points="4 17 10 11 4 5"/>
+            <line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+          <span>Preview SQL</span>
+        </button>
+        @if (viewOnlyMode) {
+          @if (status === 'published') {
+            <span class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-emerald-500 text-emerald-400 bg-emerald-500/10">
+              👁️ View Only Mode (PUBLISHED v{{ reportVersion }})
+            </span>
+          } @else if (status === 'in_review') {
+            <span class="status-lozenge in-review font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-amber-500 text-amber-400 bg-amber-500/10">
+              👁️ View Only Mode (IN REVIEW v{{ reportVersion }})
+            </span>
+          } @else {
+            <span class="status-lozenge draft font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-slate-500 text-slate-400 bg-slate-500/10">
+              👁️ View Only Mode (DRAFT v{{ reportVersion }})
+            </span>
+          }
+        } @else {
+          @if (status === 'draft') {
+            <button (click)="saveConfig()" [disabled]="saving()" class="save-btn">
+              @if (saving()) {
+                <span class="spinner"></span> Saving...
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span>Save Definition</span>
+              }
+            </button>
+            <button (click)="submitForReview()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; cursor: pointer;">
+              <span>Submit for Review</span>
+            </button>
+          }
+
+          @if (status === 'in_review') {
+            <button (click)="rejectReport()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; cursor: pointer; margin-right: 8px;">
+              <span>Reject to Draft</span>
+            </button>
+            <button (click)="publishReport()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; cursor: pointer;">
+              <span>Publish Release</span>
+            </button>
+          }
+
+          @if (status === 'published') {
+            <span class="status-lozenge published font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border border-emerald-500 text-emerald-400 bg-emerald-500/10" style="margin-right: 8px;">
+              🔒 Published & Frozen (v{{ reportVersion }})
+            </span>
+            <button (click)="createDraftFromPublished()" [disabled]="saving()" class="save-btn font-bold uppercase tracking-wider text-xs px-2.5 py-1 rounded-lg border" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; cursor: pointer;">
+              <span>✏️ Create New Draft Version</span>
+            </button>
+          }
+        }
+      </div>
+    </header>
+
+    <!-- Status alerts -->
+    @if (successMessage()) {
+      <div class="alert success-alert">
+        <span class="alert-icon">✓</span>
+        <span>{{ successMessage() }}</span>
+      </div>
+    }
+    @if (errorMessage()) {
+      <div class="alert error-alert">
+        <span class="alert-icon">⚠️</span>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    <!-- Validation Diagnostics Console -->
+    <app-validation-diagnostics [errors]="validationErrors()"></app-validation-diagnostics>
+
+    <!-- ── Preview Section Card ────────────────────────────── -->
+    @if (showPreview()) {
+      <section class="preview-section card animate-fade-in">
+        <div class="flex-header">
+          <div>
+            <h3 class="section-title">📊 Live Layout Preview</h3>
+            <p class="section-desc">
+              Molded view of rows and active columns. Formula evaluations will execute during run output.
+            </p>
+          </div>
+        </div>
+
+        <app-live-layout-preview
+          [columns]="columns"
+          [rows]="rows"
+          [reportingDate]="reportingDate"
+          [granularities]="granularities()"
+          [previewTrigger]="previewTrigger()"
+        ></app-live-layout-preview>
+      </section>
+    }
+
+    <!-- SECTION 1 — CORE REPORT DETAILS -->
+    <app-core-report-details
+      [(reportId)]="reportId"
+      [(reportName)]="reportName"
+      [reportVersion]="reportVersion"
+      [status]="status"
+      [isLocked]="isLocked"
+      [reportForm]="reportForm"
+      [dynamicGranularityOptions]="dynamicGranularityOptions()"
+      [availableReportingDates]="availableReportingDates"
+      [(reportingDate)]="reportingDate"
+      [(timeframeStart)]="timeframeStart"
+      [(timeframeEnd)]="timeframeEnd"
+      [(timeframeMode)]="timeframeMode"
+      [(reportingDateType)]="reportingDateType"
+      [(reportingDateStatic)]="reportingDateStatic"
+      [(reportingDateExpression)]="reportingDateExpression"
+      [(timeframeStartType)]="timeframeStartType"
+      [(timeframeStartStatic)]="timeframeStartStatic"
+      [(timeframeStartExpression)]="timeframeStartExpression"
+      [(timeframeEndType)]="timeframeEndType"
+      [(timeframeEndStatic)]="timeframeEndStatic"
+      [(timeframeEndExpression)]="timeframeEndExpression"
+      [generalFilterScopes]="generalFilterScopes()"
+      [isGeneralFilterRawMode]="isGeneralFilterRawMode"
+      [generalFilterExpr]="generalFilterExpr"
+      (triggerValidation)="triggerValidationDebounced()"
+      (configureGeneralFilters)="isGeneralFilterModalOpen.set(true)"
+    ></app-core-report-details>
+
+    <!-- SECTION 2 — ROWS SETUP (Step 1) -->
+    <app-rows-setup
+      [(rows)]="rows"
+      [columns]="columns"
+      [isLocked]="isLocked"
+      [dwhCatalog]="dwhCatalogCache()"
+      [linkedDimensions]="linkedDimensions"
+      [columnTypes]="columnTypesCache"
+      [schemaCatalogMap]="schemaCatalogMap()"
+      [validationErrors]="validationErrors()"
+      (triggerValidation)="updateDimensionStates(); triggerValidationDebounced()"
+    ></app-rows-setup>
+
+    <!-- SECTION 3 — COLUMNS SETUP (Step 2) -->
+    <app-columns-setup
+      [(columns)]="columns"
+      [(rows)]="rows"
+      [isLocked]="isLocked"
+      [validationErrors]="validationErrors()"
+      (triggerValidation)="triggerValidationDebounced()"
+    ></app-columns-setup>
+  </main>
+
+  <!-- Global General Filters Modal Overlay -->
+  <app-general-filter-modal
+    [(isOpen)]="isGeneralFilterModalOpen"
+    [(scopes)]="generalFilterScopes"
+    [(isRawMode)]="isGeneralFilterRawMode"
+    [(legacyFilterExpr)]="generalFilterExpr"
+    [dwhCatalog]="dwhCatalogCache()"
+    [linkedDimensions]="conformedDimensions()"
+    [columnTypes]="columnTypesCache"
+    [schemaCatalogMap]="schemaCatalogMap()"
+    [disabled]="isLocked"
+    (onApply)="triggerValidationDebounced()"
+  ></app-general-filter-modal>
+
+  <!-- SQL Preview Modal Overlay -->
+  <app-sql-preview-modal
+    [(isOpen)]="isSqlModalOpen"
+    [isLoading]="isLoadingSql()"
+    [sql]="previewSqlText()"
+  ></app-sql-preview-modal>
+</div>

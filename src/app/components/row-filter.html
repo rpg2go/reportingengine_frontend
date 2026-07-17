@@ -12,14 +12,14 @@
           class="form-input raw-expression-input text-xs"
           [disabled]="disabled()"
         />
-        <button (click)="switchToStructuredMode()" [disabled]="disabled()" class="switch-mode-btn" title="Switch to structured builder">
+        <button (click)="switchToStructuredMode()" [disabled]="disabled()" class="switch-mode-btn" title="Switch back to the visual builder mode">
           Builder
         </button>
       </div>
     } @else {
       @if (rowFilters()) {
         <span 
-          class="filter-tag-mini cursor-pointer truncate max-w-[280px] font-mono text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-0.5" 
+          class="filter-tag-mini cursor-pointer font-mono text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-0.5" 
           [title]="getFilterStringSummary(rowFilters())"
           (click)="!disabled() && openBuilder(); $event.stopPropagation()"
         >
@@ -30,7 +30,7 @@
       }
       
       @if (rowFilters()) {
-        <button (click)="switchToRawMode()" [disabled]="disabled()" class="switch-mode-btn" title="Convert to Custom SQL">
+        <button (click)="switchToRawMode()" [disabled]="disabled()" class="switch-mode-btn" title="Convert the current filter to a Custom SQL expression for manual editing">
           SQL Mode
         </button>
       }
@@ -40,15 +40,36 @@
   @if (isOpen()) {
     <div class="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center" (click)="close()">
       <div class="row-filter-builder w-full max-w-7xl h-[640px] max-h-[85vh] rounded-2xl shadow-2xl bg-white border p-6 flex flex-col gap-4" (click)="$event.stopPropagation()">
+
+        <!-- Modal Header: title + ⓘ help toggle + close -->
         <div class="text-xs font-semibold text-slate-800 border-b border-slate-200 pb-2.5 flex justify-between items-center">
           <div class="flex flex-col gap-0.5">
             <span class="text-sm font-bold text-slate-900">Query Filter Builder</span>
             <span class="text-[10px] text-slate-400 font-normal font-sans">Nested parenthetical rules compiler</span>
           </div>
-          <button (click)="close()" class="text-slate-400 hover:text-slate-600 transition-colors p-1" title="Close">
-            ✕
-          </button>
+          <div style="display:flex; align-items:center; gap:8px">
+            <!-- ⓘ Quick Reference toggle -->
+            <button
+              type="button"
+              (click)="toggleHelp()"
+              [class.active]="showHelp()"
+              class="help-icon-btn"
+              [attr.aria-expanded]="showHelp()"
+              [title]="tooltips.helpToggle"
+            >
+              ⓘ
+            </button>
+            <!-- Close button -->
+            <button (click)="close()" class="text-slate-400 hover:text-slate-600 transition-colors p-1" title="Save and close the filter builder">
+              ✕
+            </button>
+          </div>
         </div>
+
+        <!-- ⓘ Collapsible Quick Reference Panel (shared component, dark theme) -->
+        @if (showHelp()) {
+          <app-filter-help-panel theme="dark" />
+        }
 
         <!-- Natural Language Expression Top Breadcrumb Box -->
         <div class="filter-expression-breadcrumb bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs flex flex-col gap-1 shadow-inner">
@@ -74,7 +95,7 @@
         </div>
 
         <div class="rfb-actions">
-          <button (click)="close()" class="rfb-confirm-btn flex items-center gap-1.5 shadow-sm">
+          <button (click)="close()" class="rfb-confirm-btn flex items-center gap-1.5 shadow-sm" [title]="tooltips.saveAndClose">
             <span>✓ Save & Close</span>
           </button>
         </div>
@@ -86,11 +107,12 @@
         (click)="$event.stopPropagation(); openBuilder()" 
         class="add-row-filter-btn" 
         [disabled]="isRawMode() || disabled()"
+        [title]="tooltips.editFilters"
       >
         + Edit Filters
       </button>
       @if (!isRawMode() && !rowFilters()) {
-        <button (click)="switchToRawMode()" [disabled]="disabled()" class="switch-mode-btn">
+        <button (click)="switchToRawMode()" [disabled]="disabled()" class="switch-mode-btn" [title]="tooltips.customSql">
           + Custom SQL
         </button>
       }

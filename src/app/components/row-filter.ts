@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RowConditionGroupComponent, RowFilterGroup, RowFilterRule } from './row-condition-group';
 import { BracketRainbowPipe } from '../pipes/bracket-rainbow.pipe';
+import { FilterHelpPanelComponent } from './filter-help-panel';
+import { FILTER_TOOLTIPS } from '../constants/filter-help.constants';
 
 @Component({
   selector: 'app-row-filter',
   standalone: true,
-  imports: [CommonModule, FormsModule, RowConditionGroupComponent, BracketRainbowPipe],
+  imports: [CommonModule, FormsModule, RowConditionGroupComponent, BracketRainbowPipe, FilterHelpPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',
@@ -37,16 +39,18 @@ import { BracketRainbowPipe } from '../pipes/bracket-rainbow.pipe';
     }
 
     .filter-tag-mini {
-      display: inline-flex;
-      align-items: center;
+      display: inline-block;
+      word-break: break-word;
+      white-space: normal;
       background: var(--input-bg);
       border: 1px solid var(--border-color);
       border-radius: 4px;
-      padding: 1px 6px;
+      padding: 3px 8px;
       font-size: 10px;
       color: var(--color-apple-text);
-      gap: 4px;
       transition: all 0.15s ease;
+      line-height: 1.4;
+      max-width: 100%;
     }
 
     .ft-remove {
@@ -131,10 +135,10 @@ import { BracketRainbowPipe } from '../pipes/bracket-rainbow.pipe';
     .p-6 { padding: 1.5rem !important; }
     .flex-col { flex-direction: column !important; }
     .gap-4 { gap: 1rem !important; }
-    .max-h-\\[85vh\\] { max-height: 85vh !important; }
+    .max-h-\\[85vh\\] { max-height: 92vh !important; }
     .overflow-y-auto { overflow-y: auto !important; }
-    .h-\\[640px\\] { height: 640px !important; }
-    .min-h-\\[440px\\] { min-height: 440px !important; }
+    .h-\\[640px\\] { height: 800px !important; }
+    .min-h-\\[440px\\] { min-height: 600px !important; }
     .p-5 { padding: 1.25rem !important; }
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
@@ -283,6 +287,40 @@ import { BracketRainbowPipe } from '../pipes/bracket-rainbow.pipe';
       background: #F1F5F9;
       color: #0F172A;
     }
+
+    /* Help icon button — kept here because dark vs light variants differ from general-filter-modal */
+    .help-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-color);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-apple-grey);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .help-icon-btn:hover, .help-icon-btn.active {
+      background: rgba(99, 102, 241, 0.1);
+      color: #4F46E5;
+      border-color: #6366F1;
+    }
+    :host-context(html.light) .help-icon-btn {
+      border-color: #CBD5E1;
+      color: #64748B;
+    }
+    :host-context(html.light) .help-icon-btn:hover,
+    :host-context(html.light) .help-icon-btn.active {
+      background: #EEF2FF;
+      color: #4F46E5;
+      border-color: #6366F1;
+    }
   `]
 })
 export class RowFilterComponent implements OnInit {
@@ -300,6 +338,15 @@ export class RowFilterComponent implements OnInit {
 
   private elementRef = inject(ElementRef);
   isOpen = signal(false);
+  /** Controls visibility of the ⓘ Quick Reference panel in the modal header */
+  showHelp = signal(false);
+
+  /** Centralised tooltip strings — sourced from filter-help.constants.ts */
+  readonly tooltips = FILTER_TOOLTIPS;
+
+  toggleHelp(): void {
+    this.showHelp.set(!this.showHelp());
+  }
 
   ngOnInit() {
     if (this.legacyFilterExpr() && !this.rowFilters()) {
@@ -488,6 +535,15 @@ export class RowFilterComponent implements OnInit {
     }
   }
 
+  /**
+   * Close the filter builder modal.
+   * There is no separate "save" step — rowFilters is a two-way model signal
+   * updated reactively on every change, so closing IS saving.
+   * This is called by:
+   *   - the ✓ Save & Close button
+   *   - clicking the gray backdrop overlay
+   *   - clicking anywhere outside the host element (onDocumentClick)
+   */
   close() {
     this.isOpen.set(false);
   }

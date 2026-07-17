@@ -6,12 +6,32 @@
         <h3 class="font-sans text-sm font-bold text-slate-800 tracking-tight">General Filters Workspace</h3>
         <span class="text-[11px] text-slate-400 font-sans tracking-tight">Configure base scope constraints across multiple database entities</span>
       </div>
-      <button (click)="close()" class="text-slate-400 hover:text-slate-600 transition-colors duration-200 ease-out p-1.5 rounded-lg hover:bg-slate-100 flex items-center justify-center" aria-label="Close modal">
-        <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <!-- Header right: help icon + close button -->
+      <div class="flex items-center gap-2">
+        <!-- ⓘ Quick Reference toggle -->
+        <button
+          type="button"
+          (click)="toggleHelp()"
+          [class.active]="showHelp()"
+          class="help-icon-btn"
+          [attr.aria-expanded]="showHelp()"
+          [title]="tooltips.helpToggle"
+        >
+          ⓘ
+        </button>
+        <!-- Close button -->
+        <button (click)="close()" class="text-slate-400 hover:text-slate-600 transition-colors duration-200 ease-out p-1.5 rounded-lg hover:bg-slate-100 flex items-center justify-center" aria-label="Close modal">
+          <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
+
+    <!-- ⓘ Collapsible Quick Reference Panel (shared component, light theme) -->
+    @if (showHelp()) {
+      <app-filter-help-panel theme="light" />
+    }
 
     <!-- Main Content Area -->
     <div class="flex-1 flex overflow-hidden">
@@ -39,8 +59,8 @@
                  class="scope-item p-3 rounded-lg border border-slate-200 cursor-pointer flex justify-between items-center bg-slate-50 hover:bg-white transition-all duration-200 ease-out"
                  [class.active]="selectedScopeIndex() === idx">
               <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
-                <span class="font-sans text-[11px] font-bold text-slate-700 truncate">{{ formatTableName(scope.tableName) }}</span>
-                <span class="text-[10px] text-slate-400 font-sans truncate">{{ scope.tableName }}</span>
+                <span class="font-sans text-[11px] font-bold truncate" style="color:#334155">{{ formatTableName(scope.tableName) || '(No table selected)' }}</span>
+                <span class="text-[10px] font-sans truncate" style="color:#94A3B8">{{ scope.tableName || '—' }}</span>
               </div>
               <button (click)="removeScope(idx); $event.stopPropagation()" class="text-slate-400 hover:text-red-500 transition-colors duration-200 ease-out p-1.5 rounded-lg hover:bg-slate-100 flex items-center justify-center" title="Delete Scope">
                 <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

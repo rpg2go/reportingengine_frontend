@@ -238,23 +238,40 @@ export interface RowFilterGroup {
       line-height: 1.5;
       color: var(--color-apple-text);
       background-color: var(--input-bg);
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
-      background-repeat: no-repeat;
-      background-position: right 0.75rem center;
-      background-size: 16px 12px;
       border: 1px solid var(--border-color);
       border-radius: 0.5rem;
       transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+      -webkit-appearance: none;
+      -moz-appearance: none;
       appearance: none;
       box-sizing: border-box;
-    }
-    :host-context(html.light) .form-select {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
     }
     .form-select:focus {
       border-color: #6366f1;
       outline: 0;
       box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+    }
+
+    /* Condition group card uses theme variables for dark/light compatibility */
+    .condition-group-card {
+      background-color: var(--input-bg, #1e293b);
+      border-color: var(--border-color, rgba(255,255,255,0.1));
+    }
+
+    /* Rule row background */
+    .condition-group-card .flex.items-center.gap-3 {
+      background-color: var(--color-apple-bg, #0f172a);
+      border-radius: 0.75rem;
+    }
+
+    /* Light theme overrides */
+    :host-context(html.light) .condition-group-card {
+      background-color: #ffffff;
+      border-color: #e2e8f0;
+    }
+
+    :host-context(html.light) .condition-group-card .flex.items-center.gap-3 {
+      background-color: rgba(248, 250, 252, 0.6);
     }
   `]
 })
@@ -291,6 +308,20 @@ export class RowConditionGroupComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
   distinctValuesCache: { [key: string]: string[] } = {};
   operators = UNIFIED_OPERATORS;
+
+  /** Inline styles for each <select> element. Using an object binding avoids
+   *  HTML-encoding issues with url() in static style="" attributes, and
+   *  ensures background-repeat:no-repeat is always applied alongside the SVG
+   *  chevron so the arrow only appears once on the right side. */
+  readonly selectStyle: Record<string, string> = {
+    'appearance': 'none',
+    '-webkit-appearance': 'none',
+    '-moz-appearance': 'none',
+    'background-image': `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e")`,
+    'background-repeat': 'no-repeat',
+    'background-position': 'right 0.75rem center',
+    'background-size': '16px 12px',
+  };
 
   requiresValueField(operator: string): boolean {
     return requiresValue(operator);

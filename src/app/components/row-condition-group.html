@@ -1,5 +1,5 @@
 <div 
-  class="relative p-4 border bg-white shadow-sm rounded-xl my-2 border-l-4 pl-7 transition-all duration-200"
+  class="condition-group-card relative p-4 border shadow-sm rounded-xl my-2 border-l-4 pl-7 transition-all duration-200"
   [class.border-l-indigo-600]="depth() % 4 === 0"
   [class.border-l-emerald-600]="depth() % 4 === 1"
   [class.border-l-amber-500]="depth() % 4 === 2"
@@ -9,13 +9,19 @@
   <span 
     class="absolute left-2 top-3 text-sm font-black select-none pointer-events-none"
     [ngClass]="getDepthColorClass(depth())"
+    title="This parenthesis marks the start of a logical group"
   >
     (
   </span>
-  <!-- Minimal Header Toolbar Row -->
+
+  <!-- Header Toolbar: AND/OR toggle + action buttons -->
   <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-    <!-- AND / OR Toggle Choices -->
-    <div class="inline-flex rounded-lg p-0.5 bg-slate-100 text-xs font-semibold border border-slate-200/50">
+
+    <!-- AND / OR Toggle -->
+    <div
+      class="inline-flex rounded-lg p-0.5 bg-slate-100 text-xs font-semibold border border-slate-200/50"
+      title="Choose how conditions inside this group are combined&#10;AND — every rule must be true&#10;OR  — at least one rule must be true"
+    >
       <button 
         type="button"
         (click)="!disabled() && setOperator('AND')"
@@ -26,6 +32,7 @@
         [class.text-indigo-600]="group().logicalOperator === 'AND'"
         [class.shadow-sm]="group().logicalOperator === 'AND'"
         [class.text-slate-500]="group().logicalOperator !== 'AND'"
+        title="AND — all conditions in this group must be true simultaneously"
       >
         AND
       </button>
@@ -39,6 +46,7 @@
         [class.text-amber-600]="group().logicalOperator === 'OR'"
         [class.shadow-sm]="group().logicalOperator === 'OR'"
         [class.text-slate-500]="group().logicalOperator !== 'OR'"
+        title="OR — at least one condition in this group must be true"
       >
         OR
       </button>
@@ -51,6 +59,7 @@
           type="button" 
           (click)="addCondition()"
           class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
+          title="Add a single filter rule&#10;Pick a table → column → operator → value(s)"
         >
           <span class="text-sm">+</span> Condition
         </button>
@@ -58,6 +67,7 @@
           type="button" 
           (click)="addSubGroup()"
           class="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors cursor-pointer flex items-center gap-1"
+          title="Add a nested sub-group with its own AND / OR logic&#10;Useful for complex patterns like (A AND B) OR (C AND D)"
         >
           <span class="text-sm">+</span> Sub-Group
         </button>
@@ -66,6 +76,7 @@
             type="button" 
             (click)="removeSelf()"
             class="text-slate-400 hover:text-rose-500 font-semibold transition-colors cursor-pointer flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-md"
+            title="Remove this entire nested group and all its conditions"
           >
             ✕ Remove Group
           </button>
@@ -75,19 +86,19 @@
   </div>
 
   <!-- Rules List -->
-  <!-- Rules List -->
   @if (group().rules && group().rules.length > 0) {
     <div class="flex flex-col gap-2.5 mb-3">
       @for (rule of group().rules; track $index; let ri = $index) {
         <div class="flex items-center gap-3 w-full bg-slate-50/60 p-2.5 rounded-xl whitespace-nowrap">
           
-          <!-- Table Path Selector Wrapper (w-[280px]) -->
-          <div class="w-[280px] flex-shrink-0">
+          <!-- Table Path Selector (w-[280px]) -->
+          <div class="w-[280px] flex-shrink-0" title="Source table that contains the column to filter on">
             <select
               [ngModel]="rule.tableName || activeMeasureTable().replace('analytics.', '')"
               (ngModelChange)="rule.tableName = ($event === activeMeasureTable().replace('analytics.', '') ? '' : $event); onTableChange(rule)"
               [disabled]="disabled()"
-              class="form-select w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
+              class="form-select w-full text-xs font-mono"
+              [ngStyle]="selectStyle"
             >
               @for (opt of getGroupedCatalogOptions(); track opt.tableName) {
                 <option [value]="opt.tableName.replace('analytics.', '')">
@@ -97,13 +108,14 @@
             </select>
           </div>
 
-          <!-- Column Attribute Selector Wrapper (w-[220px]) -->
-          <div class="w-[220px] flex-shrink-0">
+          <!-- Column Attribute Selector (w-[220px]) -->
+          <div class="w-[220px] flex-shrink-0" title="Column / attribute to filter on">
             <select
               [(ngModel)]="rule.columnName"
               (change)="onColumnChange(rule)"
               [disabled]="disabled()"
-              class="form-select w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
+              class="form-select w-full text-xs font-mono"
+              [ngStyle]="selectStyle"
             >
               <option value="" disabled>-- Select Column --</option>
               @for (col of getAvailableColumns(rule.tableName || activeMeasureTable()); track col) {
@@ -112,13 +124,17 @@
             </select>
           </div>
 
-          <!-- Operator Selection -->
-          <div class="w-[140px] flex-shrink-0">
+          <!-- Operator Selector (w-[140px]) -->
+          <div
+            class="w-[140px] flex-shrink-0"
+            title="Comparison operator&#10;is = exact match&#10;is not = exclude&#10;in list = match any of multiple values&#10;contains = partial text match"
+          >
             <select 
               [(ngModel)]="rule.operator" 
               (change)="onRuleChange(); onOperatorChange(rule)"
               [disabled]="disabled()"
-              class="form-select w-full text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              class="form-select w-full text-xs"
+              [ngStyle]="selectStyle"
             >
               @for (op of operators; track op.value) {
                 <option [value]="op.value">{{ op.label }}</option>
@@ -126,8 +142,11 @@
             </select>
           </div>
 
-          <!-- Value Picker (flex-1 to take all remaining space) -->
-          <div class="flex-1 min-w-[200px]">
+          <!-- Value Picker (flex-1, takes remaining space) -->
+          <div
+            class="flex-1 min-w-[200px]"
+            title="Value(s) to match against&#10;For 'in list' you can select multiple values"
+          >
             @if (rule.requiresValueField) {
               @if (isColumnAutocompleteable(rule)) {
                 <app-value-picker
@@ -136,7 +155,8 @@
                   (selectedValuesChange)="onRuleValuesChange(rule, $event)"
                   [placeholder]="'Select values...'"
                   [disabled]="disabled()"
-                ></app-value-picker>
+                >
+                </app-value-picker>
               } @else {
                 <input
                   type="text"
@@ -150,19 +170,62 @@
             }
           </div>
 
-          <!-- Remove Rule Button (flex-shrink-0 and ml-auto to push to the far right margin) -->
+          <!-- Remove Rule Button -->
           @if (!disabled()) {
             <button 
               type="button"
               (click)="removeRule(ri)" 
               class="flex-shrink-0 ml-auto text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors p-1.5 rounded-lg cursor-pointer flex items-center justify-center"
-              title="Remove Condition"
+              title="Remove this condition row"
             >
               ✕
             </button>
           }
         </div>
       }
+    </div>
+  }
+
+  <!-- ─── Empty-State Guide ────────────────────────────────────────────────────
+       Shown only when the group has NO rules AND NO child sub-groups.
+       Provides inline, scannable instructions so new users know exactly
+       what the three action buttons do without leaving the UI.
+  ──────────────────────────────────────────────────────────────────────────── -->
+  @if ((!group().rules || group().rules.length === 0) && (!group().childGroups || group().childGroups.length === 0)) {
+    <div class="empty-state-hint rounded-lg border border-dashed border-slate-200 p-4 flex flex-col gap-2.5 my-1">
+      <p class="text-[11px] font-semibold m-0" style="color:#475569">
+        This group is empty — use the buttons above to build your filter:
+      </p>
+      <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px">
+        <li style="display:flex; align-items:flex-start; gap:8px; font-size:10.5px; color:#64748b">
+          <span style="display:inline-flex; align-items:center; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:700; background:#EEF2FF; color:#4F46E5; white-space:nowrap; flex-shrink:0">
+            + Condition
+          </span>
+          <span>
+            Add a single filter rule. Pick a <strong>table</strong>, a <strong>column</strong>,
+            an <strong>operator</strong> (<em>is</em>, <em>is not</em>, <em>in list</em>, <em>contains</em>…)
+            and one or more <strong>values</strong>.
+          </span>
+        </li>
+        <li style="display:flex; align-items:flex-start; gap:8px; font-size:10.5px; color:#64748b">
+          <span style="display:inline-flex; align-items:center; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:700; background:#EEF2FF; color:#4F46E5; white-space:nowrap; flex-shrink:0">
+            + Sub-Group
+          </span>
+          <span>
+            Create a <strong>nested group</strong> with its own AND / OR logic.
+            Use this for complex expressions like <em>(A AND B) OR (C AND D)</em>.
+          </span>
+        </li>
+        <li style="display:flex; align-items:flex-start; gap:8px; font-size:10.5px; color:#64748b">
+          <span style="display:inline-flex; align-items:center; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:700; background:#F1F5F9; color:#475569; white-space:nowrap; flex-shrink:0">
+            AND / OR
+          </span>
+          <span>
+            Toggle how items in this group are combined — <strong>AND</strong> requires every rule
+            to match; <strong>OR</strong> requires at least one rule to match.
+          </span>
+        </li>
+      </ul>
     </div>
   }
 
@@ -191,6 +254,7 @@
   <span 
     class="absolute right-3 bottom-3 text-sm font-black select-none pointer-events-none"
     [ngClass]="getDepthColorClass(depth())"
+    title="This parenthesis marks the end of the logical group"
   >
     )
   </span>

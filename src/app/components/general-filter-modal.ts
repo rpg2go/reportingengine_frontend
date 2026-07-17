@@ -2,12 +2,14 @@ import { Component, ChangeDetectionStrategy, input, output, model, signal, compu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RowConditionGroupComponent, RowFilterGroup } from './row-condition-group';
+import { FilterHelpPanelComponent } from './filter-help-panel';
 import { TableFilterScope } from '../interfaces/general-filter.interface';
+import { FILTER_TOOLTIPS } from '../constants/filter-help.constants';
 
 @Component({
   selector: 'app-general-filter-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RowConditionGroupComponent],
+  imports: [CommonModule, FormsModule, RowConditionGroupComponent, FilterHelpPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './general-filters-workspace.html',
   styles: [`
@@ -119,16 +121,66 @@ import { TableFilterScope } from '../interfaces/general-filter.interface';
       border-left: 4px solid transparent !important;
       color: #334155 !important;
     }
+    .scope-item * {
+      color: inherit !important;
+    }
+    .scope-item span {
+      color: #334155 !important;
+    }
+    .scope-item .text-slate-400,
+    .scope-item span.text-slate-400 {
+      color: #94A3B8 !important;
+    }
+    .scope-item .text-slate-700,
+    .scope-item span.text-slate-700 {
+      color: #334155 !important;
+    }
     .scope-item.active {
       border-left-color: #4F46E5 !important;
       border-left-width: 4px !important;
       background-color: #FFFFFF !important;
       color: #334155 !important;
     }
+    .scope-item.active span {
+      color: #334155 !important;
+    }
+    .scope-item.active .text-slate-400,
+    .scope-item.active span.text-slate-400 {
+      color: #94A3B8 !important;
+    }
+    /* Help icon button — kept here as it sits in the light-only host context */
+    .help-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid #CBD5E1;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748B;
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      line-height: 1;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    .help-icon-btn:hover, .help-icon-btn.active {
+      background: #EEF2FF;
+      color: #4F46E5;
+      border-color: #6366F1;
+    }
   `]
 })
 export class GeneralFilterModalComponent {
   isOpen = model<boolean>(false);
+  /** Controls visibility of the ⓘ Quick Reference syntax legend panel in the header */
+  showHelp = signal<boolean>(false);
+
+  /** Centralised tooltip strings — sourced from filter-help.constants.ts */
+  readonly tooltips = FILTER_TOOLTIPS;
   scopes = model<TableFilterScope[]>([]);
   isRawMode = model<boolean>(false);
   legacyFilterExpr = model<string>('');
@@ -233,6 +285,10 @@ export class GeneralFilterModalComponent {
     if (parts.length === 0) return '';
     const op = ` ${group.logicalOperator || 'AND'} `;
     return `(${parts.join(op)})`;
+  }
+
+  toggleHelp(): void {
+    this.showHelp.set(!this.showHelp());
   }
 
   toggleRawMode(): void {

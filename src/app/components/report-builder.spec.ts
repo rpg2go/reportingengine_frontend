@@ -1,9 +1,11 @@
 import '@angular/compiler';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Injector, runInInjectionContext, DestroyRef } from '@angular/core';
+import { Injector, runInInjectionContext, DestroyRef, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder } from '@angular/forms';
 import { ReportBuilderComponent } from './report-builder';
+import { RowsSetupComponent } from './rows-setup';
+import { ColumnsSetupComponent } from './columns-setup';
 import { ReportService } from '../services/report.service';
 import { AuthService } from '../services/auth.service';
 import { of, throwError, Subject } from 'rxjs';
@@ -500,110 +502,141 @@ describe('ReportBuilderComponent', () => {
   });
 
   it('should manage adding, resetting, deleting, duplicating, and reordering rows', () => {
-    createComponent({ id: 'new' });
-    component.rows = [];
-    component.tableColumns = ['col1'];
+    const injector = Injector.create({
+      providers: [],
+    });
+    let rowsSetup!: RowsSetupComponent;
+    runInInjectionContext(injector, () => {
+      rowsSetup = new RowsSetupComponent();
+    });
+
+    const rowsSignal = signal<any[]>([]);
+    vi.spyOn(rowsSetup, 'rows').mockImplementation(rowsSignal as any);
+    Object.defineProperty(rowsSetup.rows, 'set', { value: (val: any) => rowsSignal.set(val) });
+
+    const colsSignal = signal<any[]>([]);
+    vi.spyOn(rowsSetup, 'columns').mockImplementation(colsSignal as any);
 
     // addRow
-    component.addRow();
-    expect(component.rows.length).toBe(1);
-    expect(component.rows[0].rowId).toBe('R1');
-    expect(component.rows[0].label).toBe('New Row 1');
+    rowsSetup.addRow();
+    expect(rowsSignal().length).toBe(1);
+    expect(rowsSignal()[0].rowId).toBe('R1');
+    expect(rowsSignal()[0].label).toBe('New Row 1');
 
     // changeIndent
-    component.changeIndent(component.rows[0], 1);
-    expect(component.rows[0].indentLevel).toBe(1);
-    component.changeIndent(component.rows[0], -2);
-    expect(component.rows[0].indentLevel).toBe(0);
+    rowsSetup.changeIndent(rowsSignal()[0], 1);
+    expect(rowsSignal()[0].indentLevel).toBe(1);
+    rowsSetup.changeIndent(rowsSignal()[0], -2);
+    expect(rowsSignal()[0].indentLevel).toBe(0);
 
     // duplicateSelectedRow
-    component.rows[0].selected = true;
-    component.duplicateSelectedRow();
-    expect(component.rows.length).toBe(2);
-    expect(component.rows[1].rowId).toBe('R2');
-    expect(component.rows[1].label).toBe('New Row 1 (Copy)');
+    rowsSignal()[0].selected = true;
+    rowsSetup.duplicateSelectedRow();
+    expect(rowsSignal().length).toBe(2);
+    expect(rowsSignal()[1].rowId).toBe('R2');
+    expect(rowsSignal()[1].label).toBe('New Row 1 (Copy)');
 
     // toggleAllRowsSelect
     const event = { target: { checked: false } };
-    component.toggleAllRowsSelect(event);
-    expect(component.rows[0].selected).toBe(false);
-    expect(component.rows[1].selected).toBe(false);
+    rowsSetup.toggleAllRowsSelect(event);
+    expect(rowsSignal()[0].selected).toBe(false);
+    expect(rowsSignal()[1].selected).toBe(false);
 
     // reorderRows
-    component.rows[0].rowId = 'R2';
-    component.rows[1].rowId = 'R1';
-    component.reorderRows();
-    expect(component.rows[0].rowId).toBe('R1');
-    expect(component.rows[1].rowId).toBe('R2');
+    rowsSignal()[0].rowId = 'R2';
+    rowsSignal()[1].rowId = 'R1';
+    rowsSetup.reorderRows();
+    expect(rowsSignal()[0].rowId).toBe('R1');
+    expect(rowsSignal()[1].rowId).toBe('R2');
 
     // deleteRow with confirm true
     globalThis.confirm = vi.fn().mockReturnValue(true);
-    component.deleteRow(0);
-    expect(component.rows.length).toBe(1);
+    rowsSetup.deleteRow(0);
+    expect(rowsSignal().length).toBe(1);
 
     // deleteSelectedRows
-    component.rows[0].selected = true;
-    component.deleteSelectedRows();
-    expect(component.rows.length).toBe(0);
+    rowsSignal()[0].selected = true;
+    rowsSetup.deleteSelectedRows();
+    expect(rowsSignal().length).toBe(0);
 
     // resetRows
-    component.rows = [{ rowId: 'R1' } as any];
-    component.resetRows();
-    expect(component.rows.length).toBe(0);
+    rowsSignal.set([{ rowId: 'R1' } as any]);
+    rowsSetup.resetRows();
+    expect(rowsSignal().length).toBe(0);
   });
 
   it('should toggle columns active state for row', () => {
-    createComponent({ id: 'new' });
+    const injector = Injector.create({
+      providers: [],
+    });
+    let rowsSetup!: RowsSetupComponent;
+    runInInjectionContext(injector, () => {
+      rowsSetup = new RowsSetupComponent();
+    });
+
     const row = { activeCols: ['C1'] };
-    component.toggleColForRow(row, 'C2');
+    rowsSetup.toggleColForRow(row, 'C2');
     expect(row.activeCols).toContain('C2');
-    component.toggleColForRow(row, 'C2');
+    rowsSetup.toggleColForRow(row, 'C2');
     expect(row.activeCols).not.toContain('C2');
   });
 
   it('should manage adding, resetting, deleting, duplicating, and reordering columns', () => {
-    createComponent({ id: 'new' });
-    component.columns = [];
+    const injector = Injector.create({
+      providers: [],
+    });
+    let columnsSetup!: ColumnsSetupComponent;
+    runInInjectionContext(injector, () => {
+      columnsSetup = new ColumnsSetupComponent();
+    });
+
+    const colsSignal = signal<any[]>([]);
+    vi.spyOn(columnsSetup, 'columns').mockImplementation(colsSignal as any);
+    Object.defineProperty(columnsSetup.columns, 'set', { value: (val: any) => colsSignal.set(val) });
+
+    const rowsSignal = signal<any[]>([]);
+    vi.spyOn(columnsSetup, 'rows').mockImplementation(rowsSignal as any);
+    Object.defineProperty(columnsSetup.rows, 'set', { value: (val: any) => rowsSignal.set(val) });
 
     // addColumn
-    component.addColumn();
-    expect(component.columns.length).toBe(1);
-    expect(component.columns[0].colId).toBe('C1');
+    columnsSetup.addColumn();
+    expect(colsSignal().length).toBe(1);
+    expect(colsSignal()[0].colId).toBe('C1');
 
     // duplicateSelectedColumn
-    component.columns[0].selected = true;
-    component.duplicateSelectedColumn();
-    expect(component.columns.length).toBe(2);
-    expect(component.columns[1].colId).toBe('C2');
+    colsSignal()[0].selected = true;
+    columnsSetup.duplicateSelectedColumn();
+    expect(colsSignal().length).toBe(2);
+    expect(colsSignal()[1].colId).toBe('C2');
 
     // toggleAllColsSelect
-    component.toggleAllColsSelect({ target: { checked: true } });
-    expect(component.columns[0].selected).toBe(true);
+    columnsSetup.toggleAllColsSelect({ target: { checked: true } });
+    expect(colsSignal()[0].selected).toBe(true);
 
     // reorderColumns
-    component.columns[0].colId = 'C2';
-    component.columns[1].colId = 'C1';
-    component.reorderColumns();
-    expect(component.columns[0].colId).toBe('C1');
+    colsSignal()[0].colId = 'C2';
+    colsSignal()[1].colId = 'C1';
+    columnsSetup.reorderColumns();
+    expect(colsSignal()[0].colId).toBe('C1');
 
     // deleteColumn
     globalThis.confirm = vi.fn().mockReturnValue(true);
-    component.rows = [{ activeCols: ['C1'] } as any];
-    component.deleteColumn(0); // deletes C1, which is now index 0 after sort
-    expect(component.columns.length).toBe(1);
-    expect(component.rows[0].activeCols.length).toBe(0);
+    rowsSignal.set([{ activeCols: ['C1'] } as any]);
+    columnsSetup.deleteColumn(0); // deletes C1, which is now index 0 after sort
+    expect(colsSignal().length).toBe(1);
+    expect(rowsSignal()[0].activeCols.length).toBe(0);
 
     // deleteSelectedCols
-    component.columns = [{ colId: 'C1', selected: true } as any];
-    component.rows = [{ activeCols: ['C1'] } as any];
-    component.deleteSelectedCols();
-    expect(component.columns.length).toBe(0);
-    expect(component.rows[0].activeCols.length).toBe(0);
+    colsSignal.set([{ colId: 'C1', selected: true } as any]);
+    rowsSignal.set([{ activeCols: ['C1'] } as any]);
+    columnsSetup.deleteSelectedCols();
+    expect(colsSignal().length).toBe(0);
+    expect(rowsSignal()[0].activeCols.length).toBe(0);
 
     // resetColumns
-    component.columns = [{ colId: 'C1' } as any];
-    component.resetColumns();
-    expect(component.columns.length).toBe(0);
+    colsSignal.set([{ colId: 'C1' } as any]);
+    columnsSetup.resetColumns();
+    expect(colsSignal().length).toBe(0);
   });
 
   it('should manage preview and sidebar', () => {
