@@ -61,4 +61,22 @@ describe('DateFormatter Utility Tests', () => {
     expect(result[2].label).toBe('01 Jun');
     expect(result[2].periodOffset).toBe(-3);
   });
+
+  it('should generate QUARTER grain headers with Qn YYYY labels', () => {
+    const parentCol = { colId: 'C7', colType: 'ROLLING', rollingN: 2, rollingGrain: 'QUARTER' };
+    const result = DateFormatter.getRollingSubColumns(referenceDate, parentCol, 2, 'QUARTER');
+
+    expect(result).toHaveLength(2);
+
+    // referenceDate is '2026-06-04' (June, Q2)
+    // offset -1 quarter: March 2026 (Q1)
+    expect(result[0].colId).toBe('C7_1');
+    expect(result[0].label).toBe('Q1 2026');
+    expect(result[0].periodOffset).toBe(-1);
+
+    // offset -2 quarters: December 2025 (Q4)
+    expect(result[1].colId).toBe('C7_2');
+    expect(result[1].label).toBe('Q4 2025');
+    expect(result[1].periodOffset).toBe(-2);
+  });
 });

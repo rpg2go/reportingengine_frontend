@@ -253,18 +253,26 @@ export interface FieldGroup {
           </div>
         }
 
-        <!-- ── Preview Modal ───────────────────────────────────── -->
+        <!-- ── Preview Section Card ────────────────────────────── -->
         @if (showPreview()) {
-          <app-live-layout-preview
-            [columns]="columns"
-            [rows]="rows"
-            [reportingDate]="reportingDate"
-            [granularities]="granularities()"
-            [compiledSql]="compiledSql()"
-            [isLoadingSql]="isLoadingSql()"
-            [(activePreviewTab)]="activePreviewTab"
-            [previewTrigger]="previewTrigger()"
-          ></app-live-layout-preview>
+          <section class="preview-section card animate-fade-in">
+            <div class="flex-header">
+              <div>
+                <h3 class="section-title">📊 Live Layout Preview</h3>
+                <p class="section-desc">
+                  Molded view of rows and active columns. Formula evaluations will execute during run output.
+                </p>
+              </div>
+            </div>
+
+            <app-live-layout-preview
+              [columns]="columns"
+              [rows]="rows"
+              [reportingDate]="reportingDate"
+              [granularities]="granularities()"
+              [previewTrigger]="previewTrigger()"
+            ></app-live-layout-preview>
+          </section>
         }
 
         <!-- ══════════════════════════════════════════════════════
@@ -747,6 +755,7 @@ export interface FieldGroup {
                       >
                         <option value="WTD">WTD</option>
                         <option value="MTD">MTD</option>
+                        <option value="QTD">QTD</option>
                         <option value="YTD">YTD</option>
                         <option value="ROLLING">ROLLING</option>
                         <option value="CALC">CALC</option>
@@ -790,6 +799,8 @@ export interface FieldGroup {
                           <span style="font-size: 11px; color: #94A3B8;">wks</span>
                         } @else if (col.colType === 'MTD') {
                           <span style="font-size: 11px; color: #94A3B8;">mos</span>
+                        } @else if (col.colType === 'QTD') {
+                          <span style="font-size: 11px; color: #94A3B8;">qtrs</span>
                         } @else if (col.colType === 'YTD') {
                           <span style="font-size: 11px; color: #94A3B8;">yrs</span>
                         } @else if (col.colType === 'ROLLING') {
@@ -804,6 +815,7 @@ export interface FieldGroup {
                             <option value="DAY">Days</option>
                             <option value="WEEK">Weeks</option>
                             <option value="MONTH">Months</option>
+                            <option value="QUARTER">Quarters</option>
                             <option value="YEAR">Years</option>
                           </select>
                         }
@@ -850,7 +862,7 @@ export interface FieldGroup {
             <div class="sql-modal-card animate-scale-up" (click)="$event.stopPropagation()">
               <div class="sql-modal-header">
                 <div>
-                  <h2>‹› Compiled PostgreSQL Query Preview</h2>
+                  <h2>‹› Compiled Query Preview</h2>
                   <p class="modal-subtitle">
                     Dry-run matrix compilation. View query before saving configuration.
                   </p>
@@ -4241,8 +4253,6 @@ export class ReportBuilderComponent implements OnInit {
   }
 
   // SQL Preview State
-  activePreviewTab = signal<'grid' | 'sql'>('grid');
-  compiledSql = signal<string>('');
   isLoadingSql = signal<boolean>(false);
   isSqlModalOpen = signal<boolean>(false);
   previewSqlText = signal<string>('');
@@ -4278,9 +4288,6 @@ export class ReportBuilderComponent implements OnInit {
     }
     this.validationTimeout = setTimeout(() => {
       this.runValidation();
-      if (this.activePreviewTab() === 'sql' && this.showPreview()) {
-        this.runSqlPreview();
-      }
     }, 450);
   }
 
@@ -4340,7 +4347,7 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'QTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
         tierLevel: c.tierLevel || 'L1',
         parentId: c.parentId || '',
@@ -4374,66 +4381,7 @@ export class ReportBuilderComponent implements OnInit {
     });
   }
 
-  runSqlPreview(): void {
-    if (!this.reportId) {
-      this.compiledSql.set('');
-      return;
-    }
-    this.isLoadingSql.set(true);
-    const payload = {
-      reportId: this.reportId,
-      name: this.reportName,
-      version: this.reportVersion,
-      exploreId: 1,
-      status: this.status,
-      granularity: this.granularity,
-      reportingDate: this.resolveReportingDate(this.reportingDate),
-      timeframeStart: this.timeframeStart,
-      timeframeEnd: this.computedTimeframeEnd,
-      timeframeToday: this.timeframeMode === 'today',
-      quickFilters: JSON.stringify(this.quickFilters),
-      generalFilters: this.serializeGeneralFilters(),
-      linkedDimensions: this.linkedDimensions.join(','),
-      columns: this.columns.map((c, i) => ({
-        colId: c.colId,
-        label: c.label,
-        colType: c.colType,
-        periodOffset: c.periodOffset || 0,
-        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
-        rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
-        formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
-        tierLevel: c.tierLevel || 'L1',
-        parentId: c.parentId || '',
-        periodType: c.periodType || null,
-        displayOrder: i + 1,
-      })),
-      rows: this.rows.map((r, i) => ({
-        rowId: r.rowId,
-        reportId: this.reportId,
-        label: r.label,
-        rowType: r.rowType,
-        source: this.serializeMeasure(r),
-        parentRowId: r.parentRowId || null,
-        style: r.style || 'normal',
-        indentLevel: r.indentLevel,
-        displayOrder: i + 1,
-        activeCols: r.activeCols,
-        filterExpr: this.serializeRowFilters(r),
-      })),
-    };
 
-    this.reportService.previewSql(payload).subscribe({
-      next: (res: any) => {
-        this.compiledSql.set(res.sql || '');
-        this.isLoadingSql.set(false);
-      },
-      error: (err: any) => {
-        console.warn('SQL preview generation failed:', err);
-        this.compiledSql.set(err.error?.error || 'Failed to compile SQL preview.');
-        this.isLoadingSql.set(false);
-      },
-    });
-  }
 
   previewSql(): void {
     if (!this.reportId) {
@@ -4452,6 +4400,15 @@ export class ReportBuilderComponent implements OnInit {
       status: this.status,
       granularity: this.granularity,
       reportingDate: this.resolveReportingDate(this.reportingDate),
+      reportingDateType: this.reportingDateType,
+      reportingDateStatic: this.reportingDateStatic || null,
+      reportingDateExpression: this.reportingDateExpression || null,
+      timeframeStartType: this.timeframeStartType,
+      timeframeStartStatic: this.timeframeStartStatic || null,
+      timeframeStartExpression: this.timeframeStartExpression || null,
+      timeframeEndType: this.timeframeEndType,
+      timeframeEndStatic: this.timeframeEndStatic || null,
+      timeframeEndExpression: this.timeframeEndExpression || null,
       timeframeStart: this.timeframeStart,
       timeframeEnd: this.computedTimeframeEnd,
       timeframeToday: this.timeframeMode === 'today',
@@ -4463,7 +4420,7 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'QTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
         rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
         tierLevel: c.tierLevel || 'L1',
@@ -4724,7 +4681,13 @@ export class ReportBuilderComponent implements OnInit {
   getGeneralFilterSummary(group: any): string {
     if (!group) return '—';
     if (Array.isArray(group)) {
-      return group.map(f => `${f.dimTable ? f.dimTable + '.' : ''}${f.attribute} ${f.operator} ${f.value}`).join(' AND ');
+      return group.map((f, idx) => {
+        const condStr = `${f.dimTable ? f.dimTable + '.' : ''}${f.attribute} ${f.operator} ${f.value}`;
+        if (idx < group.length - 1) {
+          return `${condStr} ${f.conjunction || 'AND'}`;
+        }
+        return condStr;
+      }).join(' ');
     }
     
     const parts: string[] = [];
@@ -4885,17 +4848,7 @@ export class ReportBuilderComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  constructor() {
-    try {
-      effect(() => {
-        if (this.activePreviewTab() === 'sql' && this.showPreview()) {
-          this.runSqlPreview();
-        }
-      });
-    } catch (e) {
-      console.warn('Reactivity/Effect context not available. Skipping effect creation.', e);
-    }
-  }
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // COMPUTED PROPERTIES
@@ -6630,7 +6583,7 @@ export class ReportBuilderComponent implements OnInit {
         label: c.label,
         colType: c.colType,
         periodOffset: c.periodOffset || 0,
-        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
+        rollingN: (c.colType === 'WTD' || c.colType === 'MTD' || c.colType === 'QTD' || c.colType === 'YTD' || c.colType === 'ROLLING') ? c.rollingN : null,
         rollingGrain: c.colType === 'ROLLING' ? c.rollingGrain : null,
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
         tierLevel: c.tierLevel || 'L1',

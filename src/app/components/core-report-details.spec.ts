@@ -120,6 +120,27 @@ describe('CoreReportDetailsComponent', () => {
       ]
     };
     const summary = component.getGeneralFilterSummary(filtersGroup);
-    expect(summary).toBe("fact_sales.amount > (100)");
+    expect(summary).toBe("fact_sales.amount > '100'");
+  });
+
+  it('should handle OR logical operators and recursive child groups in getGeneralFilterSummary', () => {
+    const filtersGroup = {
+      logicalOperator: 'OR',
+      rules: [
+        { tableName: 'fact_sales', columnName: 'status', operator: '=', value: ['active'] }
+      ],
+      childGroups: [
+        {
+          logicalOperator: 'AND',
+          rules: [
+            { tableName: 'fact_sales', columnName: 'amount', operator: '>', value: [500] },
+            { tableName: 'dim_customers', columnName: 'region', operator: '=', value: ['US'] }
+          ],
+          childGroups: []
+        }
+      ]
+    };
+    const summary = component.getGeneralFilterSummary(filtersGroup);
+    expect(summary).toBe("(fact_sales.status = 'active' OR (fact_sales.amount > '500' AND dim_customers.region = 'US'))");
   });
 });

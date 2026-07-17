@@ -114,6 +114,13 @@ export class DateFormatter {
           break;
         }
 
+        case 'QUARTER': {
+          const target = new Date(ref.getFullYear(), ref.getMonth() - i * 3, 1);
+          const quarter = Math.floor(target.getMonth() / 3) + 1;
+          label = `Q${quarter} ${target.getFullYear()}`;
+          break;
+        }
+
         case 'YEAR': {
           const target = new Date(ref.getFullYear() - i, 0, 1);
           label = `${target.getFullYear()}`;

@@ -109,6 +109,7 @@
               >
                 <option value="WTD">WTD</option>
                 <option value="MTD">MTD</option>
+                <option value="QTD">QTD</option>
                 <option value="YTD">YTD</option>
                 <option value="ROLLING">ROLLING</option>
                 <option value="CALC">CALC</option>
@@ -138,20 +139,22 @@
               />
             </td>
 
-            <!-- Timeframe Length -->
+            <!-- Rolling Setup -->
             <td class="p-3">
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-2">
                 <input 
                   type="number" 
-                  formControlName="rollingN" 
+                  formControlName="rollingN"
                   placeholder="1"
-                  class="w-12 px-2 py-1.5 bg-slate-950 border border-slate-800 text-slate-100 text-center rounded-md text-sm disabled:opacity-45"
+                  class="w-16 px-2.5 py-1.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-100 rounded-md text-sm transition duration-150 text-center"
                   [disabled]="colForm.get('colType')?.value === 'CALC' || colForm.get('colType')?.value === 'HEADER'"
                 />
                 @if (colForm.get('colType')?.value === 'WTD') {
                   <span class="text-xs text-slate-400">wks</span>
                 } @else if (colForm.get('colType')?.value === 'MTD') {
                   <span class="text-xs text-slate-400">mos</span>
+                } @else if (colForm.get('colType')?.value === 'QTD') {
+                  <span class="text-xs text-slate-400">qtrs</span>
                 } @else if (colForm.get('colType')?.value === 'YTD') {
                   <span class="text-xs text-slate-400">yrs</span>
                 } @else if (colForm.get('colType')?.value === 'ROLLING') {
@@ -162,6 +165,8 @@
                     <option value="DAY">Days</option>
                     <option value="WEEK">Weeks</option>
                     <option value="MONTH">Months</option>
+                    <option value="QUARTER">Quarters</option>
+                    <option value="YEAR">Years</option>
                   </select>
                 }
               </div>

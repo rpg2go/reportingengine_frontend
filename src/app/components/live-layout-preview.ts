@@ -17,6 +17,7 @@ function colSortKey(col: any, idx: number): number {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './live-layout-preview.html',
+  styleUrls: ['./live-layout-preview.css'],
 })
 export class LiveLayoutPreviewComponent {
   // Inputs matching ReportBuilderComponent's preview state (signal-based)
@@ -24,9 +25,6 @@ export class LiveLayoutPreviewComponent {
   rows = input<any[]>([]);
   reportingDate = input<string>('');
   granularities = input<string[]>([]);
-  compiledSql = input<string | null>(null);
-  isLoadingSql = input<boolean>(false);
-  activePreviewTab = model<'grid' | 'sql'>('grid');
   previewTrigger = input<number>(0);
 
   // ─── Private helper: build canonical column list in display order ─────────
@@ -347,16 +345,7 @@ export class LiveLayoutPreviewComponent {
     }));
   });
 
-  getHighlightedSql(sql: string): string {
-    if (!sql) return '';
-    return sql
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\b(SELECT|FROM|JOIN|LEFT|ON|WHERE|AND|OR|GROUP BY|ORDER BY|CREATE|TABLE|INSERT|INTO|VALUES|ON CONFLICT|DO NOTHING|WITH|AS|CAST|DOUBLE PRECISION|SUM|AVG|COUNT|DISTINCT|COALESCE)\b/gi, '<span class="sql-keyword font-bold text-indigo-500">$1</span>')
-      .replace(/('.*?')/g, '<span class="sql-string text-emerald-600 font-medium">$1</span>')
-      .replace(/\b(\d+)\b/g, '<span class="sql-number text-amber-600">$1</span>');
-  }
+
 
   getTimeframeBadgeLabel(col: any): string {
     let label = col.colType || '';

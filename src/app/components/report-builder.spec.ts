@@ -726,16 +726,8 @@ describe('ReportBuilderComponent', () => {
     expect(row.rowFilters[0].value).toBe('25');
   });
 
-  it('should switch preview tabs and manage loading state', () => {
+  it('should manage SQL loading state', () => {
     createComponent({ id: 'new' });
-
-    // Switch to grid by default
-    component.activePreviewTab.set('grid');
-    expect(component.activePreviewTab()).toBe('grid');
-
-    // Simulate clicking the SQL tab
-    component.activePreviewTab.set('sql');
-    expect(component.activePreviewTab()).toBe('sql');
 
     // Loader is active
     component.isLoadingSql.set(true);
@@ -772,10 +764,10 @@ describe('ReportBuilderComponent', () => {
       },
     ];
 
-    component.runSqlPreview();
+    component.previewSql();
 
     expect(mockReportService.previewSql).toHaveBeenCalled();
-    expect(component.compiledSql()).toBe('SELECT * FROM analytics.fact_sales');
+    expect(component.previewSqlText()).toBe('SELECT * FROM analytics.fact_sales');
     expect(component.isLoadingSql()).toBe(false);
   });
 

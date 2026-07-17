@@ -197,11 +197,16 @@ export class CoreReportDetailsComponent implements OnInit {
     this.configureGeneralFilters.emit();
   }
 
-  // General filter summary compiler
   getGeneralFilterSummary(group: any): string {
     if (!group) return '—';
     if (Array.isArray(group)) {
-      return group.map(f => `${f.dimTable ? f.dimTable + '.' : ''}${f.attribute} ${f.operator} ${f.value}`).join(' AND ');
+      return group.map((f, idx) => {
+        const condStr = `${f.dimTable ? f.dimTable + '.' : ''}${f.attribute} ${f.operator} ${f.value}`;
+        if (idx < group.length - 1) {
+          return `${condStr} ${f.conjunction || 'AND'}`;
+        }
+        return condStr;
+      }).join(' ');
     }
     
     const parts: string[] = [];
@@ -216,12 +221,23 @@ export class CoreReportDetailsComponent implements OnInit {
         if (op === 'is blank' || op === 'is not blank' || op === 'is null' || op === 'is not null') {
           summary = `${col} ${op}`;
         } else {
-          const formattedVals = vals.map((v: any) => typeof v === 'string' ? `'${v}'` : String(v)).join(', ');
-          summary = `${col} ${op} (${formattedVals})`;
+          const displayOp = op === 'is' ? '=' : op;
+          const valStr = vals.length > 0 ? (vals.length === 1 ? `'${vals[0]}'` : `('${vals.join("', '")}')`) : 'NULL';
+          summary = `${col} ${displayOp} ${valStr}`;
         }
         parts.push(summary);
       }
     }
-    return parts.join(' AND ');
+    if (group.childGroups) {
+      for (const child of group.childGroups) {
+        const childStr = this.getGeneralFilterSummary(child);
+        if (childStr && childStr !== '—') {
+          parts.push(childStr);
+        }
+      }
+    }
+    if (parts.length === 0) return '—';
+    const conj = ` ${group.logicalOperator || 'AND'} `;
+    return parts.length === 1 ? parts[0] : `(${parts.join(conj)})`;
   }
 }
