@@ -11,6 +11,10 @@ import { combineLatest } from 'rxjs';
 import { SidebarComponent } from './sidebar';
 import { CalendarPickerComponent } from './calendar-picker';
 
+function colSortKey(col: any, idx: number): number {
+  return (col.displayOrder != null && col.displayOrder > 0) ? col.displayOrder : idx;
+}
+
 @Component({
   selector: 'app-execution-hub',
   standalone: true,
@@ -38,6 +42,8 @@ export class ExecutionHubComponent implements OnInit {
   executionError = signal<string | null>(null);
   executedData = signal<Map<string, Map<string, number>> | null>(null);
   exportingExcel = signal<boolean>(false);
+  exportingCsv = signal<boolean>(false);
+  exportingPdf = signal<boolean>(false);
 
   sidebarOpen = signal(false); // Mobile menu overlay state
   isSidebarOpen = signal<boolean>(true); // Desktop split-pane sidebar toggle state
@@ -138,23 +144,273 @@ export class ExecutionHubComponent implements OnInit {
     }
   }
 
-  expandedColumns = computed(() => {
-    const refDate = this.selectedReportingDate() || new Date().toISOString().split('T')[0];
-    const expanded: any[] = [];
-    for (const col of this.columns()) {
-      if (col.colType === 'ROLLING') {
-        const rollingN = col.rollingN || 1;
-        const rollingGrain = col.rollingGrain || 'WEEK';
-        const subCols = DateFormatter.getRollingSubColumns(refDate, col, rollingN, rollingGrain);
-        expanded.push(...subCols);
-      } else {
-        expanded.push({
-          ...col,
-          isExpandedSubCol: false,
-        });
+  private _sortedCols(): any[] {
+    const raw = this.columns();
+    return raw.map((col, idx) => ({ col, idx }))
+      .sort((a, b) => colSortKey(a.col, a.idx) - colSortKey(b.col, b.idx))
+      .map(x => x.col);
+  }
+
+  private _buildColumnIndex(cols: any[]): {
+    l1Cols: any[];
+    l2ChildrenMap: Map<string, any[]>;
+  } {
+    const l2ChildrenMap = new Map<string, any[]>();
+    for (const col of cols) {
+      if (col.tierLevel === 'L2' && col.parentId && col.parentId.trim() !== '') {
+        const key = col.parentId.trim().toUpperCase();
+        if (!l2ChildrenMap.has(key)) {
+          l2ChildrenMap.set(key, []);
+        }
+        l2ChildrenMap.get(key)!.push(col);
       }
     }
-    return expanded;
+    const l1Cols = cols.filter(c => c.tierLevel !== 'L2');
+    return { l1Cols, l2ChildrenMap };
+  }
+
+  private _getEffectivePeriodType(col: any): string {
+    if (col.periodType && col.periodType.trim() !== '') {
+      return col.periodType;
+    }
+    if (col.tierLevel === 'L2' && col.parentId) {
+      const parentKey = col.parentId.trim().toUpperCase();
+      const parent = this.columns().find(c => c.colId.trim().toUpperCase() === parentKey);
+      if (parent && parent.periodType && parent.periodType.trim() !== '') {
+        return parent.periodType;
+      }
+    }
+    return '';
+  }
+
+  private _adjustedRefDate(col: any): string {
+    const raw = this.selectedReportingDate() || new Date().toISOString().split('T')[0];
+    const periodType = this._getEffectivePeriodType(col);
+    if (periodType && periodType.toUpperCase() === 'PREVIOUS_YEAR') {
+      const d = new Date(raw);
+      d.setFullYear(d.getFullYear() - 1);
+      return d.toISOString().split('T')[0];
+    }
+    return raw;
+  }
+
+  expandedColumns = computed(() => {
+    const cols = this._sortedCols();
+    const { l1Cols, l2ChildrenMap } = this._buildColumnIndex(cols);
+
+    const leaves: any[] = [];
+
+    for (const col of l1Cols) {
+      const refDate = this._adjustedRefDate(col);
+
+      if (col.colType === 'ROLLING') {
+        const subCols = DateFormatter.getRollingSubColumns(refDate, col, col.rollingN || 1, col.rollingGrain || 'WEEK');
+        subCols.forEach((sc, idx) => {
+          sc.isLastChild = (idx === subCols.length - 1);
+        });
+        leaves.push(...subCols);
+
+      } else if (col.colType === 'HEADER') {
+        const children = l2ChildrenMap.get(col.colId.trim().toUpperCase()) || [];
+        if (children.length > 0) {
+          const headerLeaves: any[] = [];
+          for (const child of children) {
+            const childRefDate = this._adjustedRefDate(child);
+            if (child.colType === 'ROLLING') {
+              const subCols = DateFormatter.getRollingSubColumns(
+                childRefDate, child, child.rollingN || 1, child.rollingGrain || 'WEEK'
+              );
+              headerLeaves.push(...subCols);
+            } else {
+              headerLeaves.push(child);
+            }
+          }
+          headerLeaves.forEach((hl, idx) => {
+            hl.isLastChild = (idx === headerLeaves.length - 1);
+          });
+          leaves.push(...headerLeaves);
+        } else {
+          col.isLastChild = true;
+          leaves.push(col);
+        }
+
+      } else {
+        const children = l2ChildrenMap.get(col.colId.trim().toUpperCase()) || [];
+        if (children.length > 0) {
+          children.forEach((c, idx) => {
+            c.isLastChild = (idx === children.length - 1);
+          });
+          leaves.push(...children);
+        } else {
+          col.isLastChild = true;
+          leaves.push(col);
+        }
+      }
+    }
+
+    const orphanedL2 = cols.filter(c =>
+      c.tierLevel === 'L2' &&
+      (!c.parentId || !l1Cols.some(p => p.colId.trim().toUpperCase() === c.parentId.trim().toUpperCase()))
+    );
+    orphanedL2.forEach((ol, idx) => {
+      ol.isLastChild = (idx === orphanedL2.length - 1);
+    });
+    leaves.push(...orphanedL2);
+
+    return leaves;
+  });
+
+  previewHeaderRows = computed(() => {
+    const cols = this._sortedCols();
+    const { l1Cols, l2ChildrenMap } = this._buildColumnIndex(cols);
+
+    const row1: any[] = [];
+    const row2: any[] = [];
+
+    for (const col of l1Cols) {
+      const refDate = this._adjustedRefDate(col);
+
+      if (col.colType === 'ROLLING') {
+        const subCols = DateFormatter.getRollingSubColumns(refDate, col, col.rollingN || 1, col.rollingGrain || 'WEEK');
+        row1.push({
+          ...col,
+          colspan: subCols.length,
+          colSpan: subCols.length,
+          rowspan: 1,
+          rowSpan: 1,
+          isParent: true,
+          isLastChild: true,
+        });
+        subCols.forEach((sub, idx) => {
+          row2.push({
+            ...sub,
+            colspan: 1,
+            colSpan: 1,
+            rowspan: 1,
+            rowSpan: 1,
+            isChild: true,
+            isLastChild: idx === subCols.length - 1,
+          });
+        });
+
+      } else if (col.colType === 'HEADER') {
+        const children = l2ChildrenMap.get(col.colId.trim().toUpperCase()) || [];
+        if (children.length > 0) {
+          let totalColspan = 0;
+          const row2Cells: any[] = [];
+
+          for (const child of children) {
+            const childRefDate = this._adjustedRefDate(child);
+            if (child.colType === 'ROLLING') {
+              const subCols = DateFormatter.getRollingSubColumns(
+                childRefDate, child, child.rollingN || 1, child.rollingGrain || 'WEEK'
+              );
+              totalColspan += subCols.length;
+              subCols.forEach((sub, idx) => {
+                row2Cells.push({
+                  ...sub,
+                  colspan: 1,
+                  colSpan: 1,
+                  rowspan: 1,
+                  rowSpan: 1,
+                  isChild: true,
+                  isLastChild: false,
+                });
+              });
+            } else {
+              totalColspan += 1;
+              row2Cells.push({
+                ...child,
+                colspan: 1,
+                colSpan: 1,
+                rowspan: 1,
+                rowSpan: 1,
+                isChild: true,
+                isLastChild: false,
+              });
+            }
+          }
+
+          if (row2Cells.length > 0) {
+            row2Cells[row2Cells.length - 1].isLastChild = true;
+          }
+
+          row1.push({
+            ...col,
+            colspan: totalColspan,
+            colSpan: totalColspan,
+            rowspan: 1,
+            rowSpan: 1,
+            isParent: true,
+            isLastChild: true,
+          });
+          row2.push(...row2Cells);
+        } else {
+          row1.push({
+            ...col,
+            colspan: 1,
+            colSpan: 1,
+            rowspan: 2,
+            rowSpan: 2,
+            isStandalone: true,
+            isLastChild: true,
+          });
+        }
+
+      } else {
+        const children = l2ChildrenMap.get(col.colId.trim().toUpperCase()) || [];
+        if (children.length > 0) {
+          row1.push({
+            ...col,
+            colspan: children.length,
+            colSpan: children.length,
+            rowspan: 1,
+            rowSpan: 1,
+            isParent: true,
+            isLastChild: true,
+          });
+          children.forEach((child, idx) => {
+            row2.push({
+              ...child,
+              colspan: 1,
+              colSpan: 1,
+              rowspan: 1,
+              rowSpan: 1,
+              isChild: true,
+              isLastChild: idx === children.length - 1,
+            });
+          });
+        } else {
+          row1.push({
+            ...col,
+            colspan: 1,
+            colSpan: 1,
+            rowspan: 2,
+            rowSpan: 2,
+            isStandalone: true,
+            isLastChild: true,
+          });
+        }
+      }
+    }
+
+    const orphanedL2 = cols.filter(c =>
+      c.tierLevel === 'L2' &&
+      (!c.parentId || !l1Cols.some(p => p.colId.trim().toUpperCase() === c.parentId.trim().toUpperCase()))
+    );
+    for (const col of orphanedL2) {
+      row1.push({
+        ...col,
+        colspan: 1,
+        colSpan: 1,
+        rowspan: 2,
+        rowSpan: 2,
+        isStandalone: true,
+        isLastChild: true,
+      });
+    }
+
+    return { row1, row2 };
   });
 
   private route = inject(ActivatedRoute);
@@ -401,6 +657,68 @@ export class ExecutionHubComponent implements OnInit {
           this.exportingExcel.set(false);
           console.error('Failed to export Excel report:', err);
           this.executionError.set('Failed to generate Excel report. Make sure the DWH contains data for the selected date.');
+        },
+      });
+  }
+
+  exportToCsv(): void {
+    const reportId = this.selectedReportId();
+    if (!reportId) return;
+
+    this.exportingCsv.set(true);
+    this.executionError.set(null);
+    const refDate = this.selectedReportingDate() || new Date().toISOString().split('T')[0];
+    const version = this.reportConfig()?.version;
+
+    this.reportService
+      .runReport(reportId, refDate, version, 'csv')
+      .subscribe({
+        next: (blob) => {
+          this.exportingCsv.set(false);
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${reportId}_${refDate}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        },
+        error: (err) => {
+          this.exportingCsv.set(false);
+          console.error('Failed to export CSV report:', err);
+          this.executionError.set('Failed to generate CSV report. Make sure the DWH contains data for the selected date.');
+        },
+      });
+  }
+
+  exportToPdf(): void {
+    const reportId = this.selectedReportId();
+    if (!reportId) return;
+
+    this.exportingPdf.set(true);
+    this.executionError.set(null);
+    const refDate = this.selectedReportingDate() || new Date().toISOString().split('T')[0];
+    const version = this.reportConfig()?.version;
+
+    this.reportService
+      .runReport(reportId, refDate, version, 'pdf')
+      .subscribe({
+        next: (blob) => {
+          this.exportingPdf.set(false);
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${reportId}_${refDate}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        },
+        error: (err) => {
+          this.exportingPdf.set(false);
+          console.error('Failed to export PDF report:', err);
+          this.executionError.set('Failed to generate PDF report. Make sure the DWH contains data for the selected date.');
         },
       });
   }

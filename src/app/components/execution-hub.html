@@ -299,6 +299,20 @@
                     >
                       <span>📥 {{ exportingExcel() ? 'Exporting...' : 'Export Excel' }}</span>
                     </button>
+                    <button
+                      (click)="exportToCsv()"
+                      class="export-excel-btn"
+                      [disabled]="exportingCsv() || !executedData()"
+                    >
+                      <span>📥 {{ exportingCsv() ? 'Exporting...' : 'Export CSV' }}</span>
+                    </button>
+                    <button
+                      (click)="exportToPdf()"
+                      class="export-excel-btn"
+                      [disabled]="exportingPdf() || !executedData()"
+                    >
+                      <span>📥 {{ exportingPdf() ? 'Exporting...' : 'Export PDF' }}</span>
+                    </button>
                   </div>
                 </div>
 
@@ -308,21 +322,38 @@
                     <thead>
                       <tr>
                         <!-- Frozen context columns -->
-                        <th class="freeze-col freeze-label">Label</th>
-                        <th class="freeze-col freeze-id">ID</th>
-                        <th class="freeze-col freeze-type">Type</th>
+                        <th class="freeze-col freeze-label" rowspan="2">Label</th>
+                        <th class="freeze-col freeze-id" rowspan="2">ID</th>
+                        <th class="freeze-col freeze-type" rowspan="2">Type</th>
                         <!-- Granularity dimension headers -->
                         @for (gHeader of granularityHeaders(); track gHeader) {
-                          <th class="col-flag-header border-l">{{ gHeader }}</th>
+                          <th class="col-flag-header border-l" rowspan="2">{{ gHeader }}</th>
                         }
-                        <!-- Rolling / fixed period column headers -->
-                        @for (col of expandedColumns(); track col.colId) {
-                          <th class="col-flag-header border-l">
+                        <!-- Rolling / fixed period column headers Row 1 -->
+                        @for (col of previewHeaderRows().row1; track col.colId) {
+                          <th 
+                            class="col-flag-header border-l text-center"
+                            [class.last-child]="col.isLastChild"
+                            [attr.colspan]="col.colSpan || col.colspan"
+                            [attr.rowspan]="col.rowSpan || col.rowspan"
+                          >
                             <div class="col-id-label">{{ col.colId }}</div>
                             <div class="preview-col-label">{{ col.label }}</div>
                           </th>
                         }
                       </tr>
+                      @if (previewHeaderRows().row2.length > 0) {
+                        <tr>
+                          @for (col of previewHeaderRows().row2; track col.colId) {
+                            <th 
+                              class="col-flag-header border-l text-center row2-header"
+                              [class.last-child]="col.isLastChild"
+                            >
+                              <div class="preview-col-label">{{ col.label }}</div>
+                            </th>
+                          }
+                        </tr>
+                      }
                     </thead>
                     <tbody>
                       @for (row of rows(); track row.rowId; let rowIndex = $index) {

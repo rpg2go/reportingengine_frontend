@@ -639,6 +639,13 @@ thead .freeze-col { z-index: 6; background: var(--color-apple-bg); }
 .data-row:hover .freeze-col { background: rgba(0, 118, 223, 0.04) !important; }
 
 .col-flag-header { text-align: center !important; }
+.row2-header {
+  background: var(--color-apple-card) !important;
+  font-weight: 600;
+}
+.col-flag-header.last-child {
+  border-right: 2px solid var(--border-color) !important;
+}
 .col-flag-cell {
   text-align: center;
   font-family: 'Fira Code', ui-monospace, monospace;

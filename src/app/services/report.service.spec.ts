@@ -58,7 +58,7 @@ describe('ReportService', () => {
     });
 
     expect(mockHttp.post).toHaveBeenCalledWith(
-      '/api/reports/1/run?date=2025-12-31',
+      '/api/reports/1/run?date=2025-12-31&format=xlsx',
       null,
       { responseType: 'blob' }
     );

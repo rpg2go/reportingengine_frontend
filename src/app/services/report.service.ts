@@ -26,9 +26,9 @@ export class ReportService {
     return this.http.post(`${this.apiUrl}/import`, formData);
   }
 
-  runReport(id: string, date: string, version?: number): Observable<Blob> {
+  runReport(id: string, date: string, version?: number, format = 'xlsx'): Observable<Blob> {
     const versionParam = version != null ? `&version=${version}` : '';
-    return this.http.post(`${this.apiUrl}/${id}/run?date=${date}${versionParam}`, null, {
+    return this.http.post(`${this.apiUrl}/${id}/run?date=${date}${versionParam}&format=${format}`, null, {
       responseType: 'blob'
     });
   }
