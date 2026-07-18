@@ -353,6 +353,42 @@ import { FormsModule } from '@angular/forms';
     }
   `]
 })
+/**
+ * ValuePickerComponent
+ *
+ * Multi-select autocomplete dropdown for choosing filter values.
+ * Used inside row condition rule editors to select one or more discrete values
+ * for a chosen column (e.g., "region IN ['EMEA', 'APAC']").
+ *
+ * Purpose:
+ *  Renders a compact chip-display trigger that expands into a searchable dropdown
+ *  listing available values. The user can also type a free-form custom value and
+ *  commit it by pressing Enter or Tab.
+ *
+ * Usage:
+ *   <app-value-picker
+ *     [availableValues]="distinctValues"     ← string[] loaded from the API
+ *     [(selectedValues)]="rule.value"        ← two-way model signal (string[])
+ *     placeholder="Select values..."
+ *     [disabled]="isLocked"
+ *   />
+ *
+ * Used by:
+ *  - RowConditionGroupComponent — inline inside each condition rule row.
+ *
+ * Inputs:
+ *  - `availableValues`  — `string[]` of candidate values shown in the dropdown list.
+ *  - `selectedValues`   — Two-way model; the selected values array.
+ *  - `placeholder`      — Placeholder text shown when no values are selected.
+ *  - `disabled`         — When true, prevents interaction.
+ *
+ * Behavior:
+ *  - Typing in the search field filters the visible options by substring match.
+ *  - Pressing Enter or clicking outside commits the search text as a custom value
+ *    if it doesn't match any available option exactly (case-insensitive).
+ *  - Clicking a chip's "x" button removes it from the selected values.
+ *  - Outside-click (`@HostListener`) and `focusout` events auto-close the dropdown.
+ */
 export class ValuePickerComponent {
   availableValues = input<string[]>([]);
   selectedValues = model<string[]>([]);

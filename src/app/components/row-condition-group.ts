@@ -275,6 +275,56 @@ export interface RowFilterGroup {
     }
   `]
 })
+/**
+ * RowConditionGroupComponent
+ *
+ * Recursive condition group renderer for the row-level filter AST builder.
+ * Each instance represents one `RowFilterGroup` (a logical AND/OR group)
+ * and recursively renders its child groups via `<app-row-condition-group>`.
+ *
+ * Purpose:
+ *  Renders a color-coded group card with:
+ *  - A logical operator toggle (AND / OR) that applies inside the group.
+ *  - One rule row per `RowFilterRule`, each with: column picker, operator select,
+ *    and `ValuePickerComponent` for multi-value selection.
+ *  - An "+ Add Condition" button to append new rules.
+ *  - A "+ Nest Group" button to add a recursive child `RowFilterGroup`.
+ *  - A "✕ Remove" button to delete this group from its parent.
+ *
+ * Usage (self-referential recursion inside row-filter.html):
+ *   <app-row-condition-group
+ *     [group]="rootGroup"
+ *     [parentGroup]="null"
+ *     [depth]="0"
+ *     [activeMeasureTable]="row.sourceTable"
+ *     [dwhCatalog]="fieldGroups"
+ *     [linkedDimensions]="joinedDims"
+ *     [columnTypes]="columnTypes"
+ *     [schemaCatalogMap]="schemaCatalogMap"
+ *     [disabled]="isLocked()"
+ *     (groupChanged)="onGroupChanged()"
+ *     (removeGroup)="onRemoveGroup($event)"
+ *   />
+ *
+ * Used by:
+ *  - RowFilterComponent         — renders the root group and nested groups.
+ *  - GeneralFilterModalComponent — renders the per-table scope filter groups.
+ *
+ * Inputs:
+ *  - `group`              — Required. The `RowFilterGroup` data node to render.
+ *  - `parentGroup`        — Parent group (null for root); used to enable "Remove" button.
+ *  - `depth`              — Nesting level (0 = root); controls the rainbow color class.
+ *  - `activeMeasureTable` — Fact table name; pre-fills new rules with it.
+ *  - `dwhCatalog`         — `FieldGroup[]` for the column picker dropdown.
+ *  - `linkedDimensions`   — List of joinable dimension table names.
+ *  - `columnTypes`        — Map of table → column → data type for operator filtering.
+ *  - `schemaCatalogMap`   — Filterable and cached flags per column path.
+ *  - `disabled`           — When true, renders all inputs as read-only.
+ *
+ * Outputs:
+ *  - `groupChanged` — Emits `void` whenever any rule or sub-group changes.
+ *  - `removeGroup`  — Emits the `group.id` string to request removal from the parent.
+ */
 export class RowConditionGroupComponent implements OnInit {
   group = input.required<RowFilterGroup>();
   parentGroup = input<RowFilterGroup | null>(null);

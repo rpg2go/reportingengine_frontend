@@ -475,8 +475,46 @@ export interface TableGroup {
     :host-context(html.light) .gp-footer-clear-btn:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
     :host-context(html.light) .gp-clear-all-btn { color: #94A3B8; }
     :host-context(html.light) .gp-clear-all-btn:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
-  `]
+  ]
 })
+/**
+ * GranularityPickerComponent
+ *
+ * Multi-select group-by dimension picker for configuring the row granularity
+ * breakout of a report. Implements `ControlValueAccessor` so it can be used
+ * inside Angular reactive forms or template-driven forms via `ngModel`.
+ *
+ * Purpose:
+ *  Allows the user to select one or more DWH dimension columns to group the
+ *  analytical query by (e.g., `dim_region.region_name`, `dim_date.month_name`).
+ *  Results are shown as removable chips in the trigger area.
+ *
+ * Usage (inside report-builder step 1 header section):
+ *   <app-granularity-picker
+ *     [options]="dynamicGranularityOptions"
+ *     [(value)]="granularityValue"
+ *   ></app-granularity-picker>
+ *
+ * Used by:
+ *  - CoreReportDetailsComponent — step 1 header configuration panel.
+ *
+ * Inputs (signal-based):
+ *  - `options`  — `{ value: string; label: string }[]` pre-built from the schema catalog.
+ *  - `value`    — Two-way model; comma-separated selected column references.
+ *
+ * ControlValueAccessor:
+ *  Implements `writeValue`, `registerOnChange`, `registerOnTouched`, and
+ *  `setDisabledState` for full forms integration.
+ *
+ * Internal behavior:
+ *  - Options are grouped by `tableName` and rendered in collapsible table groups.
+ *  - A live text filter (`searchText` signal) narrows visible options.
+ *  - On `ngOnInit`, fetches the schema catalog to build a `dataTypeMap` used for
+ *    per-chip data-type annotations (e.g., "date", "integer").
+ *  - Expanded groups are tracked in a `Set<string>` signal; each table group
+ *    auto-expands when the search filter is active.
+ *  - Outside-click via `@HostListener` auto-closes the dropdown panel.
+ */
 export class GranularityPickerComponent implements OnInit, ControlValueAccessor {
   options = input<{ value: string; label: string }[]>([]);
   value = model<string>('');

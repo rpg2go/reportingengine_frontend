@@ -19,6 +19,47 @@ function colSortKey(col: any, idx: number): number {
   templateUrl: './live-layout-preview.html',
   styleUrls: ['./live-layout-preview.css'],
 })
+/**
+ * LiveLayoutPreviewComponent
+ *
+ * Real-time wireframe preview of the report layout grid as the user configures
+ * rows and columns in the Report Builder.
+ *
+ * Purpose:
+ *  Renders a miniature, non-interactive table grid showing a realistic header
+ *  row (columns) and body rows (data/calc/section/blank types), with dynamic
+ *  date labels computed from the selected reporting date and each column's
+ *  period offset, rolling grain, and period type configuration.
+ *
+ * Usage:
+ *   <app-live-layout-preview
+ *     [columns]="columns()"
+ *     [rows]="rows()"
+ *     [reportingDate]="reportingDate()"
+ *     [granularities]="dynamicGranularityOptions()"
+ *     [previewTrigger]="previewTrigger()"
+ *   />
+ *
+ * Used by:
+ *  - ReportBuilderComponent — rendered in the "Step 3: Live Preview" panel below the
+ *    Rows and Columns setup sections.
+ *
+ * Inputs:
+ *  - `columns`        — The current `ColumnDef[]` array from the builder.
+ *  - `rows`           — The current `ReportRow[]` array from the builder.
+ *  - `reportingDate`  — ISO date string (YYYY-MM-DD) for computing column date labels.
+ *  - `granularities`  — `{ value, label }[]` options used to label granularity rows.
+ *  - `previewTrigger` — A numeric counter incremented to force re-render when needed.
+ *
+ * Column hierarchy:
+ *  - L1 columns — Main header columns, sorted by `displayOrder`.
+ *  - L2 columns — Sub-columns nested under a L1 parent via `parentId`.
+ *  - HEADER-type columns render as a purely visual group header with no date label.
+ *
+ * Date label logic:
+ *  - `_adjustedRefDate()` shifts the reporting date back one year for PREVIOUS_YEAR columns.
+ *  - `DateFormatter.resolveColumnDateLabel()` computes the human-readable column header date.
+ */
 export class LiveLayoutPreviewComponent {
   // Inputs matching ReportBuilderComponent's preview state (signal-based)
   columns = input<any[]>([]);

@@ -18,6 +18,53 @@ import { CoreTimeEngineComponent } from './core-time-engine';
   templateUrl: './core-report-details.html',
   styleUrls: ['./core-report-details.css']
 })
+/**
+ * CoreReportDetailsComponent
+ *
+ * Step 1 header panel inside the Report Builder, managing the core report
+ * identity and time configuration for a report version.
+ *
+ * Purpose:
+ *  Provides form fields for the report's name, source table, timeframe boundaries,
+ *  reporting date, and granularity dimension breakout. Also hosts the
+ *  "Configure General Filters" trigger button and the validation action button.
+ *
+ * Usage:
+ *   <app-core-report-details
+ *     [(reportId)]="reportId"
+ *     [(reportName)]="reportName"
+ *     [reportVersion]="version()"
+ *     [status]="status()"
+ *     [isLocked]="isLocked()"
+ *     [reportForm]="reportForm"
+ *     [dynamicGranularityOptions]="dynamicGranularityOptions()"
+ *     [availableReportingDates]="availableReportingDates()"
+ *     [(reportingDate)]="reportingDate"
+ *     [(timeframeStart)]="timeframeStart"
+ *     [(timeframeEnd)]="timeframeEnd"
+ *     [(timeframeMode)]="timeframeMode"
+ *     [(reportingDateType)]="reportingDateType"
+ *     [generalFilterScopes]="generalFilterScopes"
+ *     [isGeneralFilterRawMode]="isGeneralFilterRawMode"
+ *     [generalFilterExpr]="generalFilterExpr"
+ *     (triggerValidation)="onTriggerValidation()"
+ *     (configureGeneralFilters)="onConfigureGeneralFilters()"
+ *   />
+ *
+ * Used by:
+ *  - ReportBuilderComponent — rendered as the first visible step in the builder
+ *    template when `currentStep() === 0`.
+ *
+ * Model inputs (two-way bindings):
+ *  - `reportId`, `reportName`                 — Report identity fields.
+ *  - `reportingDate`, `timeframeStart/End`    — Core date configuration.
+ *  - `reportingDateType` / `*Static` / `*Expression` — Polymorphic date mode (FIXED/DYNAMIC).
+ *  - `timeframeStartType/EndType` / `*Static` / `*Expression` — Same pattern for timeframe bounds.
+ *
+ * Sub-components:
+ *  - `GranularityPickerComponent`  — Multi-select GROUP BY dimension picker.
+ *  - `CoreTimeEngineComponent`     — Polymorphic FIXED / DYNAMIC date picker UI.
+ */
 export class CoreReportDetailsComponent implements OnInit {
   // Model and Input bindings for synchronization with parent
   reportId = model<string>('');

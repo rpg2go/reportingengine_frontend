@@ -323,6 +323,57 @@ import { FILTER_TOOLTIPS } from '../constants/filter-help.constants';
     }
   `]
 })
+/**
+ * RowFilterComponent
+ *
+ * Inline filter builder embedded in the Rows Setup table for defining per-row
+ * SQL WHERE clause conditions on DWH fact and dimension columns.
+ *
+ * Purpose:
+ *  Renders a compact trigger widget (mini filter chips or an "+ Add Filter" button)
+ *  in the row's "Row Conditions / Filters" cell. Clicking it opens a full-screen
+ *  modal builder that lets the user compose nested logical groups of conditions.
+ *
+ * Usage:
+ *   <app-row-filter
+ *     [activeMeasureTable]="row.sourceTable"
+ *     [dwhCatalog]="fieldGroups"
+ *     [linkedDimensions]="joinedDimensions"
+ *     [columnTypes]="columnTypes"
+ *     [schemaCatalogMap]="schemaCatalogMap"
+ *     [(rowFilters)]="row.rowFilters"
+ *     [(legacyFilterExpr)]="row.legacyFilterExpr"
+ *     [(isRawMode)]="row.isFilterRawMode"
+ *     [disabled]="isLocked()"
+ *     (onChange)="onModelChange()"
+ *   />
+ *
+ * Used by:
+ *  - RowsSetupComponent — rendered inside each data/calc row's filter cell.
+ *
+ * Inputs:
+ *  - `activeMeasureTable` — The fact table of this row; used to scope available columns.
+ *  - `dwhCatalog`         — `FieldGroup[]` for populating the column picker.
+ *  - `linkedDimensions`   — Dimension table names joined to the fact via the catalog graph.
+ *  - `columnTypes`        — Nested map of table → column → data type for the operator picker.
+ *  - `schemaCatalogMap`   — Map of column path to `{ isFilterable, isCached }` flags.
+ *  - `rowFilters`         — Two-way model; the root `RowFilterGroup` AST.
+ *  - `legacyFilterExpr`   — Two-way model; raw SQL string used in "Raw Mode".
+ *  - `isRawMode`          — Two-way model; toggles between AST builder and raw SQL textarea.
+ *  - `disabled`           — When true, the trigger is non-interactive.
+ *
+ * Outputs:
+ *  - `onChange` — Emits the updated `RowFilterGroup` whenever the filter tree changes.
+ *
+ * Sub-components:
+ *  - `RowConditionGroupComponent` — Recursive group/rule renderer inside the builder.
+ *  - `FilterHelpPanelComponent`   — Collapsible ⓘ Quick Reference panel (dark theme).
+ *
+ * Notes:
+ *  - Closing the builder (via "Save & Close", overlay click, or outside-click) is the
+ *    implicit save; the `rowFilters` model signal updates reactively on every change.
+ *  - Also renders a SQL preview panel using `BracketRainbowPipe` for highlighting.
+ */
 export class RowFilterComponent implements OnInit {
   activeMeasureTable = input<string>('');
   dwhCatalog = input<any[]>([]);

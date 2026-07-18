@@ -228,6 +228,48 @@ import { ValidationError } from './report-builder';
     </section>
   `
 })
+/**
+ * ColumnsSetupComponent
+ *
+ * Step 2 (columns) panel of the Report Builder, providing an inline table editor
+ * for defining the time-axis column structure of a report.
+ *
+ * Purpose:
+ *  Renders a horizontally-scrollable grid with one column per `ColumnDef`, allowing
+ *  the user to configure column IDs, labels, tier levels (L1 / L2), parent references,
+ *  timeframe types, rolling periods, period offsets, period types, and formula expressions.
+ *
+ * Column tracks (cell editors in the grid):
+ *  - **Col ID**        — Unique identifier (e.g. `C1`, `C2`).
+ *  - **Column Name**   — Human-readable header label.
+ *  - **Tier Level**    — `L1` (parent) or `L2` (child / sub-column).
+ *  - **Parent L1**     — `colId` of the parent L1 column (only for L2 columns).
+ *  - **Formula / Expr** — Column-level expression (e.g. `C1-C2` for diff columns).
+ *  - **Header Style**  — Visual formatting preset (`border`, `transparent`, etc.).
+ *  - **Period Offset** — Integer offset applied to the base reporting date.
+ *  - **Timeframe Length (Rolling N)** — Number of periods in a rolling window.
+ *  - **Period Type**   — `CURRENT_YEAR`, `PREVIOUS_YEAR`, or blank.
+ *  - **Math Formula**  — Column-level calc formula (e.g. `C1/C2*100`).
+ *
+ * Usage:
+ *   <app-columns-setup
+ *     [(columns)]="columns"
+ *     [(rows)]="rows"
+ *     [isLocked]="isLocked()"
+ *     [validationErrors]="validationErrors()"
+ *     (triggerValidation)="onTriggerValidation()"
+ *   />
+ *
+ * Used by:
+ *  - ReportBuilderComponent — rendered as the Columns Setup (Step 2) section.
+ *
+ * Models:
+ *  - `columns` — Two-way model; mutated directly by add/delete/reorder/duplicate actions.
+ *  - `rows`    — Two-way model; updated when column-activation toggles change.
+ *
+ * Outputs:
+ *  - `triggerValidation` — Emits after every column change to re-run backend validation.
+ */
 export class ColumnsSetupComponent {
   columns = model.required<any[]>();
   rows = model.required<any[]>();

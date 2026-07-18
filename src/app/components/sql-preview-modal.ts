@@ -238,6 +238,44 @@ import { Component, input, model, signal, computed, ChangeDetectionStrategy } fr
     }
   `
 })
+/**
+ * SqlPreviewModalComponent
+ *
+ * Full-screen modal that renders the dry-run compiled SQL query for a report
+ * configuration, enabling developers and analysts to inspect the generated SQL
+ * before actually executing it.
+ *
+ * Purpose:
+ *  Displays the output of `POST /api/reports/preview-sql` in a syntax-highlighted
+ *  code viewer with copy-to-clipboard functionality. Shown as an overlay modal
+ *  from within the `ReportBuilderComponent`.
+ *
+ * Usage:
+ *   <app-sql-preview-modal
+ *     [(isOpen)]="showSqlModal"
+ *     [isLoading]="sqlLoading()"
+ *     [sql]="previewSql()"
+ *   />
+ *
+ * Used by:
+ *  - ReportBuilderComponent — triggered via the "Preview SQL" action button.
+ *
+ * Inputs:
+ *  - `isOpen`     — Required two-way model; controls modal visibility.
+ *  - `isLoading`  — When true, shows an animated spinner instead of the SQL panel.
+ *  - `sql`        — The raw SQL string to display; passed from the preview endpoint.
+ *
+ * Internal state:
+ *  - `isCopied`     — Signal; true for 2 seconds after a successful clipboard write.
+ *  - `highlightedSql` — Computed; the `sql` string processed through the
+ *    `getHighlightedSql()` sanitizer which wraps keywords, identifiers, numbers,
+ *    comments, and table names in `<span>` elements for syntax color highlighting.
+ *
+ * Notes:
+ *  - The highlighting is done entirely on the frontend via RegEx patterns —
+ *    no external library is used.
+ *  - The modal is XSS-safe: raw SQL is HTML-escaped before span injection.
+ */
 export class SqlPreviewModalComponent {
   isOpen = model.required<boolean>();
   isLoading = input<boolean>(false);

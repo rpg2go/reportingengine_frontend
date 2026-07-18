@@ -174,6 +174,55 @@ import { FILTER_TOOLTIPS } from '../constants/filter-help.constants';
     }
   `]
 })
+/**
+ * GeneralFilterModalComponent
+ *
+ * Overlay modal for configuring report-level ("general") filter scopes that are
+ * applied globally across ALL rows in a report, independent of row-level filters.
+ *
+ * Purpose:
+ *  Provides a multi-table scoped filter builder that compiles to JSON filter groups
+ *  (saved in `rpt_report.general_filters`) or to a raw SQL expression string
+ *  (saved in `rpt_report.quick_filters`) when "Raw Mode" is toggled on.
+ *
+ * Usage:
+ *   <app-general-filter-modal
+ *     [(isOpen)]="showGeneralFilterModal"
+ *     [(scopes)]="generalFilterScopes"
+ *     [(isRawMode)]="isGeneralFilterRawMode"
+ *     [(legacyFilterExpr)]="generalFilterExpr"
+ *     [dwhCatalog]="fieldGroups"
+ *     [linkedDimensions]="linkedDimensions"
+ *     [columnTypes]="columnTypes"
+ *     [schemaCatalogMap]="schemaCatalogMap"
+ *     (onApply)="onGeneralFiltersApplied()"
+ *     (onClose)="onGeneralFiltersClosed()"
+ *   />
+ *
+ * Used by:
+ *  - CoreReportDetailsComponent — triggered via "Configure General Filters" button
+ *    in the Step 1 header panel.
+ *
+ * Inputs:
+ *  - `isOpen`          — Two-way model; controls modal visibility.
+ *  - `scopes`          — Two-way model; `TableFilterScope[]` — one entry per table.
+ *  - `isRawMode`       — Two-way model; toggles structured builder vs. raw SQL textarea.
+ *  - `legacyFilterExpr` — Two-way model; raw SQL expression used in raw mode.
+ *  - `dwhCatalog`      — `FieldGroup[]` for the column pickers inside each scope.
+ *  - `linkedDimensions` — Dimension tables available to join when adding filter scopes.
+ *  - `columnTypes`     — Nested map of table → column → type for operator filtering.
+ *  - `schemaCatalogMap` — Per-column filterable/cached flags.
+ *  - `disabled`        — When true, all inputs are read-only.
+ *
+ * Outputs:
+ *  - `onApply` — Emits `void` when "Apply & Save" is clicked.
+ *  - `onClose` — Emits `void` when the modal is dismissed.
+ *
+ * Internal signals:
+ *  - `selectedScopeIndex` — Which scope tab is active in the scope navigation list.
+ *  - `showHelp`           — Toggles the ⓘ Quick Reference legend panel.
+ *  - `availableTables`    — Computed; tables in the catalog not yet added as scopes.
+ */
 export class GeneralFilterModalComponent {
   isOpen = model<boolean>(false);
   /** Controls visibility of the ⓘ Quick Reference syntax legend panel in the header */

@@ -9,6 +9,58 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './core-time-engine.html',
   styleUrls: ['./core-time-engine.css']
 })
+/**
+ * CoreTimeEngineComponent
+ *
+ * Polymorphic date/timeframe configuration widget that renders three independent
+ * date slots (Reporting Date, Timeframe Start, Timeframe End), each of which
+ * can be set in two modes:
+ *  - **FIXED** — Renders a `<input type="date">` for an absolute YYYY-MM-DD value.
+ *  - **DYNAMIC** — Renders a text input for a relative macro token (e.g. `T-2`, `T-30`).
+ *
+ * Purpose:
+ *  Provides a unified UI for configuring all time-axis parameters of a report,
+ *  used inside CoreReportDetailsComponent as part of Step 1 of the builder.
+ *
+ * Usage:
+ *   <app-core-time-engine
+ *     [reportId]="reportId"
+ *     [version]="version"
+ *     [isLocked]="isLocked"
+ *     [reportingDateType]="reportingDateType"
+ *     [reportingDateStatic]="reportingDateStatic"
+ *     [reportingDateExpression]="reportingDateExpression"
+ *     [timeframeStartType]="timeframeStartType"
+ *     [timeframeStartStatic]="timeframeStartStatic"
+ *     [timeframeStartExpression]="timeframeStartExpression"
+ *     [timeframeEndType]="timeframeEndType"
+ *     [timeframeEndStatic]="timeframeEndStatic"
+ *     [timeframeEndExpression]="timeframeEndExpression"
+ *     (timeframeConfigChange)="onTimeframeChange($event)"
+ *   />
+ *
+ * Used by:
+ *  - CoreReportDetailsComponent — renders within the Step 1 timeframe card section.
+ *
+ * Inputs:
+ *  - `reportId`   — Current report identifier (informational only, not used in logic).
+ *  - `version`    — Current report version number.
+ *  - `isLocked`   — When true, all inputs become read-only.
+ *  - `reportingDateType` / `reportingDateStatic` / `reportingDateExpression`
+ *    — Controls the Reporting Date slot (FIXED or DYNAMIC mode).
+ *  - `timeframeStartType` / `*Static` / `*Expression`
+ *    — Controls the Timeframe Start slot.
+ *  - `timeframeEndType` / `*Static` / `*Expression`
+ *    — Controls the Timeframe End slot.
+ *
+ * Outputs:
+ *  - `timeframeConfigChange` — Emits a config object containing all 9 time properties
+ *    whenever any field changes. Parent component consumes this to sync model state.
+ *
+ * Notes:
+ *  - `resolveDate()` provides a client-side preview of what the dynamic expression
+ *    would evaluate to based on today's date (used in the UI as a hint string).
+ */
 export class CoreTimeEngineComponent implements OnInit {
   @Input() reportId: string = '';
   @Input() version: number = 1;

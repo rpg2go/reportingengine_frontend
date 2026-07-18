@@ -325,6 +325,46 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
     }
   `]
 })
+/**
+ * FieldPickerComponent
+ *
+ * Searchable combobox for selecting a single DWH column (table.column) from the
+ * physical analytics schema catalog tree.
+ *
+ * Purpose:
+ *  Renders a grouped tree of dimension/fact tables with their columns. The user
+ *  types to filter by field or table name, then clicks or keyboards to select
+ *  a field. The chosen value is emitted as a fully-qualified path, e.g.
+ *  `analytics.fact_sales.amount`.
+ *
+ * Usage (inside rows-setup measure definition cell):
+ *   <app-field-picker
+ *     [dwhCatalog]="fieldGroups"
+ *     [selectedValue]="row.targetField"
+ *     (onSelect)="onFieldSelected($event)"
+ *     [disabled]="isLocked()"
+ *   />
+ *
+ * Used by:
+ *  - RowsSetupComponent — in each `data` row's Measure Definition cell to choose
+ *    the target aggregation column.
+ *
+ * Inputs (via aliases):
+ *  - `dwhCatalog` (alias for `fields`) — `FieldGroup[]` from the report-builder schema.
+ *  - `selectedValue` (alias for `value`) — The currently selected `table.column` string.
+ *  - `placeholder`   — Placeholder text (default: '-- select field --').
+ *  - `disabled`      — When true, blocks all interaction.
+ *
+ * Outputs:
+ *  - `onSelect` (alias for `valueChange`) — Emits the selected `table.column` path.
+ *
+ * Behavior:
+ *  - Uses `SearchEngineAnalyzer` (fuzzy search) from `search-analyzer.ts` to score
+ *    and rank matches; falls back to `SimpleContainsAnalyzer` if factory fails.
+ *  - Keyboard navigation: ArrowUp/Down to move highlight, Enter to select, Escape to close.
+ *  - `@ViewChild('comboboxInput')` — auto-focused when the dropdown opens.
+ *  - Outside-click via `(document:click)` host binding closes the panel.
+ */
 export class FieldPickerComponent implements OnInit {
   value = input<string>('', { alias: 'selectedValue' });
   fields = input<any[]>([], { alias: 'dwhCatalog' });

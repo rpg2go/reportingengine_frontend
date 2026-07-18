@@ -882,6 +882,38 @@ import { SidebarComponent } from './sidebar';
     }
   `]
 })
+/**
+ * ReportDetailComponent
+ *
+ * Read-only configuration inspector and run-trigger viewport for a single report.
+ * Accessed via route `/reports/:id` or the "View" button in the catalog.
+ *
+ * Purpose:
+ *  Renders the full layout definition of a saved report (rows, columns, filters,
+ *  timeframes) in a structured display, and exposes a "Run & Download" button that
+ *  calls the backend to generate and stream an `.xlsx` file.
+ *
+ * Lifecycle:
+ *  - `ngOnInit` extracts `reportId` from `ActivatedRoute.snapshot.params`.
+ *  - Loads the report config via `ReportService.getReportConfig(id, date)`.
+ *  - If `?version=` is present in query params, that version is passed to the API.
+ *
+ * Key features:
+ *  - **Status badge** — Shows the current lifecycle state (DRAFT / IN_REVIEW / PUBLISHED)
+ *    with a matching color lozenge; replaced by an animated spinner badge when running.
+ *  - **Version history panel** — Lists all versions via `ReportService.getReportVersions()`.
+ *  - **Lifecycle actions** — Submit for Review, Reject, Publish, and Fork buttons appear
+ *    based on the current report status and user permissions.
+ *  - **Reference date** — A date input drives both the config preview and the run call.
+ *
+ * Route: `/reports/:id` (registered in app routes).
+ *
+ * Signals:
+ *  - `config`        — Loaded report DTO; null during loading.
+ *  - `loading`       — True while the initial config fetch is pending.
+ *  - `running`       — True while the Excel generation job is in flight.
+ *  - `errorMessage`  — Surfaced on API error; rendered as a dismissable alert banner.
+ */
 export class ReportDetailComponent implements OnInit {
   reportId = '';
   referenceDate = '2025-12-31'; // Default matching analytical seed

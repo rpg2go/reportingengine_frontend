@@ -22,6 +22,43 @@ function colSortKey(col: any, idx: number): number {
   templateUrl: './execution-hub.html',
   styleUrls: ['./execution-hub.css']
 })
+/**
+ * ExecutionHubComponent
+ *
+ * The primary interactive data-grid viewport for executing and viewing reports.
+ * Accessed via route `/viewer`. This is the operational heart of the application.
+ *
+ * Purpose:
+ *  Displays a split-pane layout: a left panel with a searchable report list and
+ *  a main panel with a fully-executed live data grid (pivoted cells), granularity
+ *  column headers, and export actions (Excel, CSV, PDF).
+ *
+ * Key features:
+ *  - **Report sidebar** — Searchable list of published + draft reports with CDK
+ *    drag-to-reorder favorites, persisted to `localStorage`.
+ *  - **Execution** — Calls `POST /api/reports/{id}/execute` with the selected date
+ *    and runtime quick-filter overrides. Renders the result as a pivot table.
+ *  - **Granularity sub-headers** — Dynamically generates row group headers based on
+ *    the report's `granularity` dimension breakout columns.
+ *  - **Runtime quick filters** — Exposes free-form filter input slots that override
+ *    default filter expressions at execution time.
+ *  - **Calendar popover** — Uses `CalendarPickerComponent` to restrict selectable
+ *    dates to those present in `dim_date` (from `/api/reports/dimension-joins`).
+ *  - **Export** — Exports rendered grid data as `.xlsx`, `.csv`, or generates a
+ *    server-rendered PDF download via the run endpoint.
+ *  - **Deduplication** — The report list is fetched via `GET /api/reports` which
+ *    returns only the latest version per `reportId` (no duplicates).
+ *
+ * Route: `/viewer` (registered in app routes).
+ *
+ * Signals:
+ *  - `catalogReports`      — All reports fetched from the API.
+ *  - `selectedReportId`    — Currently active report ID.
+ *  - `selectedReportingDate` — ISO date string used in the execution call.
+ *  - `reportConfig`        — Loaded config DTO for the selected report.
+ *  - `executedData`        — Map<rowId, Map<colId, value>> from the execution response.
+ *  - `executing`           — True while the execution API call is pending.
+ */
 export class ExecutionHubComponent implements OnInit {
   username = '';
 

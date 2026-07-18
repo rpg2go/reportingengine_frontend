@@ -111,69 +111,85 @@ export interface FieldGroup {
 })
 
 /**
+ * ReportBuilderComponent
+ *
+ * Root orchestrator for the metadata-driven report layout builder page.
+ * Accessed via routes `/reports/new` (create) and `/reports/:id/edit` (edit).
+ *
+ * Manages the full lifecycle of building a report: loading schema metadata,
+ * configuring rows/columns/filters, validating the configuration, previewing
+ * the compiled SQL, and saving/publishing the report version.
+ *
  * ============================================================================
- * REPORT BUILDER COMPONENT (MAIN ORCHESTRATOR)
- * ============================================================================
- * 
- * This component acts as the root orchestrator for the metadata-driven report layout builder page.
- * It manages the reactive state, CRUD operations, database schema exploration, and structural
- * layout validation.
- * 
- * ----------------------------------------------------------------------------
  * 1. DECOMPOSED ARCHITECTURE & SUB-COMPONENTS
- * ----------------------------------------------------------------------------
- * To maintain clean code separation and simplify maintenance, the massive 5,000+ line layout builder
- * has been modularized into dedicated standalone sub-components:
- * 
- *   - CoreReportDetailsComponent (app-core-report-details):
- *     Handles scalar report header parameters (Report Name, Granularity, Timeframes) and delegates 
- *     time configuration to the CoreTimeEngineComponent.
- * 
- *   - RowsSetupComponent (app-rows-setup):
- *     Manages custom reporting rows, indent hierarchies, aggregation metrics, exp4j formula expressions,
- *     and embeds the searchable left-hand DWH Catalog sidebar explorer panel.
- * 
- *   - ColumnsSetupComponent (app-columns-setup):
- *     Handles column setups including rolling date offsets, sub-column generation, and spreadsheet formulas.
- * 
- *   - ValidationDiagnosticsComponent (app-validation-diagnostics):
- *     Draws real-time warning/error banners indicating schema mismatches, divide-by-zero risks, and cyclic loops.
- * 
- *   - SqlPreviewModalComponent (app-sql-preview-modal):
- *     Renders the dry-run dynamic SQL query preview modal compiled from the current layout.
- * 
- * ----------------------------------------------------------------------------
- * 2. STATE FLOWS & REACTION PIPELINE
- * ----------------------------------------------------------------------------
- *   - State Sharing: Shares state with child components using standard Angular inputs, outputs, 
- *     and two-way model bindings (e.g. [(rows)]="rows", [(columns)]="columns").
- *   - Concurrent Fetches: Optimizes startup performance by running table definitions and configuration
- *     loading queries concurrently using RxJS `forkJoin` inside `ngOnInit` for an improved UX.
- * 
- * ----------------------------------------------------------------------------
- * 3. THEME SYSTEM & ENCAPSULATION
- * ----------------------------------------------------------------------------
- *   - Encapsulation Mode: Sets ViewEncapsulation.None, which means the companion stylesheet
- *     `report-builder.css` is injected globally onto the page.
- *   - Theme Targeting: To support the slate-dark and light theme systems cleanly, all light theme rules
- *     in `report-builder.css` prefix selectors with `html.light` (e.g., `html.light .catalog-panel`).
- * 
- * ----------------------------------------------------------------------------
- * 4. JIRA-STYLE IMMUTABLE LIFECYCLE STATE MACHINE
- * ----------------------------------------------------------------------------
- *   - Lifecycle States: DRAFT (mutable) -> IN_REVIEW (locked) -> PUBLISHED (frozen).
- *   - Lifecycle Transition Actions:
- *       a. Submit for Review: Locks editing and advances status from 'draft' to 'in_review'.
- *       b. Reject: Returns report status from 'in_review' back to a mutable 'draft'.
- *       c. Publish Release: Marks report as 'published'. This automatically forks the version on
- *          the backend, creating a new mutable 'draft' version (v+1) and copying all nested row,
- *          column, metric, formula, and mapping child configurations.
- * 
- * ----------------------------------------------------------------------------
- * 5. DATA MODEL STRUCTURE & BINDING STRATEGY
- * ----------------------------------------------------------------------------
- *   - Aggregations and metrics bind directly to database columns scanned from the physical `analytics` schema catalog
  * ============================================================================
+ *
+ * To maintain clean code separation, the builder is modularized into these
+ * dedicated standalone sub-components:
+ *
+ *  - `CoreReportDetailsComponent`    (Step 1 header panel)
+ *    Handles report name, granularity, timeframes. Delegates date config
+ *    to `CoreTimeEngineComponent`. Triggers general filter modal.
+ *
+ *  - `RowsSetupComponent`            (Step 1 rows grid)
+ *    Manages rows (labels, types, indent, aggregations, filter conditions).
+ *    Embeds the searchable DWH catalog panel and `RowFilterComponent`.
+ *
+ *  - `ColumnsSetupComponent`         (Step 2 columns grid)
+ *    Handles column headers, tier levels (L1/L2), rolling date offsets,
+ *    sub-column nesting, and math formula expressions.
+ *
+ *  - `ValidationDiagnosticsComponent` (diagnostics banner)
+ *    Renders warning/error banners from `POST /api/reports/validate`.
+ *
+ *  - `SqlPreviewModalComponent`      (dry-run modal)
+ *    Displays the compiled SQL from `POST /api/reports/preview-sql`.
+ *
+ *  - `LiveLayoutPreviewComponent`    (Step 3 preview panel)
+ *    Renders a real-time wireframe grid of the current column/row config.
+ *
+ *  - `GeneralFilterModalComponent`   (global filter modal)
+ *    Configures report-level (cross-row) filter scopes and raw SQL filters.
+ *
+ * ============================================================================
+ * 2. STATE FLOWS & REACTION PIPELINE
+ * ============================================================================
+ *
+ *  - On `ngOnInit`, fires `forkJoin([getTables(), getReportConfig()])` in
+ *    parallel to minimize perceived load time.
+ *  - Child components share state via Angular signal model inputs / outputs.
+ *  - `onModelChange()` is the global change sink called by all child emitters;
+ *    it marks the form dirty and syncs `validationErrors` after a debounce.
+ *
+ * ============================================================================
+ * 3. THEME SYSTEM & ENCAPSULATION
+ * ============================================================================
+ *
+ *  - `ViewEncapsulation.None` — `report-builder.css` is injected globally.
+ *  - Light theme rules in the stylesheet are prefixed with `html.light`.
+ *
+ * ============================================================================
+ * 4. JIRA-STYLE IMMUTABLE LIFECYCLE STATE MACHINE
+ * ============================================================================
+ *
+ *  - DRAFT (mutable) → IN_REVIEW (locked) → PUBLISHED (frozen)
+ *  - Publishing auto-forks all child records server-side (v+1 draft).
+ *  - `isLocked` computed flag disables all editor inputs when status ≠ DRAFT.
+ *
+ * ============================================================================
+ * 5. KEY SIGNALS
+ * ============================================================================
+ *
+ *  - `rows`                — `ReportRow[]` managed by RowsSetupComponent.
+ *  - `columns`             — `ColumnDef[]` managed by ColumnsSetupComponent.
+ *  - `validationErrors`    — `ValidationError[]` from backend validate endpoint.
+ *  - `showSqlModal`        — Controls SqlPreviewModalComponent visibility.
+ *  - `previewSql`          — Compiled SQL string returned from preview endpoint.
+ *  - `availableReportingDates` — `string[]` from `dim_date` for CalendarPicker.
+ *  - `dynamicGranularityOptions` — `{ value, label }[]` for GranularityPicker.
+ *  - `generalFilterScopes` — `TableFilterScope[]` from the general filter modal.
+ *
+ * Route: `/reports/new` and `/reports/:id/edit`.
  */
 export class ReportBuilderComponent implements OnInit {
   isNewReport = true;

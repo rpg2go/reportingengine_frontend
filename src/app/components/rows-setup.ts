@@ -333,6 +333,54 @@ import { ValidationError, DwhField, FieldGroup, RowFilterCondition } from './rep
     </section>
   `
 })
+/**
+ * RowsSetupComponent
+ *
+ * Step 1 (rows) panel of the Report Builder, providing a spreadsheet-like table
+ * editor for defining all report rows — their labels, types, indent levels,
+ * measure definitions, and per-row filter conditions.
+ *
+ * Purpose:
+ *  Renders a two-pane layout:
+ *  - **Left pane** — A searchable DWH catalog tree of dimension/fact columns,
+ *    supporting click-to-apply and drag-and-drop onto rows to set measure fields.
+ *  - **Right pane** — A horizontal-scroll grid table with one row per `ReportRow`,
+ *    showing inline-editable cells for each track.
+ *
+ * Row tracks (columns in the grid):
+ *  1. Checkbox for selection
+ *  2. Row ID (e.g. `R1`, `R2`)
+ *  3. Indent level (+ / - buttons)
+ *  4. Row Label
+ *  5. Row Type (data / calc / section / blank) + Row Style
+ *  6. Measure Definition (aggregation + field picker + custom SQL toggle)
+ *  7. Row Conditions / Filters (`RowFilterComponent`)
+ *  8. Active Columns (which column IDs are active for this row)
+ *  9. Actions (delete row button)
+ *
+ * Usage:
+ *   <app-rows-setup
+ *     [(rows)]="rows"
+ *     [columns]="columns()"
+ *     [isLocked]="isLocked()"
+ *     [dwhCatalog]="dwhCatalog()"
+ *     [linkedDimensions]="linkedDimensions()"
+ *     [columnTypes]="columnTypes()"
+ *     [schemaCatalogMap]="schemaCatalogMap()"
+ *     [validationErrors]="validationErrors()"
+ *     (modelChange)="onModelChange()"
+ *   />
+ *
+ * Used by:
+ *  - ReportBuilderComponent — rendered as the Rows Setup (Step 1) section.
+ *
+ * Outputs:
+ *  - `modelChange` — Emits whenever any row value changes; triggers save-state sync.
+ *
+ * Sub-components:
+ *  - `FieldPickerComponent` — Inline combobox for picking the target measure column.
+ *  - `RowFilterComponent`   — Inline filter builder for per-row WHERE conditions.
+ */
 export class RowsSetupComponent {
   rows = model.required<any[]>();
   columns = input.required<any[]>();

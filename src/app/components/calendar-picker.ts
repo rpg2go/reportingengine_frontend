@@ -157,6 +157,45 @@ export interface CalendarDay {
     .pt-2 { padding-top: 0.5rem; }
   `]
 })
+/**
+ * CalendarPickerComponent
+ *
+ * DWH-aware date selection popover that constrains selectable days to dates
+ * that exist in the `dim_date` analytical dimension table.
+ *
+ * Purpose:
+ *  Renders a monthly calendar grid as an absolute-positioned popover (e.g., below
+ *  a date trigger button). Only dates present in the `availableDates` input array
+ *  are selectable; all others appear greyed out with `pointer-events: none`.
+ *
+ * Usage:
+ *   <app-calendar-picker
+ *     [availableDates]="availableReportingDates()"   ← string[] from dim_date cache
+ *     [(selectedDate)]="referenceDate"               ← two-way model signal
+ *     (dateSelected)="onDateSelected($event)"        ← emits selected YYYY-MM-DD
+ *   />
+ *
+ * Used by:
+ *  - ReportsCatalogComponent  (inspector reference date popover)
+ *  - ExecutionHubComponent    (execution reference date popover)
+ *
+ * Inputs:
+ *  - `availableDates`  — `string[]` of selectable YYYY-MM-DD dates fetched from dim_date.
+ *  - `selectedDate`    — Two-way model binding for the current selection.
+ *
+ * Outputs:
+ *  - `dateSelected` — Emits the selected YYYY-MM-DD string when a day cell is clicked.
+ *
+ * Internal state:
+ *  - `calendarYear` / `calendarMonth` — Signals controlling the displayed month.
+ *  - `calendarDays`  — Computed array of `CalendarDay` cells for the current grid.
+ *  - An `effect()` in the constructor keeps the displayed month synchronized with
+ *    any external change to `selectedDate`.
+ *
+ * Constraints:
+ *  - Minimum date is hardcoded to `2024-01-01` (`MIN_DATE`).
+ *  - Maximum date is `2026-12-31` (`maxSafetyDate`).
+ */
 export class CalendarPickerComponent {
   availableDates = input<string[]>([]); // Injected dim_date cache signal array
   selectedDate = model<string>(''); // Currently selected date (YYYY-MM-DD)

@@ -28,6 +28,41 @@ import { CalendarPickerComponent } from './calendar-picker';
   templateUrl: './reports-catalog.html',
   styleUrls: ['./reports-catalog.css']
 })
+/**
+ * ReportsCatalogComponent
+ *
+ * Primary landing page for authenticated users (route: `/dashboard`).
+ * Displays a split-pane layout: a scrollable report list on the left and a
+ * live configuration inspector panel on the right (desktop only).
+ *
+ * Key features:
+ *  - **Favorites** — Users can star reports; starred reports appear in a pinned
+ *    "Favorites" section above the main catalog, with CDK drag-to-reorder support.
+ *    Favorite IDs and their order are persisted to `localStorage`.
+ *  - **Search** — Real-time text filter across reportName, reportId, description,
+ *    and sourceTable. Filters both Favorites and Catalog sections simultaneously.
+ *  - **Inspector panel** — On desktop (≥ 1024 px), clicking a report card loads
+ *    its config via `ReportService.getReportConfig()` and renders a detail view
+ *    with timeframe, row/column summaries, and run/delete action buttons.
+ *  - **Run report** — Calls `ReportService.runReport()` and downloads the
+ *    resulting `.xlsx` blob directly to the user's device.
+ *  - **Clone report** — Opens a modal for renaming and cloning an existing report.
+ *  - **Delete report** — Soft-deletes published reports; hard-deletes draft-only ones.
+ *  - **Excel import** — Hidden file input uploads a spreadsheet template via
+ *    `ReportService.importTemplate()` and refreshes the catalog.
+ *  - **Date picker** — Uses `CalendarPickerComponent` in a popover to set the
+ *    reference date used for run and config-preview calls.
+ *
+ * Route: `/dashboard` (registered in app routes).
+ *
+ * Signals:
+ *  - `reports`               — Full catalog list loaded from the API.
+ *  - `favoriteReports`       — Computed; ordered slice of favorited reports.
+ *  - `allCatalogReports`     — Computed; non-favorited reports (filtered by search).
+ *  - `selectedReportId`      — ID of the report whose inspector is active.
+ *  - `selectedReportConfig`  — Loaded config for the selected report.
+ *  - `referenceDate`         — The ISO date used for report execution and preview.
+ */
 export class ReportsCatalogComponent implements OnInit {
   reports = signal<any[]>([]);
   loading = signal(true);

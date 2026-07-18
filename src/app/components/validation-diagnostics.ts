@@ -108,6 +108,36 @@ import { ValidationError } from './report-builder';
     }
   `
 })
+/**
+ * ValidationDiagnosticsComponent
+ *
+ * Presents validation errors surfaced by the backend
+ * `POST /api/reports/validate` endpoint inside the Report Builder.
+ *
+ * Purpose:
+ *  Renders a scrollable diagnostic card that appears at the top of the builder
+ *  step area only when there are active validation issues. Each error is displayed
+ *  with a severity icon (🛑 CRITICAL or ⚠️ WARNING), the element ID (e.g. row ID
+ *  or column ID), the field context, and the human-readable message.
+ *
+ * Usage:
+ *   <app-validation-diagnostics
+ *     [errors]="validationErrors()"
+ *   />
+ *
+ * Used by:
+ *  - ReportBuilderComponent — rendered above the active builder step section
+ *    when `validationErrors().length > 0`.
+ *
+ * Inputs:
+ *  - `errors` (required) — `ValidationError[]` from `ReportBuilderComponent`.
+ *    Each element has: `elementId`, `fieldContext`, `displayMessage`, `errorSeverity`.
+ *
+ * Styling:
+ *  - CRITICAL errors render with a red left border and muted red background.
+ *  - WARNING errors render with an amber left border and muted yellow background.
+ *  - Appears with a 400 ms fade-in animation on first render.
+ */
 export class ValidationDiagnosticsComponent {
   errors = input.required<ValidationError[]>();
 }

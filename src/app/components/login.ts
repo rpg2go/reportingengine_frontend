@@ -167,6 +167,30 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
   `]
 })
+/**
+ * LoginComponent
+ *
+ * Full-page authentication gate rendered at the `/login` route.
+ * Displays a glassmorphism-styled card with username + password fields.
+ *
+ * Behavior:
+ *  - If the user is already authenticated (`AuthService.isAuthenticated()` returns true)
+ *    the constructor immediately redirects to `/dashboard`, bypassing the form.
+ *  - On successful `AuthService.login()`, navigates to `/dashboard`.
+ *  - On failure, surfaces a human-readable error message via the `errorMessage` signal.
+ *
+ * Signals:
+ *  - `loading`      — true while the HTTP call is in flight (shows a spinner).
+ *  - `errorMessage` — non-null on bad credentials or network errors.
+ *
+ * Usage (registered as a route — never rendered as an element):
+ *   { path: 'login', component: LoginComponent }
+ *
+ * Dependencies injected:
+ *  - AuthService   — calls `login(username, password)` returning an Observable.
+ *  - Router        — for post-login navigation.
+ *  - DestroyRef    — used with `takeUntilDestroyed` to auto-unsubscribe.
+ */
 export class LoginComponent {
   username = '';
   password = '';

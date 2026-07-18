@@ -656,6 +656,47 @@ import { ThemeService } from '../services/theme.service';
     }
   `,
 })
+/**
+ * SidebarComponent
+ *
+ * Collapsible primary navigation sidebar used across all authenticated pages.
+ * Renders in two display modes:
+ *  - Expanded (240 px)  — shows brand logo, nav labels, theme toggle, user info, and sign-out.
+ *  - Collapsed (64 px)  — shows only icon glyphs with tooltip titles.
+ *
+ * Responsive behavior:
+ *  - On desktop (≥ 1024 px) it sticks to the left edge with CSS `position: sticky`.
+ *  - On mobile  (< 1024 px) it slides in from the left as a fixed overlay drawer,
+ *    controlled by the `mobileOpen` input. A backdrop overlay closes it on click.
+ *
+ * Inputs:
+ *  - `brandIcon`             — Icon identifier: '📊', '🛠️', or 'analytics-grid' (renders SVG).
+ *  - `brandText`             — Application name displayed in expanded mode.
+ *  - `showBackButton`        — When true, replaces user section with a contextual back button.
+ *  - `backButtonText`        — Label for the back button in expanded mode.
+ *  - `collapsedBackButtonText` — Label for the back button in collapsed icon mode.
+ *  - `showUser`              — When true, renders the authenticated user block with sign-out.
+ *  - `mobileOpen`            — Controls the mobile drawer open state from the parent.
+ *
+ * Outputs:
+ *  - `mobileOpenChange` — Emits `false` when the overlay or close button is clicked.
+ *  - `backClick`        — Emits when the back button is pressed.
+ *
+ * Usage example (report builder page):
+ *   <app-sidebar
+ *     brandIcon="🛠️"
+ *     brandText="Report Builder"
+ *     [showBackButton]="true"
+ *     backButtonText="← Cancel & Exit"
+ *     [mobileOpen]="sidebarOpen()"
+ *     (mobileOpenChange)="sidebarOpen.set($event)"
+ *     (backClick)="onCancel()"
+ *   ></app-sidebar>
+ *
+ * Internal state:
+ *  - `isSidebarExpanded` — local signal toggled by the collapse/expand «/➔ button.
+ *  - `username`          — computed from AuthService; displayed in expanded user block.
+ */
 export class SidebarComponent {
   brandIcon = input<string>('📊');
   brandText = input<string>('Reporting Engine');
