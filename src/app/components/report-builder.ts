@@ -649,7 +649,6 @@ export class ReportBuilderComponent implements OnInit {
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
         tierLevel: c.tierLevel || 'L1',
         parentId: c.parentId || '',
-        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({
@@ -723,7 +722,6 @@ export class ReportBuilderComponent implements OnInit {
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
         tierLevel: c.tierLevel || 'L1',
         parentId: c.parentId || '',
-        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({
@@ -1411,7 +1409,6 @@ export class ReportBuilderComponent implements OnInit {
       formulaExpr: c.formulaExpr,
       tierLevel: c.tierLevel || 'L1',
       parentId: c.parentId || '',
-      periodType: c.periodType || '',
       selected: false,
     }));
 
@@ -2681,7 +2678,6 @@ export class ReportBuilderComponent implements OnInit {
         formulaExpr: c.colType === 'CALC' ? c.formulaExpr : '',
         tierLevel: c.tierLevel || 'L1',
         parentId: c.parentId || '',
-        periodType: c.periodType || null,
         displayOrder: i + 1,
       })),
       rows: this.rows.map((r, i) => ({

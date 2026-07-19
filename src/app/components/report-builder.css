@@ -2516,6 +2516,17 @@
       }
 
       /* ═══════════════ LIGHT THEME REFINEMENT ═══════════════ */
+      html.light .success-alert {
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #065F46; /* High contrast dark green */
+      }
+      html.light .error-alert {
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #991B1B; /* High contrast dark red */
+      }
+
       html.light .card,
       html.light .config-panel,
       html.light .rows-section,

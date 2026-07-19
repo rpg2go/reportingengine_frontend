@@ -101,27 +101,47 @@ export class LiveLayoutPreviewComponent {
     return { l1Cols, l2ChildrenMap };
   }
 
-  private _getEffectivePeriodType(col: any): string {
-    if (col.periodType && col.periodType.trim() !== '') {
-      return col.periodType;
-    }
-    if (col.tierLevel === 'L2' && col.parentId) {
-      const parentKey = col.parentId.trim().toUpperCase();
-      const parent = this.columns().find(c => c.colId.trim().toUpperCase() === parentKey);
-      if (parent && parent.periodType && parent.periodType.trim() !== '') {
-        return parent.periodType;
-      }
-    }
-    return '';
-  }
-
   private _adjustedRefDate(col: any): string {
     const raw = this.reportingDate() || new Date().toISOString().split('T')[0];
-    const periodType = this._getEffectivePeriodType(col);
-    if (periodType && periodType.toUpperCase() === 'PREVIOUS_YEAR') {
-      const d = new Date(raw);
-      d.setFullYear(d.getFullYear() - 1);
-      return d.toISOString().split('T')[0];
+    let offset = 0;
+    let grain = 'WEEK';
+    if (col.colType === 'ROLLING') {
+      offset = col.periodOffset || 0;
+      grain = col.rollingGrain || 'WEEK';
+    } else if (col.tierLevel === 'L2' && col.parentId) {
+      const parentKey = col.parentId.trim().toUpperCase();
+      const parent = this.columns().find(c => c.colId.trim().toUpperCase() === parentKey);
+      if (parent && parent.colType === 'ROLLING') {
+        offset = parent.periodOffset || 0;
+        grain = parent.rollingGrain || 'WEEK';
+      }
+    }
+    if (offset !== 0) {
+      const parts = raw.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        const d = new Date(year, month - 1, day);
+        
+        const g = grain.toUpperCase();
+        if (g === 'DAY') {
+          d.setDate(d.getDate() + offset);
+        } else if (g === 'WEEK') {
+          d.setDate(d.getDate() + offset * 7);
+        } else if (g === 'MONTH') {
+          d.setMonth(d.getMonth() + offset);
+        } else if (g === 'QUARTER') {
+          d.setMonth(d.getMonth() + offset * 3);
+        } else if (g === 'YEAR') {
+          d.setFullYear(d.getFullYear() + offset);
+        }
+        
+        const yStr = d.getFullYear();
+        const mStr = String(d.getMonth() + 1).padStart(2, '0');
+        const dStr = String(d.getDate()).padStart(2, '0');
+        return `${yStr}-${mStr}-${dStr}`;
+      }
     }
     return raw;
   }
@@ -398,10 +418,6 @@ export class LiveLayoutPreviewComponent {
     }
     if (col.periodOffset && col.periodOffset !== 0) {
       label += ` Off:${col.periodOffset}`;
-    }
-    if (col.periodType) {
-      const typeAbbr = col.periodType === 'CURRENT_YEAR' ? 'CY' : col.periodType === 'PREVIOUS_YEAR' ? 'PY' : 'Both';
-      label += ` ${typeAbbr}`;
     }
     return label;
   }

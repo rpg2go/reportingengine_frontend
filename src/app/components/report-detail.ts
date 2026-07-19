@@ -486,6 +486,12 @@ import { SidebarComponent } from './sidebar';
       color: #fca5a5;
     }
 
+    :host-context(html.light) .error-alert {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #991B1B;
+    }
+
     .alert-icon {
       font-size: 18px;
       font-weight: bold;

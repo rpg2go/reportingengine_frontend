@@ -7,6 +7,59 @@ import { ValidationError } from './report-builder';
   selector: 'app-columns-setup',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
+  styles: [`
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 4px;
+      font-size: 11px;
+      color: #94A3B8;
+      cursor: help;
+      position: relative;
+      user-select: none;
+      vertical-align: middle;
+    }
+    
+    .info-icon:hover {
+      color: #6366F1;
+    }
+
+    .tooltip-container {
+      position: relative;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      width: 320px;
+      background-color: #1E293B;
+      color: #F8FAFC;
+      text-align: left;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px 12px;
+      position: absolute;
+      z-index: 1000;
+      top: 125%; /* Position below the icon */
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      font-size: 11px;
+      font-weight: normal;
+      text-transform: none;
+      white-space: normal;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      letter-spacing: normal;
+      line-height: 1.4;
+    }
+
+    .tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+  `],
   template: `
     <section class="columns-section card">
       <div class="flex-header">
@@ -39,13 +92,33 @@ import { ValidationError } from './report-builder';
               <th style="width:70px">Col ID</th>
               <th>Column Name / Header Label*</th>
               <th style="width:110px">Tier Level</th>
-              <th style="width:140px">Parent L1</th>
-              <th style="width:150px">Formula / Expression</th>
-              <th style="width:130px">Header Style</th>
-              <th style="width:90px">Period Offset</th>
-              <th style="width:120px">Timeframe Length</th>
-              <th style="width:130px">Period Type</th>
-              <th style="width:180px">Math Formula / Calc Expression</th>
+              <th style="width:170px">Parent L1</th>
+              <th style="width:130px">Formula / Expression</th>
+              <th style="width:100px">Header Style</th>
+              <th style="width:105px">
+                Period Offset
+                <span class="info-icon tooltip-container">
+                  ℹ️
+                  <span class="tooltip-text">
+                  Shift the report date backward (-) or forward (+) in native grain units.
+                  <br/><br/>
+                  <strong>YoY Examples (e.g., 1 year shift):</strong>
+                  <br/>• Weekly: Enter -52 (52 weeks ago)
+                  <br/>• Monthly: Enter -12 (12 months ago)
+                  <br/>• Quarterly: Enter -4 (4 quarters ago)
+                  <br/>• Yearly: Enter -1 (1 year ago)
+                  <br/><em>Multiply for multi-year shifts (e.g., -104 for 2 years ago, -24 for 2 years ago).</em>
+                  <br/><br/>
+                  <strong>Previous Period Examples:</strong>
+                  <br/>• Weekly: Enter -1 (1 week ago)
+                  <br/>• Monthly: Enter -2 (2 month ago)
+                  <br/>• Quarterly: Enter -3 (3 quarter ago)
+                  <br/>• Yearly: Enter -1 (1 year ago)
+                  </span>
+                </span>
+              </th>
+              <th style="width:150px">Timeframe Length</th>
+              <th style="width:130px">Math Formula / Calc Expression</th>
               <th style="width:60px;text-align:center">Actions</th>
             </tr>
           </thead>
@@ -146,64 +219,65 @@ import { ValidationError } from './report-builder';
                   </select>
                 </td>
                 <td>
-                  <input
-                    type="number"
-                    [(ngModel)]="col.periodOffset"
-                    (ngModelChange)="onModelChange()"
-                    [disabled]="col.colType === 'CALC' || col.colType === 'HEADER' || isLocked()"
-                    class="cell-input center"
-                  />
-                </td>
-                <td>
-                  <div class="rolling-cell" style="display: flex; align-items: center; gap: 4px;">
-                    <input
-                      type="number"
-                      [(ngModel)]="col.rollingN"
-                      (ngModelChange)="onModelChange()"
-                      [disabled]="col.colType === 'CALC' || col.colType === 'HEADER' || isLocked()"
-                      placeholder="1"
-                      class="cell-input center rolling-n-input"
-                      style="width: 45px;"
-                      title="Timeframe length count"
-                    />
-                    @if (col.colType === 'WTD') {
-                      <span style="font-size: 11px; color: #94A3B8;">wks</span>
-                    } @else if (col.colType === 'MTD') {
-                      <span style="font-size: 11px; color: #94A3B8;">mos</span>
-                    } @else if (col.colType === 'QTD') {
-                      <span style="font-size: 11px; color: #94A3B8;">qtrs</span>
-                    } @else if (col.colType === 'YTD') {
-                      <span style="font-size: 11px; color: #94A3B8;">yrs</span>
-                    } @else if (col.colType === 'ROLLING') {
-                      <select
-                        [(ngModel)]="col.rollingGrain"
+                  @if (col.colType !== 'CALC' && col.colType !== 'HEADER') {
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                      <input
+                        type="number"
+                        [(ngModel)]="col.periodOffset"
                         (ngModelChange)="onModelChange()"
-                        class="cell-select rolling-grain-select"
-                        title="Time grain for this rolling window"
                         [disabled]="isLocked()"
-                        style="width: 65px; font-size: 11px; padding: 2px;"
-                      >
-                        <option value="DAY">Days</option>
-                        <option value="WEEK">Weeks</option>
-                        <option value="MONTH">Months</option>
-                        <option value="QUARTER">Quarters</option>
-                        <option value="YEAR">Years</option>
-                      </select>
-                    }
-                  </div>
+                        class="cell-input center"
+                        style="width: 100%; box-sizing: border-box;"
+                      />
+                      <span class="offset-unit-helper" style="font-size: 9px; color: #94A3B8; font-style: italic; line-height: 1;">
+                        {{ getOffsetUnitHelper(col) }}
+                      </span>
+                    </div>
+                  } @else {
+                    <span style="color: #64748B; font-size: 11px; display: block; text-align: center;">-</span>
+                  }
                 </td>
                 <td>
-                  <select
-                    [(ngModel)]="col.periodType"
-                    [disabled]="isLocked()"
-                    (ngModelChange)="onModelChange()"
-                    class="cell-select"
-                  >
-                    <option value="">-- None --</option>
-                    <option value="CURRENT_YEAR">Current Year</option>
-                    <option value="PREVIOUS_YEAR">Previous Year</option>
-                    <option value="BOTH_YEARS">Both Years</option>
-                  </select>
+                  @if (col.colType !== 'CALC' && col.colType !== 'HEADER') {
+                    <div class="rolling-cell" style="display: flex; align-items: center; gap: 4px;">
+                      <input
+                        type="number"
+                        [(ngModel)]="col.rollingN"
+                        (ngModelChange)="onModelChange()"
+                        [disabled]="isLocked()"
+                        placeholder="1"
+                        class="cell-input center rolling-n-input"
+                        style="width: 55px;"
+                        title="Timeframe length count"
+                      />
+                      @if (col.colType === 'WTD') {
+                        <span style="font-size: 11px; color: #94A3B8;">wks</span>
+                      } @else if (col.colType === 'MTD') {
+                        <span style="font-size: 11px; color: #94A3B8;">mos</span>
+                      } @else if (col.colType === 'QTD') {
+                        <span style="font-size: 11px; color: #94A3B8;">qtrs</span>
+                      } @else if (col.colType === 'YTD') {
+                        <span style="font-size: 11px; color: #94A3B8;">yrs</span>
+                      } @else if (col.colType === 'ROLLING') {
+                        <select
+                          [(ngModel)]="col.rollingGrain"
+                          (ngModelChange)="onModelChange()"
+                          class="cell-select rolling-grain-select"
+                          title="Time grain for this rolling window"
+                          [disabled]="isLocked()"
+                          style="width: 65px; font-size: 11px; padding: 2px;"
+                        >
+                          <option value="DAY">Days</option>
+                          <option value="WEEK">Weeks</option>
+                          <option value="MONTH">Months</option>
+                          <option value="QUARTER">Quarters</option>
+                          <option value="YEAR">Years</option>
+                        </select>
+                      }
+                    </div>
+                  } @else {
+                    <span style="color: #64748B; font-size: 11px; display: block; text-align: center;">-</span>
+                  }
                 </td>
                 <td>
                   <input
@@ -296,7 +370,6 @@ export class ColumnsSetupComponent {
       formulaExpr: '',
       tierLevel: 'L1',
       parentId: '',
-      periodType: '',
       selected: false,
     };
     this.columns.set([...currentCols, newCol]);
@@ -440,5 +513,36 @@ export class ColumnsSetupComponent {
       .filter((e) => e.elementId.toUpperCase().replace(/^(COLUMN-|ROW-)/, '') === cleanId)
       .map((e) => `[${e.errorSeverity}] ${e.displayMessage}`)
       .join('\n');
+  }
+
+  getOffsetUnitHelper(col: any): string {
+    const type = col.colType;
+    const offset = col.periodOffset || 0;
+    const suffix = offset > 0 ? 'ahead' : 'ago';
+
+    if (type === 'WTD') {
+      return `weeks ${suffix}`;
+    }
+    if (type === 'MTD') {
+      return `months ${suffix}`;
+    }
+    if (type === 'QTD') {
+      return `quarters ${suffix}`;
+    }
+    if (type === 'YTD') {
+      return `years ${suffix}`;
+    }
+    if (type === 'ROLLING') {
+      const grain = (col.rollingGrain || 'WEEK').toUpperCase();
+      switch (grain) {
+        case 'DAY': return `days ${suffix}`;
+        case 'WEEK': return `weeks ${suffix}`;
+        case 'MONTH': return `months ${suffix}`;
+        case 'QUARTER': return `quarters ${suffix}`;
+        case 'YEAR': return `years ${suffix}`;
+        default: return `weeks ${suffix}`;
+      }
+    }
+    return '';
   }
 }

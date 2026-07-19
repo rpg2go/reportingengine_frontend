@@ -8,7 +8,6 @@ export interface HeaderConfig {
   formulaExpr: string;
   isExpandedSubCol: boolean;
   parentColId?: string;
-  periodType?: string;
   isLastChild?: boolean;
 }
 
@@ -96,7 +95,7 @@ export class DateFormatter {
     const result: HeaderConfig[] = [];
     const parentColId = parentCol.colId;
 
-    for (let i = 1; i <= rollingN; i++) {
+    for (let i = rollingN; i >= 1; i--) {
       const subColId = `${parentColId}_${i}`;
       let label = '';
 

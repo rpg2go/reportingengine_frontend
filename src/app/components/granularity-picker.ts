@@ -475,7 +475,7 @@ export interface TableGroup {
     :host-context(html.light) .gp-footer-clear-btn:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
     :host-context(html.light) .gp-clear-all-btn { color: #94A3B8; }
     :host-context(html.light) .gp-clear-all-btn:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
-  ]
+  `]
 })
 /**
  * GranularityPickerComponent
