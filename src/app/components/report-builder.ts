@@ -479,10 +479,6 @@ export class ReportBuilderComponent implements OnInit {
       }
     });
 
-    if (options.length === 0) {
-      return this.conformedKeys.map((k) => ({ value: k, label: k }));
-    }
-
     return options;
   });
   expandedColumns = computed(() => {
@@ -843,7 +839,6 @@ export class ReportBuilderComponent implements OnInit {
   tableColumns: string[] = [];
   distinctValues: { [key: string]: string[] } = {};
   schemaCatalogMap = signal<{ [key: string]: { isFilterable: boolean; isCached: boolean } }>({});
-  readonly conformedKeys = ['customer_id', 'location_id', 'reporting_date'];
 
   // Searchable DWH Catalog signals
   dwhFieldsTree = signal<FieldGroup[]>([]);
