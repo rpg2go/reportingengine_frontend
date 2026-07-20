@@ -58,7 +58,7 @@ This document serves as the UI/UX architecture reference, implementation state, 
    - `GET /api/reports` uses `ReportRepository.findLatestVersionPerReport()` — a correlated JPQL subquery that returns only the max-version row per `reportId`. This prevents duplicate entries in the execution hub sidebar when a report has multiple versions.
 
 10. **Composite Primary Key for Versioning**:
-    - The `rpt_report` table uses a composite primary key `(report_id, version)`. All child tables (`rpt_column_def`, `rpt_row`, `rpt_row_metric`, `rpt_row_formula`, `rpt_row_column_map`) include a `version` column and were migrated (migration `015`) to use composite unique constraints incorporating `version`, replacing the old single-column unique indexes.
+    - The `report_config` table uses a composite primary key `(report_id, version)`. All child tables (`column_definition`, `row_definition`, `row_metric_mapping`, `row_formula`, `row_column_intersection`) include a `version` column and were migrated (migration `015`) to use composite unique constraints incorporating `version`, replacing the old single-column unique indexes.
 
 11. **Dynamic Rows Setup Viewport Height**:
     - Decoupled DWH explorer and template builder layouts using absolute overlays alongside flow-relative element placeholders. This lets the number of rows dynamically set the section height, enforcing a minimum Visual Usability Threshold of `450px` (~10 rows) and a maximum of `860px`. Explicit high-contrast scrollbars are configured for both light and dark themes.
@@ -166,8 +166,8 @@ All child tables include a `version` column as part of their composite key. Migr
 
 | Table | Composite Unique Key |
 |-------|---------------------|
-| `rpt_column_def` | `(report_id, version, col_id)` |
-| `rpt_row` | `(report_id, version, row_id)` |
-| `rpt_row_metric` | `(report_id, version, row_id, measure_id)` |
-| `rpt_row_formula` | `(report_id, version, row_id)` |
-| `rpt_row_column_map` | `(report_id, version, row_id, col_id)` |
+| `column_definition` | `(report_id, version, col_id)` |
+| `row_definition` | `(report_id, version, row_id)` |
+| `row_metric_mapping` | `(report_id, version, row_id, measure_id)` |
+| `row_formula` | `(report_id, version, row_id)` |
+| `row_column_intersection` | `(report_id, version, row_id, col_id)` |

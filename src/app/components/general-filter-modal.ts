@@ -182,8 +182,8 @@ import { FILTER_TOOLTIPS } from '../constants/filter-help.constants';
  *
  * Purpose:
  *  Provides a multi-table scoped filter builder that compiles to JSON filter groups
- *  (saved in `rpt_report.general_filters`) or to a raw SQL expression string
- *  (saved in `rpt_report.quick_filters`) when "Raw Mode" is toggled on.
+ *  (saved in `report_config.general_filters`) or to a raw SQL expression string
+ *  (saved in `report_config.quick_filters`) when "Raw Mode" is toggled on.
  *
  * Usage:
  *   <app-general-filter-modal
