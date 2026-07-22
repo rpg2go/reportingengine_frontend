@@ -91,8 +91,8 @@
       @for (rule of group().rules; track $index; let ri = $index) {
         <div class="flex items-center gap-3 w-full bg-slate-50/60 p-2.5 rounded-xl whitespace-nowrap">
           
-          <!-- Table Path Selector (w-[280px]) -->
-          <div class="w-[280px] flex-shrink-0" title="Source table that contains the column to filter on">
+          <!-- Table Path Selector (w-[240px]) -->
+          <div class="w-[240px] flex-shrink-0" title="Source table that contains the column to filter on">
             <select
               [ngModel]="rule.tableName || activeMeasureTable().replace('analytics.', '')"
               (ngModelChange)="rule.tableName = ($event === activeMeasureTable().replace('analytics.', '') ? '' : $event); onTableChange(rule)"
@@ -100,6 +100,9 @@
               class="form-select w-full text-xs font-mono"
               [ngStyle]="selectStyle"
             >
+              @if (!activeMeasureTable() && !rule.tableName) {
+                <option value="" disabled>-- Select Table --</option>
+              }
               @for (opt of getGroupedCatalogOptions(); track opt.tableName) {
                 <option [value]="opt.tableName.replace('analytics.', '')">
                   {{ opt.cleanTableName }}
@@ -108,8 +111,8 @@
             </select>
           </div>
 
-          <!-- Column Attribute Selector (w-[220px]) -->
-          <div class="w-[220px] flex-shrink-0" title="Column / attribute to filter on">
+          <!-- Column Attribute Selector (w-[200px]) -->
+          <div class="w-[200px] flex-shrink-0" title="Column / attribute to filter on">
             <select
               [(ngModel)]="rule.columnName"
               (change)="onColumnChange(rule)"
@@ -124,9 +127,9 @@
             </select>
           </div>
 
-          <!-- Operator Selector (w-[140px]) -->
+          <!-- Operator Selector (w-[130px]) -->
           <div
-            class="w-[140px] flex-shrink-0"
+            class="w-[130px] flex-shrink-0"
             title="Comparison operator&#10;is = exact match&#10;is not = exclude&#10;in list = match any of multiple values&#10;contains = partial text match"
           >
             <select 
@@ -144,7 +147,7 @@
 
           <!-- Value Picker (flex-1, takes remaining space) -->
           <div
-            class="flex-1 min-w-[200px]"
+            class="flex-1 min-w-[280px]"
             title="Value(s) to match against&#10;For 'in list' you can select multiple values"
           >
             @if (rule.requiresValueField) {

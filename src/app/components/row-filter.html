@@ -38,8 +38,8 @@
   </div>
 
   @if (isOpen()) {
-    <div class="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center" (click)="close()">
-      <div class="row-filter-builder w-full max-w-7xl h-[640px] max-h-[85vh] rounded-2xl shadow-2xl bg-white border p-6 flex flex-col gap-4" (click)="$event.stopPropagation()">
+    <div class="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" (click)="close()">
+      <div class="row-filter-builder w-full max-w-7xl h-[90vh] max-h-[94vh] rounded-2xl shadow-2xl bg-white border p-6 flex flex-col gap-4" (click)="$event.stopPropagation()">
 
         <!-- Modal Header: title + ⓘ help toggle + close -->
         <div class="text-xs font-semibold text-slate-800 border-b border-slate-200 pb-2.5 flex justify-between items-center">
@@ -78,7 +78,7 @@
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-5 min-h-[440px] custom-scrollbar bg-white pr-1">
+        <div class="flex-1 overflow-y-auto p-5 pb-36 min-h-[440px] custom-scrollbar bg-white pr-1">
           @if (rowFilters()) {
             <app-row-condition-group
               [group]="rowFilters()!"

@@ -77,7 +77,7 @@ export interface RowFilterGroup {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 300px;
+      max-height: 580px;
       box-sizing: border-box;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -105,7 +105,7 @@ export interface RowFilterGroup {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      max-height: 220px;
+      max-height: 500px;
     }
 
     .gp-rule-no-results {
@@ -398,8 +398,12 @@ export class RowConditionGroupComponent implements OnInit {
 
   addCondition() {
     const rules = this.group().rules || [];
+    const catalogOptions = this.getGroupedCatalogOptions();
+    const defaultTable = this.activeMeasureTable()
+      ? ''
+      : (catalogOptions.length > 0 ? catalogOptions[0].tableName.replace(/^analytics\./, '') : '');
     rules.push({
-      tableName: '',
+      tableName: defaultTable,
       columnName: '',
       operator: 'is',
       value: [],
@@ -493,7 +497,11 @@ export class RowConditionGroupComponent implements OnInit {
   }
 
   getAvailableColumns(tableName: string): string[] {
-    const table = tableName || this.activeMeasureTable();
+    let table = tableName || this.activeMeasureTable();
+    if (!table) {
+      const catalogOptions = this.getGroupedCatalogOptions();
+      table = catalogOptions.length > 0 ? catalogOptions[0].tableName : '';
+    }
     if (!table) return [];
     const catalog = this.dwhCatalog();
     const normTable = table.replace(/^analytics\./, '');
@@ -656,8 +664,13 @@ export class RowConditionGroupComponent implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
-    if (this.openRuleIndex() !== null && !this.elementRef.nativeElement.contains(event.target)) {
-      this.closeRulePicker();
+    if (this.openRuleIndex() !== null) {
+      const target = event.target as HTMLElement;
+      const trigger = target?.closest?.('.gp-rule-trigger');
+      const popover = target?.closest?.('.gp-rule-popover');
+      if (!trigger && !popover) {
+        this.closeRulePicker();
+      }
     }
   }
 }

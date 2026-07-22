@@ -135,10 +135,10 @@ import { FILTER_TOOLTIPS } from '../constants/filter-help.constants';
     .p-6 { padding: 1.5rem !important; }
     .flex-col { flex-direction: column !important; }
     .gap-4 { gap: 1rem !important; }
-    .max-h-\\[85vh\\] { max-height: 92vh !important; }
+    .max-h-\\[92vh\\], .max-h-\\[94vh\\], .max-h-\\[96vh\\] { max-height: 94vh !important; }
     .overflow-y-auto { overflow-y: auto !important; }
-    .h-\\[640px\\] { height: 800px !important; }
-    .min-h-\\[440px\\] { min-height: 600px !important; }
+    .h-\\[880px\\], .h-\\[94vh\\], .h-\\[90vh\\] { height: 90vh !important; max-height: 94vh !important; }
+    .min-h-\\[440px\\] { min-height: 560px !important; }
     .p-5 { padding: 1.25rem !important; }
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
@@ -574,11 +574,21 @@ export class RowFilterComponent implements OnInit {
   openBuilder() {
     if (this.disabled()) return;
     this.isOpen.set(true);
-    if (!this.rowFilters()) {
+    const curr = this.rowFilters();
+    if (!curr || Array.isArray(curr) || !curr.rules) {
+      let initialRules: any[] = [];
+      if (Array.isArray(curr) && curr.length > 0) {
+        initialRules = curr.map((f: any) => ({
+          tableName: f.dimTable ? f.dimTable.replace(/^analytics\./, '') : '',
+          columnName: f.attribute || '',
+          operator: f.operator || 'is',
+          value: f.value ? (Array.isArray(f.value) ? f.value : [f.value]) : []
+        }));
+      }
       const emptyRoot = {
         id: 'root',
         logicalOperator: 'AND',
-        rules: [],
+        rules: initialRules,
         childGroups: []
       };
       this.rowFilters.set(emptyRoot);

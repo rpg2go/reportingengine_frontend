@@ -60,6 +60,30 @@ describe('RowFilterComponent', () => {
     });
   });
 
+  it('should normalize rowFilters to root group if rowFilters is initialized to an empty array []', () => {
+    component.rowFilters.set([]);
+    component.openBuilder();
+    expect(component.isOpen()).toBe(true);
+    expect(component.rowFilters()).toEqual({
+      id: 'root',
+      logicalOperator: 'AND',
+      rules: [],
+      childGroups: []
+    });
+  });
+
+  it('should normalize rowFilters to root group if rowFilters is an invalid object missing rules', () => {
+    component.rowFilters.set({ invalid: true } as any);
+    component.openBuilder();
+    expect(component.isOpen()).toBe(true);
+    expect(component.rowFilters()).toEqual({
+      id: 'root',
+      logicalOperator: 'AND',
+      rules: [],
+      childGroups: []
+    });
+  });
+
   it('should close builder', () => {
     vi.spyOn(component, 'activeMeasureTable').mockReturnValue('analytics.fact_sales');
     component.openBuilder();

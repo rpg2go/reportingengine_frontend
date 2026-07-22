@@ -110,8 +110,8 @@ import { FormsModule } from '@angular/forms';
     .picker-dropdown-overlay {
       position: absolute;
       top: 100%;
-      left: 0;
       right: 0;
+      min-width: 340px;
       margin-top: 4px;
       background: var(--color-apple-card);
       border: 1px solid var(--border-color);
@@ -123,7 +123,7 @@ import { FormsModule } from '@angular/forms';
       -webkit-backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
-      max-height: 250px;
+      max-height: 420px;
       animation: fadeInPopover 0.15s ease-out;
     }
 

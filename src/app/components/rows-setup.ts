@@ -288,7 +288,7 @@ import { ValidationError, DwhField, FieldGroup, RowFilterCondition } from './rep
                           [linkedDimensions]="linkedDimensions()"
                           [columnTypes]="columnTypes()"
                           [schemaCatalogMap]="schemaCatalogMap()"
-                          [rowFilters]="row.rowFilters"
+                          [(rowFilters)]="row.rowFilters"
                           [(legacyFilterExpr)]="row.legacyFilterExpr"
                           [(isRawMode)]="row.isFilterRawMode"
                           [disabled]="isLocked()"
@@ -583,7 +583,7 @@ export class RowsSetupComponent {
       row.sourceTable = '';
       row.customSqlMode = false;
       row.source = 'SUM()';
-      row.rowFilters = [];
+      row.rowFilters = null;
       row.legacyFilterExpr = '';
       row.isFilterRawMode = false;
     } else if (row.rowType === 'calc') {
@@ -592,7 +592,7 @@ export class RowsSetupComponent {
       row.measureCol = '';
       row.sourceTable = '';
       row.customSqlMode = false;
-      row.rowFilters = [];
+      row.rowFilters = null;
       row.legacyFilterExpr = '';
       row.isFilterRawMode = false;
     } else {
@@ -601,7 +601,7 @@ export class RowsSetupComponent {
       row.measureCol = '';
       row.sourceTable = '';
       row.customSqlMode = false;
-      row.rowFilters = [];
+      row.rowFilters = null;
       row.legacyFilterExpr = '';
       row.isFilterRawMode = false;
     }
@@ -804,7 +804,7 @@ export class RowsSetupComponent {
       measureCol: measure?.col || '',
       sourceTable: measure?.table || '',
       customSqlMode: false,
-      rowFilters: measure?.filters || [],
+      rowFilters: (measure?.filters && measure.filters.length > 0) ? measure.filters : null,
       legacyFilterExpr: '',
       isFilterRawMode: false,
     };
