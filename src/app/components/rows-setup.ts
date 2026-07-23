@@ -244,11 +244,11 @@ import { ValidationError, DwhField, FieldGroup, RowFilterCondition } from './rep
                   <!-- Track 6: Measure Definition -->
                   <td class="col-measure-def measure-td">
                     @if (row.type === 'data') {
-                      <div class="flex items-center gap-2 w-full" style="display: flex; align-items: center; gap: 8px;">
+                      <div class="flex items-center gap-2 w-full" style="display: flex; align-items: center; gap: 8px; width: 100%;">
                         <select
                           [(ngModel)]="row.aggregation"
                           class="cell-select"
-                          style="width: 140px;"
+                          style="width: 115px; flex-shrink: 0;"
                           [disabled]="isLocked()"
                         >
                           @for (opt of aggregationOptions; track opt.value) {
@@ -256,9 +256,10 @@ import { ValidationError, DwhField, FieldGroup, RowFilterCondition } from './rep
                           }
                         </select>
 
-                        <span class="text-xs text-slate-500">of</span>
+                        <span class="text-xs text-slate-500" style="flex-shrink: 0;">of</span>
 
                         <app-field-picker
+                          style="flex: 1; min-width: 0;"
                           [dwhCatalog]="dwhCatalog()"
                           [selectedValue]="getMeasureColPath(row)"
                           [disabled]="isLocked()"

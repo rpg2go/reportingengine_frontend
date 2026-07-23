@@ -672,7 +672,7 @@
         box-sizing: border-box;
       }
       .col-measure-def {
-        width: 480px;
+        width: 580px;
         flex-shrink: 0;
         flex-grow: 2;
         display: flex;

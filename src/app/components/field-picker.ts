@@ -84,8 +84,8 @@ import { SearchEngineFactory, SearchEngineAnalyzer, SimpleContainsAnalyzer } fro
       top: 100%;
       left: 0;
       margin-top: 4px;
-      width: 100%;
-      min-width: 480px;
+      width: max(100%, 580px);
+      min-width: 580px;
       background: var(--color-apple-card);
       border: 1px solid rgba(0, 118, 223, 0.20);
       border-radius: 10px;
